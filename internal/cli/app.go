@@ -6,7 +6,9 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strconv"
+	"strings"
 
 	"github.com/LysCongThanh/heavyq/internal/config"
 )
@@ -62,7 +64,7 @@ func Main(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprint(stdout, usage)
 		return 0
 	case "version", "--version":
-		fmt.Fprintln(stdout, "heavyq", Version)
+		fmt.Fprintln(stdout, "heavyq", version())
 		return 0
 	case "history":
 		return historyCommand(args[1:], stdout, stderr)
@@ -80,6 +82,18 @@ func Main(args []string, stdout, stderr io.Writer) int {
 		return ExitUsage
 	}
 	return runCommand(cfg, args, stderr)
+}
+
+// version is the ldflags Version, else the module version recorded by
+// `go install module@vX.Y.Z`.
+func version() string {
+	if Version != "dev" {
+		return Version
+	}
+	if bi, ok := debug.ReadBuildInfo(); ok && bi.Main.Version != "" && bi.Main.Version != "(devel)" {
+		return strings.TrimPrefix(bi.Main.Version, "v")
+	}
+	return Version
 }
 
 // QueueDir is $HEAVYQ_DIR, else $XDG_RUNTIME_DIR/heavyq, else <tmp>/heavyq-<uid>.
