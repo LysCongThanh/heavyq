@@ -1,0 +1,3 @@
+#!/bin/sh
+# Demo stand-in for a heavy tool: burns one core for a while.
+exec timeout 120 sh -c 'while :; do :; done'

@@ -1,0 +1,48 @@
+# heavyq configuration: ~/.config/heavyq/config.toml
+# Every key is optional; the values below are the defaults unless marked "example".
+
+[queue]
+poll = "2s"              # how often a waiting ticket retries
+force_after = "15m"      # anti-starvation: the head ticket bypasses the RAM/load gate after this
+resource_gate = true     # false = only slots limit concurrency
+auto = true              # tickets without --remote are placed by score when it is safe
+load_weight_mb = 500     # score = free_mb - load_weight_mb * load1
+hold_for = "1m"          # RAM budget of a just-started job stays reserved this long
+remote_down_max = "10m"  # remote-only tickets exit 76 after their remotes are unreachable this long
+probe_timeout = "5s"     # one remote metrics probe
+base_ref = ""            # default --base-ref, e.g. "origin/main"
+
+[local]
+heavy_slots = 2
+light_slots = 1
+max_load_ratio = 0.75    # admit while load1 < ratio * cores
+job_mb = 3072            # RAM budget of one heavy job
+light_mb = 1024          # RAM budget of one --light job
+reserve_mb = 2048        # headroom kept free on top of the budget
+# Share slots with scripts that already use `flock /tmp/build-1.lock make`.
+# When set, these files ARE the heavy slots (their count replaces heavy_slots).
+# legacy_lock_files = ["/tmp/build-1.lock", "/tmp/build-2.lock"]   # example
+
+# One [[remote]] block per spare machine (example).
+[[remote]]
+name = "buildbox"        # used in --remote buildbox and in status
+ssh = "buildbox"         # alias from ~/.ssh/config; key auth, ControlMaster recommended
+heavy_slots = 2
+light_slots = 2
+max_load_ratio = 0.75
+job_mb = 2048
+light_mb = 1024
+reserve_mb = 2048
+work_dir = ".heavyq"     # remote dir (relative to the remote home): git/, wt/, slots/, cache/
+# git_url = "buildbox:.heavyq/git"   # default: <ssh>:<work_dir>/git
+# transport = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "buildbox"]   # default
+#
+# Optional shell snippet run in the fresh worktree before the command.
+# It gets HEAVYQ_CACHE_DIR (persistent, under work_dir) and HEAVYQ_WORKTREE.
+# A non-zero exit aborts the run with exit code 77.
+cache_hook = '''
+[ -f package-lock.json ] || exit 0
+key=$(sha256sum package-lock.json | cut -c1-16); c="$HEAVYQ_CACHE_DIR/nm-$key"
+if [ -d "$c" ]; then cp -al "$c" node_modules; exit; fi
+npm ci --no-audit --no-fund && { cp -al node_modules "$c.$$" && mv -T "$c.$$" "$c" || rm -rf "$c.$$"; } 2>/dev/null; true
+'''
