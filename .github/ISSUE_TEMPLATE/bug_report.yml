@@ -1,0 +1,35 @@
+name: Bug report
+description: heavyq scheduled, ran, or cleaned up something wrongly
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Commands to reproduce
+      description: The heavyq invocations (with flags), in order. Note which ran in parallel.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: status
+    attributes:
+      label: Output of `heavyq status` while it misbehaves
+      render: text
+  - type: textarea
+    id: config
+    attributes:
+      label: Config (remove host names you don't want to share)
+      render: toml
+  - type: input
+    id: version
+    attributes:
+      label: heavyq version, OS, and remote OS if a remote is involved
+      placeholder: "heavyq 0.1.0, Ubuntu 24.04 / remote Debian 12"
+    validations:
+      required: true
