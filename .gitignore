@@ -1,0 +1,4 @@
+/dist/
+/heavyq
+*.test
+*.out

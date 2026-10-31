@@ -1,0 +1,162 @@
+package cli
+
+import (
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/LysCongThanh/heavyq/internal/config"
+	"github.com/LysCongThanh/heavyq/internal/gitutil"
+	"github.com/LysCongThanh/heavyq/internal/procinfo"
+	"github.com/LysCongThanh/heavyq/internal/queue"
+	"github.com/LysCongThanh/heavyq/internal/schedule"
+)
+
+const (
+	progressEvery = 30 * time.Second
+	downWarnEvery = time.Minute
+)
+
+// waitForTurn loops until the ticket claims a slot (returns it) or must give
+// up (returns nil and the exit code).
+func (r *run) waitForTurn() (*claim, int) {
+	var headSince, downSince, lastMsg, lastDownWarn time.Time
+	lastPos := ""
+	for {
+		r.probes.refresh(r.cfg, r.me.Candidates)
+		if len(r.pl.siblings) > 0 || !r.pl.refIsHead {
+			r.pl.refreshLocal()
+			if r.pl.target == config.LocalName && r.pl.localWhy != "" {
+				fmt.Fprintf(r.stderr, "heavyq: code changed while waiting (%s); giving up\n", r.pl.localWhy)
+				return nil, ExitUsage
+			}
+			r.me.Candidates = r.pl.machines(r.cfg)
+		}
+		c, pos, total, ahead, err := r.round(&headSince)
+		if err != nil {
+			fmt.Fprintln(r.stderr, "heavyq:", err)
+			return nil, ExitUsage
+		}
+		if c != nil {
+			return c, 0
+		}
+		now := time.Now()
+		if cur := fmt.Sprintf("%d/%d", pos, total); cur != lastPos || now.Sub(lastMsg) >= progressEvery {
+			fmt.Fprintf(r.stderr, "heavyq: waiting %s (prio %d, lane %s, %s) for %s%s\n",
+				cur, r.me.Prio, r.me.Lane, r.pl.target, fmtDur(now.Sub(r.t0)), describeAhead(ahead))
+			lastPos, lastMsg = cur, now
+		}
+		if rc := r.checkRemoteDown(&downSince, &lastDownWarn); rc != 0 {
+			return nil, rc
+		}
+		if r.opts.MaxWait > 0 && now.Sub(r.t0) >= r.opts.MaxWait {
+			fmt.Fprintf(r.stderr, "heavyq: not our turn after %s (--max-wait)\n", fmtDur(r.opts.MaxWait))
+			return nil, ExitMaxWait
+		}
+		if s := r.pollOrSignal(r.cfg.Queue.Poll.Duration); s != nil {
+			return nil, signalExit(s)
+		}
+	}
+}
+
+// round runs one scheduling decision under the queue mutex.
+func (r *run) round(headSince *time.Time) (*claim, int, int, []*queue.Ticket, error) {
+	unlock, err := r.q.Mutex()
+	if err != nil {
+		return nil, 0, 0, nil, err
+	}
+	defer unlock()
+	r.q.Prune(procinfo.Default.Alive)
+	snap, err := r.q.List()
+	if err != nil {
+		return nil, 0, 0, nil, err
+	}
+	ahead, pos := schedule.Ahead(snap.Waiting, r.me)
+	if pos == 0 {
+		return nil, 0, 0, nil, fmt.Errorf("our ticket disappeared from %s", r.q.Path)
+	}
+	opps, _ := schedule.Opportunities(r.me, ahead, slotCounts(r.cfg))
+	head := false
+	for _, op := range opps {
+		head = head || op.Head
+	}
+	if !head {
+		*headSince = time.Time{}
+	} else if headSince.IsZero() {
+		*headSince = time.Now()
+	}
+	var waited time.Duration
+	if head {
+		waited = time.Since(*headSince)
+	}
+	c, _ := evaluate(evalInput{cfg: r.cfg, ticket: r.me, snap: snap, probes: r.probes,
+		opps: opps, headWait: waited, needsRAM: r.opts.NeedsRAM})
+	if c != nil && c.machine != config.LocalName && r.pl.defaultMode && !r.stillSafeRemotely() {
+		c = nil // the repo changed while waiting: no remote this round
+	}
+	if c == nil {
+		return nil, pos, len(snap.Waiting), ahead, nil
+	}
+	if err := r.q.Claim(r.me, c.machine, c.slot); err != nil {
+		c.lock.Release()
+		return nil, 0, 0, nil, err
+	}
+	return c, pos, len(snap.Waiting), ahead, nil
+}
+
+// stillSafeRemotely re-verifies an implicit auto ticket right before it goes
+// remote, and ships the commit that is checked out now.
+func (r *run) stillSafeRemotely() bool {
+	repo, why := autoEligible(r.pl.wd, &r.opts)
+	if why != "" || repo != r.pl.repo {
+		return false
+	}
+	sha, err := gitutil.ResolveCommit(repo, "HEAD")
+	if err != nil {
+		return false
+	}
+	r.pl.sha = sha
+	return true
+}
+
+// checkRemoteDown enforces remote_down_max for tickets that can only run on
+// remotes, all of which are unreachable.
+func (r *run) checkRemoteDown(since, lastWarn *time.Time) int {
+	rem := remoteCandidates(r.me.Candidates)
+	if len(rem) == 0 || len(rem) != len(r.me.Candidates) {
+		*since = time.Time{}
+		return 0
+	}
+	for _, n := range rem {
+		if _, ok := r.probes.get(n); ok {
+			*since = time.Time{}
+			return 0
+		}
+	}
+	now := time.Now()
+	if since.IsZero() {
+		*since = now
+	}
+	down := now.Sub(*since)
+	if down >= r.cfg.Queue.RemoteDownMax.Duration {
+		fmt.Fprintf(r.stderr, "heavyq: %s unreachable for %s; giving up\n", strings.Join(rem, ", "), fmtDur(down))
+		return ExitRemoteDown
+	}
+	if now.Sub(*lastWarn) >= downWarnEvery {
+		fmt.Fprintf(r.stderr, "heavyq: %s unreachable (%s); exit %d after %s\n", strings.Join(rem, ", "),
+			fmtDur(down), ExitRemoteDown, fmtDur(r.cfg.Queue.RemoteDownMax.Duration))
+		*lastWarn = now
+	}
+	return 0
+}
+
+func describeAhead(ahead []*queue.Ticket) string {
+	if len(ahead) == 0 {
+		return ""
+	}
+	parts := make([]string, 0, len(ahead))
+	for _, t := range ahead {
+		parts = append(parts, fmt.Sprintf("%s(p%d)", t.Lane, t.Prio))
+	}
+	return "; ahead: " + strings.Join(parts, " ")
+}
