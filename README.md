@@ -110,7 +110,7 @@ Claude Code passes the call to `heavyq hook claude-pretooluse`, which returns an
 
 ```
 go test ./... 2>&1 | tail -30
-  ->  heavyq 4 --lane wt-api --max-wait 300s --session <session_id> -- go test ./... 2>&1 | tail -30
+  ->  heavyq 4 --lane wt-api --max-wait 300s -- go test ./... 2>&1 | tail -30
 ```
 
 - **What gets wrapped.** By default: `npm`/`pnpm`/`yarn` `test`, `run test`, `run build` and `run gate`;
@@ -126,9 +126,12 @@ go test ./... 2>&1 | tail -30
   remotes. Everything else is left exactly as typed: `;`, `||`, other `&&` chains, a background `&`,
   `$(...)`, backticks, redirections, several pipes, commands already wrapped, and any call made while
   `HEAVYQ_ACTIVE` is set (heavyq sets it for the commands it runs).
-- **Session.** The hook passes Claude Code's `session_id` as `--session`, so history says which session ran
-  what. The id is validated first (`A-Za-z0-9._:-`, 1-80 characters); anything else is left out and the
-  command is still wrapped.
+- **Session.** The hook also leaves Claude Code's `session_id` in `<queue dir>/sessions/<lane>` (JSON
+  `{session_id, at}`, written atomically, mode 0600), so history says which session ran what. The command
+  itself stays the same in every session. A run on that lane uses the id when it has no `--session` or
+  `$HEAVYQ_SESSION` and the file is under 10 minutes old; stale files are pruned with dead tickets. An id
+  that isn't a plain tag (`A-Za-z0-9._:-`, 1-80 characters) is not written. Two sessions on one lane within
+  those 10 minutes can swap labels, which only mislabels the session: proof matches on the tree.
 - **Timeouts.** The hook adds `--max-wait` (`hook.max_wait`, default 5m) and raises the Bash tool's
   `timeout` by the same amount, so queue time doesn't use up the tool timeout. Exit 75 still means "busy,
   retry later". The agent is told so through `additionalContext`.
@@ -139,10 +142,9 @@ go test ./... 2>&1 | tail -30
 **Honest limits** (details and doc quotes in [docs/claude-code.md](docs/claude-code.md)):
 
 - Permissions are evaluated against the *rewritten* command. By default heavyq approves nothing, so
-  `Bash(npm test:*)` doesn't cover `heavyq 4 --lane api --max-wait 300s --session <id> -- npm test`. The
-  session id changes with every Claude Code session, so a rule for an exact prefix can't pin it. Approve the
-  command at the prompt, or set `hook.permission = "allow"`. That setting auto-approves only the commands
-  your rules matched. Don't allow `Bash(heavyq:*)`.
+  `Bash(npm test:*)` doesn't cover `heavyq 4 --lane api --max-wait 300s -- npm test`. Approve it at the
+  prompt, allow that exact prefix, or set `hook.permission = "allow"`. That setting auto-approves only the
+  commands your rules matched. Don't allow `Bash(heavyq:*)`.
 - If another `PreToolUse` hook also rewrites Bash commands, Claude Code's docs don't say whose rewrite
   wins. Don't combine them.
 - Only Claude Code for now. Adapters for other agents are open issues.
@@ -160,20 +162,26 @@ Each run appends one JSON line. These fields say what it ran on and who asked:
 
 | Field | Meaning |
 |---|---|
-| `v`, `id` | schema (`2`) and a ULID that sorts by time. Lines without `v` are v1 and still load. |
+| `v`, `id` | schema (`2`) and a ULID: unique, and ordered by creation time at millisecond resolution only. Ids made in the same millisecond by different processes have no order, so order lines by their position in the file or by `end`. Lines without `v` are v1 and still load. |
 | `repo` | hash of the git common dir: the same for every work tree of one repository |
 | `worktree`, `subdir` | where the command ran |
 | `commit` | `HEAD`. For a remote run, the commit that was shipped. |
-| `tree` | the exact files. **Clean:** `HEAD`'s tree id, the same one the cache keys on. **Dirty:** `<HEAD tree>+<digest>`, where the digest covers `git diff HEAD --binary` (staged or not) and the names and contents of untracked files that aren't ignored. The same edits give the same id, any edit changes it, and reverting restores the clean id. |
+| `tree` | the exact files. **Clean:** `HEAD`'s tree id, the same one the cache keys on. **Dirty:** `<HEAD tree>+<digest>`, where the digest covers `git diff HEAD --binary` (staged or not) and the names and contents of untracked files that aren't ignored. The same edits give the same id, any edit changes it, and reverting restores the clean id (also when the edits cancel out, like staged then reverted). **Absent:** the tree is unknown and never counts as proof (see below). |
 | `dirty` | uncommitted or untracked files at the start (absent = false). Remote runs ship a commit, so they are never dirty. |
 | `session`, `item`, `gate` | `--session`, `--item`, `--gate` (below) |
 
 - **Tags.** `--session ID`, `--item ID`, `--gate NAME`; `HEAVYQ_SESSION` and `HEAVYQ_ITEM` supply the first
-  two when the flags are absent. Names are 1-80 characters of `A-Za-z0-9._:-`; anything else exits 2.
+  two when the flags are absent, and for `session` the Claude Code hook's file comes after them (see the
+  hook section). Names are 1-80 characters of `A-Za-z0-9._:-`; anything else exits 2.
 - **Dirty trees are identified, never cached.** `--cache` still skips them. Hashing the edits of a
-  10,000-file repository takes about 30 ms.
-- **A tree that changed under the command isn't claimed.** If a local command edits the work tree it runs in,
-  the line keeps `commit` and `dirty` but records no `tree`, so it can never count as proof for either tree.
+  10,000-file repository takes about 35 ms (20 ms when clean).
+- **A tree that isn't certain isn't claimed.** The line keeps `commit` and `dirty` but records no `tree`
+  when: a local command edits the work tree it runs in; the tree changed between computing a cached or
+  coalesced result's key and replaying it (a result proves the tree it was computed on); a submodule or an
+  untracked nested repository has changes of its own (git only reports "dirty" for those, whatever they
+  are); more than 256 MiB of untracked content would have to be read; or `HEAD` moved while the tree was
+  being identified. Untracked files over 64 MiB are identified by size, mtime, inode and change time rather
+  than content. A submodule that sits at another commit is fine: the commit is part of the id.
 - **Outside a repository**, the identity fields are simply empty.
 - **Where.** `$HEAVYQ_HISTORY` if set (exactly that one file, never rotated). Otherwise one file per month,
   `history-YYYY-MM.jsonl` (UTC) in `$XDG_STATE_HOME/heavyq`. `heavyq history` and the dashboard read across

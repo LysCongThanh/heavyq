@@ -39,16 +39,23 @@ out, so it was tested with Claude Code 2.1.316 in `-p` mode:
   that rewrote `echo hello` into `python3 -c ... && echo ...` was refused: "This Bash command contains
   multiple operations. The following part requires approval: python3 -c ...".
 
-So permission rules see `heavyq 4 --lane api --max-wait 300s --session <session_id> -- npm test`, not
-`npm test`. A rule such as `Bash(npm test:*)` no longer matches it. You have two options:
+So permission rules see `heavyq 4 --lane api --max-wait 300s -- npm test`, not `npm test`. A rule such as
+`Bash(npm test:*)` no longer matches it. You have two options:
 
-1. Approve the wrapped command at the prompt. The `--session <session_id>` that the hook adds (so history
-   knows which session ran what) is different in every Claude Code session, so an allow rule for an exact
-   prefix can't pin it down.
+1. Approve the wrapped command at the prompt, or allow exact prefixes such as
+   `Bash(heavyq 4 --lane api --max-wait 300s -- npm test *)`. The lane is the work tree's name, so each
+   tree's prefix is stable. The prefix is also the same in every Claude Code session, because the session id
+   does not travel in the command (below).
 2. Set `hook.permission = "allow"`. heavyq then returns `"allow"` for the commands it rewrites. These are
    only commands that matched a `[[hook.rule]]` or a built-in rule. This auto-approves them, including
    `npm test`, which runs whatever `package.json` says. Turn it on only if you would allow those commands
    anyway. Deny and ask rules still apply.
+
+The Claude session id reaches the ledger out of band. When the hook wraps a command it writes
+`<queue dir>/sessions/<lane>` (JSON `{"session_id": ..., "at": ...}`, atomic, mode 0600), and `heavyq <prio>`
+reads it when it has no `--session` and no `$HEAVYQ_SESSION`, if the file is under 10 minutes old and the id is a
+valid tag. Two Claude sessions on the same lane within that window can swap labels in history; that only
+mislabels the session, since proof matches on the tree.
 
 Don't use a blanket `Bash(heavyq:*)` allow rule: it would approve `heavyq 4 -- <anything>`. Don't put a `*`
 in the middle either. The permissions reference says "A `*` in a Bash rule matches any text, including spaces", so

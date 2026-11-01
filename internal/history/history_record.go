@@ -13,7 +13,8 @@ const SchemaVersion = 2
 type Record struct {
 	// V is the schema of the line (2). 0 means a v1 line, see Version.
 	V int `json:"v,omitempty"`
-	// ID is a ULID: unique, and sorts by creation time (see NewID).
+	// ID is a ULID: unique, and ordered by creation time at millisecond
+	// resolution only (see NewID). Order records by file position or End.
 	ID       string    `json:"id,omitempty"`
 	End      time.Time `json:"end"`
 	Machine  string    `json:"machine"`

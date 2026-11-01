@@ -19,8 +19,11 @@ var idState struct {
 
 // NewID returns a ULID for time t: 26 characters of Crockford base32, a 48-bit
 // millisecond timestamp followed by 80 random bits. Ids sort lexicographically
-// in creation order; two ids made by the same process always do, because the
-// random part is incremented instead of redrawn within one millisecond.
+// by millisecond, and two ids made by the same process always sort in creation
+// order, because the random part is incremented instead of redrawn within one
+// millisecond. Ids made by different processes in the same millisecond have
+// random relative order: heavyq writes one record per process, so consumers
+// order records by file position or End, never by id alone.
 func NewID(t time.Time) string {
 	ms := uint64(max(t.UnixMilli(), 0)) & (1<<48 - 1)
 	idState.mu.Lock()
