@@ -5,6 +5,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-02
+
 ### Added
 
 - **macOS parity: RAM/load gate, CPU attribution, process-tree cancel** (no cgo). Local metrics come from
@@ -284,6 +286,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 - Priority tickets, heavy and light slots, RAM and load gate with anti-starvation, `status` with per-lane
   CPU attribution, remote runs by exact commit over SSH with score-based placement, and JSONL history.
 
+[Unreleased]: https://github.com/LysCongThanh/heavyq/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/LysCongThanh/heavyq/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/LysCongThanh/heavyq/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/LysCongThanh/heavyq/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/LysCongThanh/heavyq/compare/v0.1.0...v0.1.1
