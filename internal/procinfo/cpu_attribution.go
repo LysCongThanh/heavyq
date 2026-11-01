@@ -14,10 +14,15 @@ const clockTicks = 100.0
 // maxAncestry bounds the parent walk (guards against cycles in fake trees).
 const maxAncestry = 64
 
+// pageKB is the memory page size in KiB (resident set sizes are in pages).
+var pageKB = uint64(os.Getpagesize() / 1024)
+
 // procSample is one process at one instant.
 type procSample struct {
 	ppid  int
 	ticks uint64 // utime + stime
+	comm  string
+	rssKB uint64
 }
 
 // snapshot reads every numeric entry under Root.
@@ -32,14 +37,15 @@ func (p ProcFS) snapshot() map[int]procSample {
 		if err != nil {
 			continue
 		}
-		f, err := p.statFields(pid)
+		comm, f, err := p.stat(pid)
 		if err != nil {
 			continue
 		}
 		ppid, _ := strconv.Atoi(f[1])
-		ut, _ := strconv.ParseUint(f[11], 10, 64) // field 14
-		st, _ := strconv.ParseUint(f[12], 10, 64) // field 15
-		out[pid] = procSample{ppid: ppid, ticks: ut + st}
+		ut, _ := strconv.ParseUint(f[11], 10, 64)  // field 14
+		st, _ := strconv.ParseUint(f[12], 10, 64)  // field 15
+		rss, _ := strconv.ParseUint(f[21], 10, 64) // field 24, in pages
+		out[pid] = procSample{ppid: ppid, ticks: ut + st, comm: comm, rssKB: rss * pageKB}
 	}
 	return out
 }

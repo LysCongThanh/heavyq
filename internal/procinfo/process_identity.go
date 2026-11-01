@@ -36,20 +36,27 @@ func (p ProcFS) Available() bool {
 // "(comm)" field, which may itself contain spaces and parentheses.
 // Index 0 is the state (field 3), index 1 is ppid (field 4).
 func (p ProcFS) statFields(pid int) ([]string, error) {
+	_, f, err := p.stat(pid)
+	return f, err
+}
+
+// stat returns the command name (comm) of pid and the fields that follow it.
+func (p ProcFS) stat(pid int) (string, []string, error) {
 	b, err := os.ReadFile(filepath.Join(p.Root, strconv.Itoa(pid), "stat"))
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 	s := string(b)
 	i := strings.LastIndex(s, ")")
-	if i < 0 || i+2 > len(s) {
-		return nil, errors.New("malformed stat")
+	j := strings.IndexByte(s, '(')
+	if i < 0 || j < 0 || j > i || i+2 > len(s) {
+		return "", nil, errors.New("malformed stat")
 	}
 	f := strings.Fields(s[i+1:])
-	if len(f) < 20 {
-		return nil, errors.New("short stat")
+	if len(f) < 22 {
+		return "", nil, errors.New("short stat")
 	}
-	return f, nil
+	return s[j+1 : i], f, nil
 }
 
 // StartTime returns an opaque, stable token for when pid started. Comparing
@@ -84,4 +91,13 @@ func (p ProcFS) Alive(pid int, start string) bool {
 	}
 	got, err := p.StartTime(pid)
 	return err == nil && got == start
+}
+
+// Running reports whether pid exists and is not a zombie.
+func (p ProcFS) Running(pid int) bool {
+	f, err := p.statFields(pid)
+	if err != nil {
+		return syscall.Kill(pid, 0) == nil && !p.Available()
+	}
+	return f[0] != "Z" && f[0] != "X"
 }

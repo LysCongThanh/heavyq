@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"strings"
@@ -14,8 +16,28 @@ import (
 )
 
 // statusCommand prints the queue, machines, slot holders, CPU attribution and
-// why the head ticket is waiting.
-func statusCommand(cfg *config.Config, w io.Writer, stderr io.Writer) int {
+// why the head ticket is waiting; with --json, the schema-1 snapshot.
+func statusCommand(cfg *config.Config, args []string, w io.Writer, stderr io.Writer) int {
+	fs := flag.NewFlagSet("status", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	asJSON := fs.Bool("json", false, "print the machine-readable snapshot (schema 1)")
+	if err := fs.Parse(args); err != nil {
+		return ExitUsage
+	}
+	if *asJSON {
+		s, err := buildSnapshot(cfg, newProbeCache(cfg.Queue.ProbeTimeout.Duration), cpuSampleInterval)
+		if err != nil {
+			fmt.Fprintln(stderr, "heavyq:", err)
+			return ExitUsage
+		}
+		enc := json.NewEncoder(w)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(s); err != nil {
+			fmt.Fprintln(stderr, "heavyq:", err)
+			return 1
+		}
+		return 0
+	}
 	q, err := queue.Open(QueueDir())
 	if err != nil {
 		fmt.Fprintln(stderr, "heavyq:", err)
@@ -70,7 +92,7 @@ func statusCommand(cfg *config.Config, w io.Writer, stderr io.Writer) int {
 
 func printLocal(w io.Writer, cfg *config.Config, snap queue.Snapshot) {
 	v := buildView(cfg, config.LocalName, snap, nil, cfg.Queue.HoldFor.Duration)
-	fmt.Fprintf(w, "  %-10s %s\n", "local", v.state.Metrics)
+	fmt.Fprintf(w, "  %-10s %s%s\n", "local", v.state.Metrics, pausedNote(config.LocalName))
 	holders := slotHolders(snap, config.LocalName)
 	var parts []string
 	for _, light := range []bool{false, true} {
@@ -96,7 +118,7 @@ func printRemote(w io.Writer, cfg *config.Config, m config.MachineConfig, snap q
 		fmt.Fprintf(w, "  %-10s unreachable via %s\n", m.Name, strings.Join(m.Transport, " "))
 		return
 	}
-	fmt.Fprintf(w, "  %-10s %s\n", m.Name, res.Metrics)
+	fmt.Fprintf(w, "  %-10s %s%s\n", m.Name, res.Metrics, pausedNote(m.Name))
 	holders := slotHolders(snap, m.Name)
 	var parts []string
 	for _, light := range []bool{false, true} {
@@ -112,6 +134,14 @@ func printRemote(w io.Writer, cfg *config.Config, m config.MachineConfig, snap q
 		}
 	}
 	fmt.Fprintf(w, "  %-10s slots: %s\n", "", strings.Join(parts, " · "))
+}
+
+// pausedNote marks a machine whose admissions an operator paused.
+func pausedNote(machine string) string {
+	if controlBox().Paused(machine) {
+		return "  [PAUSED: no new jobs start here]"
+	}
+	return ""
 }
 
 // slotHolders maps slot name -> lane of the running ticket holding it.

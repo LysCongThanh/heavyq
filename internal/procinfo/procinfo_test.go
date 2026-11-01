@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -48,8 +49,9 @@ func TestAttributeWalksAncestry(t *testing.T) {
 	root := t.TempDir()
 	p := ProcFS{Root: root}
 	// tree: 10 (ticket api) -> 11 -> 12 ; 20 (ticket web) ; 30 orphan
-	a := map[int]procSample{10: {1, 0}, 11: {10, 0}, 12: {11, 0}, 20: {1, 0}, 30: {1, 0}}
-	b := map[int]procSample{10: {1, 10}, 11: {10, 20}, 12: {11, 30}, 20: {1, 50}, 30: {1, 5}}
+	a := map[int]procSample{10: {ppid: 1}, 11: {ppid: 10}, 12: {ppid: 11}, 20: {ppid: 1}, 30: {ppid: 1}}
+	b := map[int]procSample{10: {ppid: 1, ticks: 10}, 11: {ppid: 10, ticks: 20}, 12: {ppid: 11, ticks: 30},
+		20: {ppid: 1, ticks: 50}, 30: {ppid: 1, ticks: 5}}
 	got := attribute(a, b, map[int]string{10: "lane api", 20: "lane web"}, "outside", time.Second)
 	want := map[string]float64{"lane api": 60, "lane web": 50, "outside": 5}
 	if len(got) != 3 || got[0].Group != "lane api" {
@@ -85,4 +87,56 @@ func TestAttributeRealBusyChild(t *testing.T) {
 		}
 	}
 	t.Fatalf("busy child not attributed to its ancestor's lane: %+v", groups)
+}
+
+func TestBreakdownGroupsOutsideByCommand(t *testing.T) {
+	a := map[int]procSample{10: {ppid: 1}, 11: {ppid: 10}, 30: {ppid: 1}, 31: {ppid: 1}}
+	b := map[int]procSample{
+		10: {ppid: 1, ticks: 10, comm: "heavyq", rssKB: 1024},
+		11: {ppid: 10, ticks: 90, comm: "go", rssKB: 4096},
+		30: {ppid: 1, ticks: 20, comm: "claude", rssKB: 2048},
+		31: {ppid: 1, ticks: 20, comm: "claude", rssKB: 2048},
+		40: {ppid: 2, ticks: 99, comm: "kworker/0:1"},
+	}
+	byRoot, outside := breakdown(a, b, map[int]string{10: "ticket-a"}, time.Second)
+	if len(byRoot) != 1 || byRoot[0] != (GroupUsage{Group: "ticket-a", Procs: 2, CPUPct: 100, RSSMB: 5}) {
+		t.Fatalf("byRoot = %+v", byRoot)
+	}
+	if len(outside) != 1 || outside[0] != (GroupUsage{Group: "claude", Procs: 2, CPUPct: 40, RSSMB: 4}) {
+		t.Fatalf("outside = %+v (kernel threads must be ignored)", outside)
+	}
+}
+
+func TestBreakdownReal(t *testing.T) {
+	if !Default.Available() {
+		t.Skip("no /proc")
+	}
+	byRoot, outside := Default.Breakdown(map[int]string{os.Getpid(): "self"}, 50*time.Millisecond)
+	if len(byRoot) != 1 || byRoot[0].RSSMB <= 0 || len(outside) == 0 {
+		t.Fatalf("byRoot=%+v outside=%d groups", byRoot, len(outside))
+	}
+	if comm, _, err := Default.stat(os.Getpid()); err != nil || comm == "" {
+		t.Fatalf("comm of self = %q %v", comm, err)
+	}
+}
+
+func TestDescendantsReal(t *testing.T) {
+	if !Default.Available() {
+		t.Skip("no /proc")
+	}
+	cmd := exec.Command("sh", "-c", "sleep 30 & sleep 30; wait")
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = cmd.Process.Kill(); _ = cmd.Wait() }()
+	deadline := time.Now().Add(5 * time.Second)
+	for len(Default.Descendants(cmd.Process.Pid)) < 2 {
+		if time.Now().After(deadline) {
+			t.Fatalf("descendants = %v", Default.Descendants(cmd.Process.Pid))
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	for _, d := range Default.Descendants(cmd.Process.Pid) {
+		_ = syscall.Kill(d, syscall.SIGKILL)
+	}
 }

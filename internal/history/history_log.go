@@ -26,6 +26,32 @@ type Record struct {
 	// but not cacheable); "" without --cache.
 	Cache     string `json:"cache,omitempty"`
 	CacheNote string `json:"cache_note,omitempty"`
+	// Result is "" for a command that ran to its end, else OutcomeGaveUp
+	// (left the queue without running), OutcomeCancelled (stopped on request)
+	// or OutcomeInterrupted (a signal stopped heavyq). Older lines have none.
+	Result string `json:"result,omitempty"`
+	// Forced: admitted by the anti-starvation bypass of the resource gate.
+	Forced bool `json:"forced,omitempty"`
+	// CPUSecs and MaxRSSMB are measured for local runs (user+system time of
+	// the command and its waited-for children, largest resident set).
+	CPUSecs  float64 `json:"cpu_s,omitempty"`
+	MaxRSSMB int     `json:"max_rss_mb,omitempty"`
+}
+
+// Outcomes of a record.
+const (
+	OutcomeRan         = "ran"
+	OutcomeGaveUp      = "gave_up"
+	OutcomeCancelled   = "cancelled"
+	OutcomeInterrupted = "interrupted"
+)
+
+// Outcome classifies r: ran, gave_up, cancelled or interrupted (signal).
+func (r Record) Outcome() string {
+	if r.Result != "" {
+		return r.Result
+	}
+	return OutcomeRan
 }
 
 // DefaultPath is $HEAVYQ_HISTORY, else $XDG_STATE_HOME/heavyq/history.jsonl,

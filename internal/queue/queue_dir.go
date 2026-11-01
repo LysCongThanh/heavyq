@@ -181,3 +181,52 @@ func (d *Dir) Prune(alive func(pid int, start string) bool) {
 		}
 	}
 }
+
+// Reprio moves waiting ticket t to priority prio. The ticket keeps its
+// enqueue time, so among equal priorities it keeps its FIFO place. Call it
+// under the queue mutex.
+func (d *Dir) Reprio(t *Ticket, prio int) error {
+	if t.Running || prio == t.Prio || prio < 1 || prio > 9 {
+		return nil
+	}
+	old := t.Name
+	t.Prio = prio
+	t.Name = fmt.Sprintf("%d%s", prio, old[1:])
+	b, err := t.encode()
+	if err == nil {
+		err = d.writeAtomic(t.Name, b)
+	}
+	if err != nil {
+		t.Name, t.Prio = old, int(old[0]-'0')
+		return fmt.Errorf("reprio ticket: %w", err)
+	}
+	_ = os.Remove(filepath.Join(d.Path, old))
+	return nil
+}
+
+// Rewrite stores the current fields of waiting ticket t (under the mutex).
+func (d *Dir) Rewrite(t *Ticket) error {
+	if t.Running {
+		return nil
+	}
+	b, err := t.encode()
+	if err != nil {
+		return err
+	}
+	return d.writeAtomic(t.Name, b)
+}
+
+// Find returns the waiting or running ticket called name. A name whose
+// priority digit is outdated (the ticket was re-prioritised) still matches.
+func (d *Dir) Find(name string) (*Ticket, bool) {
+	s, err := d.List()
+	if err != nil {
+		return nil, false
+	}
+	for _, t := range append(s.Waiting, s.Running...) {
+		if t.Name == name || (len(name) > 2 && len(t.Name) > 2 && t.Name[1:] == name[1:]) {
+			return t, true
+		}
+	}
+	return nil, false
+}

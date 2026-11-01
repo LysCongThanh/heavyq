@@ -12,6 +12,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/LysCongThanh/heavyq/internal/redact"
 )
 
 // Ticket is one queued or running job.
@@ -29,6 +31,11 @@ type Ticket struct {
 	Machine   string    `json:"machine,omitempty"`
 	Slot      string    `json:"slot,omitempty"`
 	ClaimedAt time.Time `json:"claimed_at,omitzero"`
+	// HeadSince: when the ticket became head of line for some machine (the
+	// anti-starvation clock); zero when it is not head. Written by its owner.
+	HeadSince time.Time `json:"head_since,omitzero"`
+	// Forced: admitted by the anti-starvation bypass of the resource gate.
+	Forced bool `json:"forced,omitempty"`
 
 	Name    string `json:"-"` // file name without ".run"
 	Running bool   `json:"-"`
@@ -58,9 +65,10 @@ func SanitizeLane(s string) string {
 	return s
 }
 
-// TruncateCmd renders argv for display, bounded in length.
+// TruncateCmd renders argv for display and history: secrets hidden first
+// (so a cut can never leave half a password), then bounded in length.
 func TruncateCmd(argv []string) string {
-	s := strings.Join(argv, " ")
+	s := redact.Command(strings.Join(argv, " "))
 	if len(s) > maxCmdLen {
 		s = strings.ToValidUTF8(s[:maxCmdLen-3], "") + "..."
 	}

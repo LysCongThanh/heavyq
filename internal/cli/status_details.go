@@ -49,7 +49,10 @@ func loadHolders(snap queue.Snapshot) string {
 func printHeadReasons(w io.Writer, cfg *config.Config, snap queue.Snapshot, probes *probeCache) {
 	head := snap.Waiting[0]
 	opps, blocked := schedule.Opportunities(head, nil, slotCounts(cfg))
-	waited := time.Since(head.Since)
+	var waited time.Duration
+	if !head.HeadSince.IsZero() {
+		waited = time.Since(head.HeadSince)
+	}
 	c, reasons := evaluate(evalInput{cfg: cfg, ticket: head, snap: snap, probes: probes,
 		opps: opps, headWait: waited, dry: true})
 	for m, why := range blocked {
