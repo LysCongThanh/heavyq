@@ -44,16 +44,26 @@ func commandStatus(cmd string, subject Subject, recs []history.Record) Command {
 	if subject.Tree == "" || subject.Repo == "" {
 		return out
 	}
-	w := wantCommand(cmd)
+	m := newMatcher(cmd, subject)
 	var runs []history.Record // oldest first
+	near := ""                // why a run of the same command on this tree does not count
 	for _, r := range recs {
-		if r.Tree != subject.Tree || r.Repo != subject.Repo || r.Subdir != "" || r.Result != "" || !w.matches(r) {
-			continue // another code, another command, another place, or never ran to its end
+		if r.Tree != subject.Tree || r.Repo != subject.Repo || r.Subdir != "" || r.Result != "" {
+			continue // another code, another place, or never ran to its end
+		}
+		if !m.matches(r) {
+			if near == "" {
+				near = m.whyNot(r)
+			}
+			continue // another command (or the same one in another environment)
 		}
 		runs = append(runs, r)
 	}
 	if len(runs) == 0 {
-		if !w.textOK {
+		switch {
+		case near != "":
+			out.Reason = near
+		case !m.w.textOK:
 			out.Reason = longCommandReason
 		}
 		return out

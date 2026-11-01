@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/LysCongThanh/heavyq/internal/config"
 	"github.com/LysCongThanh/heavyq/internal/proof"
@@ -42,6 +42,7 @@ func gateRunCommand(cfg *config.Config, args []string, stdout, stderr io.Writer)
 		fmt.Fprintf(stderr, "heavyq: no %s: running the default gate detected from %s (`heavyq init` writes it down)\n",
 			repoconfig.FileName, strings.Join(t.gate.Sources, ", "))
 	}
+	cfgPath := absConfigPath(cfg) // before the chdir below: children need it
 	// Commands run from the repository root, whatever directory we were
 	// started in: that is what a gate command means, and what proof matches.
 	if wd, err := os.Getwd(); err == nil {
@@ -51,7 +52,7 @@ func gateRunCommand(cfg *config.Config, args []string, stdout, stderr io.Writer)
 		fmt.Fprintln(stderr, "heavyq:", err)
 		return ExitUsage
 	}
-	before := evaluateGate(t, stderr)
+	before := evaluateGate(cfg, t, stderr)
 	if before.Tree == "" {
 		fmt.Fprintf(stderr, "heavyq: gate %s cannot be proven: %s\n", t.gate.Name, before.Reason)
 		if outputMode(stderr).Terse() {
@@ -70,13 +71,13 @@ func gateRunCommand(cfg *config.Config, args []string, stdout, stderr io.Writer)
 			fresh[i] = c.Class == proof.ClassFlaky
 		}
 	}
-	rcs := runGateCommands(cfg, g, *lane, todo, fresh, *parallel, *keepGoing, stderr)
+	rcs := runGateCommands(cfg, cfgPath, g, *lane, todo, fresh, *parallel, *keepGoing, stdout, stderr)
 	for _, i := range todo {
 		if rc, ran := rcs[i]; ran && stoppedFromOutside(rc) {
 			return rc // stopped from outside: not a failure of the gate
 		}
 	}
-	after := evaluateGate(t, stderr)
+	after := evaluateGate(cfg, t, stderr)
 	terse := outputMode(stderr).Terse()
 	if terse {
 		printGateTable(stdout, after, t.label()) // the closing "next:" line comes last, below
@@ -113,45 +114,78 @@ func allPassed(rcs map[int]int) bool {
 }
 
 // runGateCommands runs the commands at the indexes in todo and returns their
-// exit codes by index. Sequentially it stops at the first failure unless
-// keepGoing; in parallel all of them run.
-func runGateCommands(cfg *config.Config, g repoconfig.Gate, lane string, todo []int, fresh map[int]bool, parallel, keepGoing bool, stderr io.Writer) map[int]int {
-	rcs := make(map[int]int, len(todo))
-	one := func(i int) int {
-		fmt.Fprintf(stderr, "heavyq: gate %s [%d/%d] running: %s\n", g.Name, i+1, len(g.Run), redact.Command(g.Run[i]))
-		rc := runCommand(cfg, gateRunArgs(g, g.Run[i], lane, fresh[i]), stderr)
+// exit codes by index. Sequentially (in this process) it stops at the first
+// failure unless keepGoing. In parallel every command is its own child heavyq
+// process (see childSet), all started at once; the queue still limits how many
+// run.
+func runGateCommands(cfg *config.Config, cfgPath string, g repoconfig.Gate, lane string, todo []int, fresh map[int]bool, parallel, keepGoing bool, stdout, stderr io.Writer) map[int]int {
+	say := func(i int, what string) {
+		fmt.Fprintf(stderr, "heavyq: gate %s [%d/%d] %s: %s\n", g.Name, i+1, len(g.Run), what, redact.Command(g.Run[i]))
+	}
+	failed := func(i, rc int) {
 		if rc != 0 {
 			fmt.Fprintf(stderr, "heavyq: gate %s [%d/%d] FAILED (exit %d): %s\n", g.Name, i+1, len(g.Run), rc, redact.Command(g.Run[i]))
 		}
-		return rc
 	}
 	if parallel {
-		var mu sync.Mutex
-		var wg sync.WaitGroup
-		for _, i := range todo {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				rc := one(i)
-				mu.Lock()
-				rcs[i] = rc
-				mu.Unlock()
-			}()
-		}
-		wg.Wait()
-		return rcs
+		return runGateInChildren(cfgPath, g, lane, todo, fresh, say, failed, stdout, stderr)
 	}
+	rcs := make(map[int]int, len(todo))
 	for n, i := range todo {
-		rc := one(i)
+		say(i, "running")
+		rc := runCommand(cfg, gateRunArgs(g, g.Run[i], lane, fresh[i]), stderr)
+		failed(i, rc)
 		rcs[i] = rc
 		if stoppedFromOutside(rc) || (rc != 0 && !keepGoing) {
 			for _, j := range todo[n+1:] {
-				fmt.Fprintf(stderr, "heavyq: gate %s [%d/%d] not run: %s\n", g.Name, j+1, len(g.Run), redact.Command(g.Run[j]))
+				say(j, "not run")
 			}
 			break
 		}
 	}
 	return rcs
+}
+
+// runGateInChildren is the parallel mode: one child heavyq per command, output
+// prefixed `[cmd N]` with N the command's number in the gate (as in [N/total]).
+func runGateInChildren(cfgPath string, g repoconfig.Gate, lane string, todo []int, fresh map[int]bool,
+	say func(int, string), failed func(int, int), stdout, stderr io.Writer) map[int]int {
+	rcs := make(map[int]int, len(todo))
+	exe, err := os.Executable()
+	if err != nil {
+		fmt.Fprintln(stderr, "heavyq: cannot find my own executable to start the commands:", err)
+		for _, i := range todo {
+			rcs[i] = 1
+		}
+		return rcs
+	}
+	cs := &childSet{exe: exe, cfg: cfgPath, stdout: stdout, stderr: stderr}
+	args := make(map[int][]string, len(todo))
+	keys := make([]int, len(todo))
+	for n, i := range todo {
+		say(i, "running")
+		keys[n] = i + 1
+		args[i+1] = gateRunArgs(g, g.Run[i], lane, fresh[i])
+	}
+	byKey := cs.runAll(keys, args)
+	for _, i := range todo {
+		rcs[i] = byKey[i+1]
+		failed(i, rcs[i])
+	}
+	return rcs
+}
+
+// absConfigPath is the config file this process loaded, as an absolute path
+// ("" when it ran on defaults), so a child started from another directory
+// reads the same file.
+func absConfigPath(cfg *config.Config) string {
+	if cfg.Path == "" {
+		return ""
+	}
+	if abs, err := filepath.Abs(cfg.Path); err == nil {
+		return abs
+	}
+	return cfg.Path
 }
 
 // gateRunArgs is the argument list of `heavyq <prio> ...` for one gate

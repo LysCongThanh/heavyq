@@ -35,7 +35,7 @@ func states(g Gate) []State {
 }
 
 func TestEvaluateStates(t *testing.T) {
-	subj := Subject{Repo: repoA, Tree: treeA}
+	subj := Subject{EnvFree: true, Repo: repoA, Tree: treeA}
 	cmds := []string{"fmt", "vet", "test"}
 	at := func(m int) func(*history.Record) {
 		return func(r *history.Record) { r.End = base.Add(time.Duration(m) * time.Minute) }
@@ -115,7 +115,7 @@ func TestEvaluateReportsTheDecidingRun(t *testing.T) {
 	recs := []history.Record{rec("go test", func(r *history.Record) {
 		r.Lane, r.RunSecs, r.Cache, r.Machine, r.End = "agent-3", 41.5, "hit", "box", base.Add(time.Hour)
 	})}
-	g := Evaluate("ready", []string{"go test"}, Subject{Repo: repoA, Tree: treeA, Commit: "c0", Dirty: true}, recs)
+	g := Evaluate("ready", []string{"go test"}, Subject{EnvFree: true, Repo: repoA, Tree: treeA, Commit: "c0", Dirty: true}, recs)
 	c := g.Commands[0]
 	if !g.Proven || c.Lane != "agent-3" || c.RunSecs != 41.5 || c.Cache != "hit" || c.Machine != "box" ||
 		!c.At.Equal(base.Add(time.Hour)) || c.Exit == nil || *c.Exit != 0 || !g.Dirty || g.Commit != "c0" {
@@ -125,7 +125,7 @@ func TestEvaluateReportsTheDecidingRun(t *testing.T) {
 
 func TestUnknownTreeProvesNothingAndSaysWhy(t *testing.T) {
 	recs := []history.Record{rec("fmt", nil), rec("fmt", func(r *history.Record) { r.Tree = "" })}
-	g := Evaluate("ready", []string{"fmt"}, Subject{Repo: repoA, Dirty: true, Why: "a submodule has changes of its own"}, recs)
+	g := Evaluate("ready", []string{"fmt"}, Subject{EnvFree: true, Repo: repoA, Dirty: true, Why: "a submodule has changes of its own"}, recs)
 	if g.Proven || g.Commands[0].State != Missing || !strings.Contains(g.Reason, "a submodule has changes of its own") ||
 		g.Commands[0].Reason == "" {
 		t.Fatalf("%+v", g)
@@ -138,7 +138,7 @@ func TestUnknownTreeProvesNothingAndSaysWhy(t *testing.T) {
 }
 
 func TestEmptyGateIsNotProven(t *testing.T) {
-	if g := Evaluate("ready", nil, Subject{Repo: repoA, Tree: treeA}, nil); g.Proven {
+	if g := Evaluate("ready", nil, Subject{EnvFree: true, Repo: repoA, Tree: treeA}, nil); g.Proven {
 		t.Fatal("a gate without commands proves nothing")
 	}
 }
@@ -150,7 +150,7 @@ func TestLongCommandsWithoutAHashAreNeverMatched(t *testing.T) {
 		t.Fatalf("a %d-byte command must be unmatchable by text, ledger form %q", len(long), w.text)
 	}
 	r := rec("", func(r *history.Record) { r.Cmd = w.text })
-	g := Evaluate("ready", []string{long}, Subject{Repo: repoA, Tree: treeA}, []history.Record{r})
+	g := Evaluate("ready", []string{long}, Subject{EnvFree: true, Repo: repoA, Tree: treeA}, []history.Record{r})
 	if g.Proven || g.Commands[0].State != Missing || !strings.Contains(g.Commands[0].Reason, "ledger") {
 		t.Fatalf("%+v", g)
 	}
@@ -163,7 +163,7 @@ func TestSecretsInACommandStillMatch(t *testing.T) {
 	if !w.textOK || strings.Contains(form, "abc123") {
 		t.Fatalf("ledger form %q ok=%v", form, w.textOK)
 	}
-	g := Evaluate("ready", []string{cmd}, Subject{Repo: repoA, Tree: treeA}, []history.Record{rec("", func(r *history.Record) { r.Cmd = form })})
+	g := Evaluate("ready", []string{cmd}, Subject{EnvFree: true, Repo: repoA, Tree: treeA}, []history.Record{rec("", func(r *history.Record) { r.Cmd = form })})
 	if !g.Proven {
 		t.Fatalf("%+v", g)
 	}

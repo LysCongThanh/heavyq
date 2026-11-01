@@ -110,7 +110,7 @@ func TestClassifyAFailedCommandOnATree(t *testing.T) {
 			run("go test", func(r *history.Record) { r.Cache = "hit" })},
 			Failed, ClassFlaky, 1, 1, "flaky: 1 fail / 1 pass", 1},
 	}
-	subj := Subject{Repo: repoA, Tree: treeA}
+	subj := Subject{EnvFree: true, Repo: repoA, Tree: treeA}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			g := Evaluate("ready", []string{"go test"}, subj, c.runs)
@@ -135,14 +135,14 @@ func TestFlakyReportsTheLatestUnexplainedFailure(t *testing.T) {
 		run("go test", at(1, exit(1))), run("go test", at(2, exit(7))),
 		run("go test", at(3, all(exit(1), loaded))), run("go test", at(4, nil)),
 	}
-	c := Evaluate("ready", []string{"go test"}, Subject{Repo: repoA, Tree: treeA}, runs).Commands[0]
+	c := Evaluate("ready", []string{"go test"}, Subject{EnvFree: true, Repo: repoA, Tree: treeA}, runs).Commands[0]
 	if c.Class != ClassFlaky || *c.Exit != 7 || !c.At.Equal(base.Add(2*time.Minute)) {
 		t.Fatalf("%+v", c)
 	}
 }
 
 func TestClassIsOnlyForFailedCommands(t *testing.T) {
-	subj := Subject{Repo: repoA, Tree: treeA}
+	subj := Subject{EnvFree: true, Repo: repoA, Tree: treeA}
 	g := Evaluate("ready", []string{"ok", "never"}, subj, []history.Record{run("ok", nil)})
 	for _, c := range g.Commands {
 		if c.Class != "" {
@@ -153,7 +153,7 @@ func TestClassIsOnlyForFailedCommands(t *testing.T) {
 
 func TestOtherTreesDoNotMakeACommandFlaky(t *testing.T) {
 	runs := []history.Record{run("go test", func(r *history.Record) { r.Tree = treeB; r.Exit = 1 }), run("go test", nil)}
-	c := Evaluate("ready", []string{"go test"}, Subject{Repo: repoA, Tree: treeA}, runs).Commands[0]
+	c := Evaluate("ready", []string{"go test"}, Subject{EnvFree: true, Repo: repoA, Tree: treeA}, runs).Commands[0]
 	if c.State != Proven || c.Class != "" || c.Fails != 0 {
 		t.Fatalf("%+v", c)
 	}

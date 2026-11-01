@@ -39,8 +39,55 @@ func (w wanted) matches(r history.Record) bool {
 	return w.textOK && r.Cmd == w.text
 }
 
+// Reasons a command is missing although a run of it exists on the tree.
+const (
+	reasonOtherRunID = "it ran on this tree with a different environment (cache.env) or base ref: run it again"
+	reasonNoRunID    = "an older run has no run id and cache.env is set, so it may have run with other variables: run it again"
+)
+
+// matcher decides whether a ledger record is a run of one gate command on a
+// Subject. The rules, in order:
+//
+//  1. record and Subject both have a run_id: they match iff the ids are equal.
+//     The id covers tree, argv, subdir, allowlisted env values and base ref.
+//  2. otherwise (an older record without run_id, or a Subject that cannot
+//     compute one) the record is matched by cmd_hash, else by the redacted
+//     string, but only when the Subject says the environment cannot make two
+//     runs differ (EnvFree). Failing closed: when it might, there is no match.
+type matcher struct {
+	w       wanted
+	id      string // run_id of the gate command on the Subject; "" = unknown
+	envFree bool
+}
+
+func newMatcher(cmd string, s Subject) matcher {
+	m := matcher{w: wantCommand(cmd), envFree: s.EnvFree}
+	if s.RunID != nil {
+		m.id = s.RunID(Argv(cmd))
+	}
+	return m
+}
+
+func (m matcher) matches(r history.Record) bool {
+	if r.RunID != "" && m.id != "" {
+		return r.RunID == m.id
+	}
+	return m.envFree && m.w.matches(r)
+}
+
+// whyNot explains a record that runs the same command (by cmd_hash or string)
+// but is not a match: "" when it is not even that.
+func (m matcher) whyNot(r history.Record) string {
+	switch {
+	case !m.w.matches(r) || m.matches(r):
+		return ""
+	case r.RunID != "":
+		return reasonOtherRunID
+	}
+	return reasonNoRunID
+}
+
 // MatcherFor returns the test that says whether a ledger record is a run of
-// the gate command cmd, by the same rule proofs use (cmd_hash when the record
-// has one, else the command string). It does not look at tree, repository or
-// outcome.
-func MatcherFor(cmd string) func(history.Record) bool { return wantCommand(cmd).matches }
+// the gate command cmd on s, by the same rules proofs use (see matcher). It
+// does not look at tree, repository or outcome.
+func MatcherFor(cmd string, s Subject) func(history.Record) bool { return newMatcher(cmd, s).matches }

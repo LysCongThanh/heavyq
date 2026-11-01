@@ -9,6 +9,7 @@ import (
 	"errors"
 
 	"github.com/LysCongThanh/heavyq/internal/gitutil"
+	"github.com/LysCongThanh/heavyq/internal/runident"
 )
 
 // KeyInput is everything that identifies a cacheable run.
@@ -21,18 +22,15 @@ type KeyInput struct {
 	Getenv   func(string) (string, bool)
 }
 
-// keyDoc is hashed as canonical JSON. Changing it invalidates old entries,
-// which is safe (they simply miss).
+// keyDoc is hashed as canonical JSON. The run itself is identified by its
+// run_id (internal/runident, the one definition of "the same run"); the
+// heavyq version is added because a new version may store results differently.
+// Changing keyDoc invalidates old entries, which is safe (they simply miss):
+// schema 2 replaced the schema 1 fields by the run_id.
 type keyDoc struct {
-	Schema  int               `json:"schema"`
-	Tree    string            `json:"tree"`
-	Clean   bool              `json:"clean"`
-	Argv    []string          `json:"argv"`
-	Subdir  string            `json:"subdir"`
-	Env     map[string]string `json:"env"`
-	Unset   []string          `json:"unset"`
-	Version string            `json:"version"`
-	BaseSHA string            `json:"base_sha,omitempty"`
+	Schema  int    `json:"schema"`
+	RunID   string `json:"run_id"`
+	Version string `json:"version"`
 }
 
 // Key returns the cache key of a run, or "" and the reason the run cannot
@@ -63,22 +61,9 @@ func KeyAndTree(in KeyInput) (key, tree, why string) {
 	if err != nil {
 		return "", "", "cannot resolve the subdirectory"
 	}
-	d := keyDoc{Schema: 1, Tree: tree, Clean: true, Argv: in.Argv, Subdir: sub,
-		Env: map[string]string{}, Version: in.Version}
-	if in.BaseRef != "" {
-		d.BaseSHA = "missing"
-		if sha, err := gitutil.ResolveCommit(top, "refs/remotes/"+in.BaseRef); err == nil {
-			d.BaseSHA = sha
-		}
-	}
-	for _, n := range in.EnvNames {
-		if v, ok := in.Getenv(n); ok {
-			d.Env[n] = v
-		} else {
-			d.Unset = append(d.Unset, n)
-		}
-	}
-	b, err := json.Marshal(d) // map keys are sorted: canonical
+	id := runident.ID(runident.Input{Tree: tree, Argv: in.Argv, Subdir: sub, EnvNames: in.EnvNames,
+		Getenv: in.Getenv, BaseSHA: runident.BaseSHA(top, in.BaseRef)})
+	b, err := json.Marshal(keyDoc{Schema: 2, RunID: id, Version: in.Version})
 	if err != nil {
 		return "", "", "cannot encode the key"
 	}

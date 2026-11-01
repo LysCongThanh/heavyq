@@ -1,9 +1,12 @@
 package cli
 
 import (
+	"os"
+
 	"github.com/LysCongThanh/heavyq/internal/config"
 	"github.com/LysCongThanh/heavyq/internal/gitutil"
 	"github.com/LysCongThanh/heavyq/internal/history"
+	"github.com/LysCongThanh/heavyq/internal/runident"
 )
 
 // checkoutFor says which code a run on machine sees.
@@ -52,11 +55,23 @@ func (r *run) settled(before gitutil.Checkout) gitutil.Checkout {
 	return before
 }
 
+// runID is the run_id of this run on the code co: the same computation the
+// cache key and `gate status` use, with the environment this process has.
+func (r *run) runID(co gitutil.Checkout) string {
+	var sibs []string
+	for _, s := range r.pl.siblings {
+		sibs = append(sibs, s.Name+"@"+s.SHA)
+	}
+	return runident.ID(runident.Input{Tree: co.Tree, Argv: r.opts.Argv, Subdir: co.Subdir, EnvNames: r.cfg.Cache.Env,
+		Getenv: os.LookupEnv, BaseSHA: runident.BaseSHA(r.localDir(), r.opts.BaseRef), Siblings: sibs})
+}
+
 // tag stamps who ran it, what exactly it ran (the argv hash, taken before the
 // display form of the command is redacted and cut) and on which code onto a
 // ledger record.
 func (r *run) tag(rec *history.Record, co gitutil.Checkout) {
 	rec.CmdHash = history.CmdHash(r.opts.Argv)
+	rec.RunID = r.runID(co)
 	rec.Session, rec.Item, rec.Gate = r.opts.Session, r.opts.Item, r.opts.Gate
 	rec.Repo, rec.Worktree, rec.Subdir = co.Repo, co.Worktree, co.Subdir
 	rec.Commit, rec.Tree, rec.Dirty = co.Commit, co.Tree, co.Dirty

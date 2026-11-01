@@ -56,7 +56,7 @@ func whyCommand(cfg *config.Config, args []string, w, stderr io.Writer) int {
 		for _, e := range s.Exceptions {
 			lines = append(lines, "Needs you: "+e.Text)
 		}
-		if l := gateWhyLine(recs, stderr); l != "" {
+		if l := gateWhyLine(cfg, recs, stderr); l != "" {
 			lines = append(lines, l)
 		}
 	}

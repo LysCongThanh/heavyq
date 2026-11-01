@@ -33,7 +33,8 @@ The remote path is tested through a `sh -c` transport, which runs the same code 
 | `internal/config` | TOML config, defaults, validation |
 | `internal/history` | the run ledger: JSONL records (commit, tree, session, ...), ULIDs, monthly rotation |
 | `internal/gitutil` | git queries, including the tree identity of clean and dirty work trees |
-| `internal/proof` | pure matching of ledger records to gate commands on a tree (by `cmd_hash`): proven / failed (flaky, under load) / missing |
+| `internal/runident` | the `run_id`: the one definition of "the same run" (tree, argv, subdir, `cache.env` values, base ref) shared by cache, ledger, proof, flaky and loop detection |
+| `internal/proof` | pure matching of ledger records to gate commands on a tree (by `run_id`, else `cmd_hash`): proven / failed (flaky, under load) / missing |
 | `internal/repoconfig` | per-repo `heavyq.toml`: named gates, validation (trusted like a Makefile) |
 | `internal/tomlkeys` | strict-key check shared by both config parsers: unknown or upper-case keys, with their line |
 

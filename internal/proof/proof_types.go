@@ -6,9 +6,13 @@
 //   - same repository, and the same tree id as the code being asked about
 //     (an unknown tree, "", is never equal to anything);
 //   - it ran the exact command heavyq runs for the gate (`sh -c <command>`),
-//     from the work tree root. That is decided by cmd_hash, the sha256 of the
-//     argv, when the record has one, and by the redacted command string
-//     (which the ledger cuts at 200 bytes) when it is older;
+//     from the work tree root, in the same environment. That is decided by
+//     run_id (tree, argv, allowlisted env values, base ref) when the record
+//     and the subject both have one. Without, by cmd_hash (sha256 of the argv)
+//     or, on the oldest lines, the redacted command string (which the ledger
+//     cuts at 200 bytes), and only when the cache.env allowlist is empty;
+//     with an allowlist such a record could have run with other variables, so
+//     it never matches (fail closed);
 //   - it ran to its end: no gave_up, cancelled or interrupted result. A cache
 //     hit or a coalesced run counts, because the ledger only gives those a
 //     tree id when the result belongs to that tree.
@@ -61,6 +65,17 @@ type Subject struct {
 	// Why says why Tree is unknown (not a repository, no commit, a submodule
 	// with its own changes, ...). Only meaningful when Tree is "".
 	Why string
+	// RunID computes the run_id (internal/runident) of a run of argv on this
+	// Subject, from the same tree, environment allowlist and base ref `gate
+	// run` uses. nil: it cannot be computed, so records are matched by the
+	// older rules only (see EnvFree).
+	RunID func(argv []string) string
+	// EnvFree says that the environment cannot make two runs of one argv
+	// differ: the cache.env allowlist is empty. Only then may a record without
+	// run_id (older heavyq) be matched by cmd_hash or command string. When
+	// false, such records never match: they cannot say which variables they ran
+	// with. The zero value fails closed.
+	EnvFree bool
 }
 
 // Command is the status of one gate command on a Subject. The JSON tags are

@@ -89,6 +89,12 @@ func TestComputeExceptionsPerKind(t *testing.T) {
 		{name: "failures on different trees, commands or lanes are not a loop", recs: []history.Record{
 			failRec("a", 3*time.Minute, nil), failRec("a", 2*time.Minute, func(r *history.Record) { r.Tree = "other" }),
 			failRec("a", time.Minute, func(r *history.Record) { r.Cmd = "sh -c other" }), failRec("b", time.Minute, nil)}, want: []string{}},
+		{name: "the same command under another run_id is not a retry", recs: []history.Record{
+			failRec("a", 3*time.Minute, func(r *history.Record) { r.RunID = "id-with-env" }),
+			failRec("a", 2*time.Minute, func(r *history.Record) { r.RunID = "id-without" })}, want: []string{}},
+		{name: "the same run_id is a loop even when the display form differs", recs: []history.Record{
+			failRec("a", 3*time.Minute, func(r *history.Record) { r.RunID = "id1" }),
+			failRec("a", 2*time.Minute, func(r *history.Record) { r.RunID, r.Cmd = "id1", "sh -c cut..." })}, want: []string{"loop:a"}},
 		{name: "cache hits, cancelled runs and passes are not failures", recs: []history.Record{
 			failRec("a", 4*time.Minute, func(r *history.Record) { r.Cache = "hit" }),
 			failRec("a", 3*time.Minute, func(r *history.Record) { r.Result = history.OutcomeCancelled }),

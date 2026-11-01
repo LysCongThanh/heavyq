@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"strings"
 
 	"github.com/LysCongThanh/heavyq/internal/config"
 	"github.com/LysCongThanh/heavyq/internal/queue"
@@ -87,10 +88,22 @@ func findTicket(ref string) (*queue.Ticket, error) {
 	if err != nil {
 		return nil, err
 	}
+	var same []*queue.Ticket
 	for _, t := range append(s.Waiting, s.Running...) {
 		if t.Pid == pid {
-			return t, nil
+			same = append(same, t)
 		}
 	}
-	return nil, fmt.Errorf("no ticket with pid %d", pid)
+	switch len(same) {
+	case 0:
+		return nil, fmt.Errorf("no ticket with pid %d", pid)
+	case 1:
+		return same[0], nil
+	}
+	// Never guess which of several tickets was meant: a cancel is not undoable.
+	var ids []string
+	for _, t := range same {
+		ids = append(ids, t.Name)
+	}
+	return nil, fmt.Errorf("pid %d has %d tickets (%s); name one by its ticket id", pid, len(same), strings.Join(ids, ", "))
 }
