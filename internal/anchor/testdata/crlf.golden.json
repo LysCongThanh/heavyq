@@ -1,0 +1,38 @@
+{
+  "path": "crlf.md",
+  "goal": "windows file",
+  "goal_line": 1,
+  "items": [
+    {
+      "id": "a",
+      "text": "first",
+      "checked": false,
+      "proof": {
+        "kind": "cmd",
+        "value": "make test"
+      },
+      "source": "crlf.md",
+      "line": 3,
+      "read_only": false
+    },
+    {
+      "id": "b",
+      "text": "second",
+      "checked": true,
+      "proof": {},
+      "source": "crlf.md",
+      "line": 4,
+      "read_only": false
+    },
+    {
+      "id": "c",
+      "text": "nested",
+      "checked": false,
+      "proof": {},
+      "source": "crlf.md",
+      "line": 5,
+      "read_only": false
+    }
+  ],
+  "warnings": []
+}

@@ -1,0 +1,63 @@
+{
+  "items": [
+    {
+      "id": "plans-extra-plan/1-anchor-parse-rewrite",
+      "text": "anchor parse/rewrite",
+      "checked": false,
+      "proof": {},
+      "source": "plans/extra_plan.md",
+      "line": 6,
+      "read_only": true
+    },
+    {
+      "id": "plans-extra-plan/1-leases",
+      "text": "leases",
+      "checked": true,
+      "proof": {
+        "kind": "cmd",
+        "value": "go test ./internal/lease/..."
+      },
+      "source": "plans/extra_plan.md",
+      "line": 7,
+      "read_only": true
+    },
+    {
+      "id": "plans-extra-plan/2-anchor-parse-rewrite",
+      "text": "anchor parse/rewrite",
+      "checked": false,
+      "proof": {},
+      "source": "plans/extra_plan.md",
+      "line": 8,
+      "read_only": true
+    },
+    {
+      "id": "plans-extra-plan/1-nested-keeps-its-own-item",
+      "text": "nested: keeps its own item",
+      "checked": false,
+      "proof": {},
+      "needs": "review",
+      "source": "plans/extra_plan.md",
+      "line": 9,
+      "read_only": true
+    },
+    {
+      "id": "plans-extra-plan/1-ng-nh-p-9a402b",
+      "text": "Đăng nhập",
+      "checked": false,
+      "proof": {},
+      "source": "plans/extra_plan.md",
+      "line": 10,
+      "read_only": true
+    },
+    {
+      "id": "plans-extra-plan/1-star-bullet",
+      "text": "star bullet",
+      "checked": false,
+      "proof": {},
+      "source": "plans/extra_plan.md",
+      "line": 16,
+      "read_only": true
+    }
+  ],
+  "warnings": []
+}

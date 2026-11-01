@@ -1,0 +1,26 @@
+{
+  "path": "bom.md",
+  "goal": "with bom",
+  "goal_line": 1,
+  "items": [
+    {
+      "id": "a",
+      "text": "first",
+      "checked": false,
+      "proof": {},
+      "source": "bom.md",
+      "line": 2,
+      "read_only": false
+    },
+    {
+      "id": "b",
+      "text": "second",
+      "checked": true,
+      "proof": {},
+      "source": "bom.md",
+      "line": 3,
+      "read_only": false
+    }
+  ],
+  "warnings": []
+}

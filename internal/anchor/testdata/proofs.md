@@ -1,0 +1,11 @@
+# Goal: proofs
+- [ ] p1: pipes  `proof: go test ./... | tee out.log`
+- [ ] p2: empty  `proof:`
+- [ ] p3: bad gate  `proof: gate:Bad Name`
+- [ ] p4: two  `proof: first` `proof: second`
+- [ ] p5: backtick cmd  ``proof: test "`git rev-parse HEAD`" != x``
+- [ ] p6: spans anywhere `needs: a human` before text `proof: gate:ready` and `keep` code
+- [ ] p7: upper  `PROOF: make`  `Needs: x`
+- [ ] p8: unclosed `proof: make
+- [ ]
+- [ ] `proof: orphan`

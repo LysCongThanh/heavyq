@@ -1,0 +1,53 @@
+{
+  "path": "nested.md",
+  "goal": "nesting",
+  "goal_line": 1,
+  "items": [
+    {
+      "id": "parent",
+      "text": "parent",
+      "checked": false,
+      "proof": {},
+      "source": "nested.md",
+      "line": 2,
+      "read_only": false
+    },
+    {
+      "id": "child-1",
+      "text": "child one",
+      "checked": false,
+      "proof": {},
+      "source": "nested.md",
+      "line": 3,
+      "read_only": false
+    },
+    {
+      "id": "grand",
+      "text": "grandchild",
+      "checked": true,
+      "proof": {},
+      "source": "nested.md",
+      "line": 4,
+      "read_only": false
+    },
+    {
+      "id": "child-2",
+      "text": "child two",
+      "checked": false,
+      "proof": {},
+      "source": "nested.md",
+      "line": 5,
+      "read_only": false
+    },
+    {
+      "id": "sibling",
+      "text": "next",
+      "checked": false,
+      "proof": {},
+      "source": "nested.md",
+      "line": 6,
+      "read_only": false
+    }
+  ],
+  "warnings": []
+}

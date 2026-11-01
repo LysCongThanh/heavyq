@@ -1,0 +1,12 @@
+# Goal: emphasis
+- [ ] **bold**: bold id
+- [ ] **bold-colon:** colon inside
+- [ ] _under_: underscore id
+- [ ] __dunder__: double underscore
+- [ ] *star*: star id
+- [ ] `code`: code id
+- [ ] plain: text with **bold** and _it_
+- [ ] http://example.com is not an id
+- [ ] UPPER: uppercase is not a valid id
+- [ ] no space:text
+- [ ] trailing-colon:

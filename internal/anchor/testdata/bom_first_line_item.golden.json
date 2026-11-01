@@ -1,0 +1,17 @@
+{
+  "path": "bom_first_line_item.md",
+  "goal": "late goal",
+  "goal_line": 2,
+  "items": [
+    {
+      "id": "a",
+      "text": "item on line one",
+      "checked": false,
+      "proof": {},
+      "source": "bom_first_line_item.md",
+      "line": 1,
+      "read_only": false
+    }
+  ],
+  "warnings": []
+}

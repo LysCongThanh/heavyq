@@ -1,0 +1,2 @@
+# CRLF, BOM and tab fixtures must reach the tests byte for byte.
+* -text
