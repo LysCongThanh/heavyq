@@ -9,6 +9,7 @@ import (
 
 	"github.com/LysCongThanh/heavyq/internal/cache"
 	"github.com/LysCongThanh/heavyq/internal/config"
+	"github.com/LysCongThanh/heavyq/internal/gitutil"
 	"github.com/LysCongThanh/heavyq/internal/history"
 	"github.com/LysCongThanh/heavyq/internal/queue"
 	"github.com/LysCongThanh/heavyq/internal/slots"
@@ -23,6 +24,7 @@ type cacheState struct {
 	store  *cache.Store
 	flight *cache.Flight
 	key    string
+	tree   string          // the clean tree id the key was computed on
 	lead   *slots.Lock     // held while we run the command for everyone
 	rec    *cache.Recorder // nil: output not recorded
 	status string          // history "cache" field
@@ -56,12 +58,12 @@ func (r *run) cachePhase(lane string) (rc int, done bool) {
 	case len(r.opts.With) > 0:
 		return skip("--with sibling repos are not part of the key")
 	}
-	key, why := cache.Key(cache.KeyInput{Dir: r.localDir(), Argv: r.opts.Argv, EnvNames: r.cfg.Cache.Env,
+	key, tree, why := cache.KeyAndTree(cache.KeyInput{Dir: r.localDir(), Argv: r.opts.Argv, EnvNames: r.cfg.Cache.Env,
 		Version: version(), BaseRef: r.opts.BaseRef, Getenv: os.LookupEnv})
 	if why != "" {
 		return skip(why)
 	}
-	cs.key = key
+	cs.key, cs.tree = key, tree
 	r.verbosef("cache key %.16s", key)
 	me := cache.Party{Key: key, Pid: os.Getpid(), Start: r.start, Lane: lane, Cmd: queue.TruncateCmd(r.opts.Argv), Since: r.t0}
 	waited := false
@@ -127,12 +129,25 @@ func (r *run) replayCached(m *cache.Meta, coalesced bool, lane string) (int, boo
 	rec := history.Record{End: time.Now(), Machine: m.Machine, Lane: lane, Prio: r.opts.Prio, Light: r.opts.Light,
 		WaitSecs: time.Since(r.t0).Seconds(), Exit: m.Exit, Cmd: queue.TruncateCmd(r.opts.Argv), Cache: kind,
 		CacheNote: fmt.Sprintf("key %.16s, from %s", m.Key, when)}
-	// The key only exists for a clean tree, so this is the proof's tree.
-	r.tag(&rec, r.checkoutFor(config.LocalName))
+	r.tag(&rec, r.replayedCheckout())
 	if err := history.Append(history.DefaultPath(), rec); err != nil {
 		fmt.Fprintln(r.stderr, "heavyq: warning: history not written:", err)
 	}
 	return m.Exit, true
+}
+
+// replayedCheckout is the identity to record for a result that was replayed
+// instead of run. The result proves the tree the cache key was computed on, not
+// whatever the work tree holds now: a follower can wait minutes for the leader,
+// and a plain hit still takes time between key and replay. So the tree is the
+// key's when the work tree still has it, and unknown ("") when it changed.
+func (r *run) replayedCheckout() gitutil.Checkout {
+	co := r.checkoutFor(config.LocalName)
+	if co.Tree != r.cache.tree {
+		r.verbosef("ledger: the work tree changed since the cache key was computed; no tree identity recorded")
+		co.Tree = ""
+	}
+	return co
 }
 
 // cacheFinish stores the leader's result (when the command really ran on
