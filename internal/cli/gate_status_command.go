@@ -12,7 +12,8 @@ import (
 )
 
 // gateStatusCommand implements `heavyq gate status [name] [--json]`: is this
-// exact code proven? Exit 0 yes, 1 no, 2 usage error or no heavyq.toml.
+// exact code proven? Exit 0 yes, 1 no, 2 usage error, or neither a heavyq.toml
+// nor a gate detected from the repository's files.
 func gateStatusCommand(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("gate status", flag.ContinueOnError)
 	asJSON := fs.Bool("json", false, "machine-readable output (schema in docs/gates.md)")
@@ -28,17 +29,25 @@ func gateStatusCommand(args []string, stdout, stderr io.Writer) int {
 	if *asJSON {
 		enc := json.NewEncoder(stdout)
 		enc.SetIndent("", "  ")
-		if err := enc.Encode(redactedGate(g)); err != nil {
+		if err := enc.Encode(statusJSON{Gate: redactedGate(g), Detected: t.gate.Detected}); err != nil {
 			fmt.Fprintln(stderr, "heavyq:", err)
 			return 1
 		}
 	} else {
-		printGate(stdout, g)
+		printGateLabeled(stdout, g, t.label())
 	}
 	if g.Proven {
 		return 0
 	}
 	return 1
+}
+
+// statusJSON is the `gate status --json` document: the proof state, plus
+// "detected": true when the gate is the default heavyq detected because the
+// repository has no heavyq.toml. The key is absent for a gate from a file.
+type statusJSON struct {
+	proof.Gate
+	Detected bool `json:"detected,omitempty"`
 }
 
 // redactedGate hides likely secrets in the command lines of g. Gate commands
@@ -55,13 +64,18 @@ func redactedGate(g proof.Gate) proof.Gate {
 }
 
 // printGate renders g as a table, one line per command.
-func printGate(w io.Writer, g proof.Gate) {
+func printGate(w io.Writer, g proof.Gate) { printGateLabeled(w, g, g.Gate) }
+
+// printGateLabeled is printGate with label as the gate's name in the heading
+// ("ready (detected)" for a detected gate). Commands to type still use the
+// plain name.
+func printGateLabeled(w io.Writer, g proof.Gate, label string) {
 	g = redactedGate(g)
 	verdict := "NOT PROVEN"
 	if g.Proven {
 		verdict = "PROVEN"
 	}
-	fmt.Fprintf(w, "gate %s: %s on %s\n", g.Gate, verdict, treeLabel(g))
+	fmt.Fprintf(w, "gate %s: %s on %s\n", label, verdict, treeLabel(g))
 	if g.Reason != "" {
 		fmt.Fprintf(w, "  %s\n", g.Reason)
 	}

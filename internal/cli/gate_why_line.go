@@ -11,16 +11,17 @@ import (
 )
 
 // gateWhyLine is the closing sentence of `heavyq why` when the repository
-// around the current directory has a heavyq.toml: whether its main gate is
-// proven on the code checked out now. It is "" when there is no heavyq.toml,
-// no unambiguous gate (see pickGate), or the file is invalid (said on stderr).
+// around the current directory has a heavyq.toml, or a default gate detected
+// at its root: whether its main gate is proven on the code checked out now.
+// It is "" when there is neither, no unambiguous gate (see pickGate), or the
+// file is invalid (said on stderr).
 // recs is the ledger, oldest first.
 func gateWhyLine(recs []history.Record, stderr io.Writer) string {
 	wd, err := os.Getwd()
 	if err != nil {
 		return ""
 	}
-	repo, err := repoconfig.Load(wd)
+	repo, err := repoconfig.LoadOrDetect(wd)
 	if err != nil {
 		fmt.Fprintln(stderr, "heavyq:", err)
 		return ""
@@ -33,11 +34,12 @@ func gateWhyLine(recs []history.Record, stderr io.Writer) string {
 		return ""
 	}
 	st := proof.Evaluate(g.Name, g.Run, subjectOf(repo.Root), recs)
+	label := gateLabel(g)
 	switch {
 	case st.Proven:
-		return fmt.Sprintf("The %s gate is proven on this tree (%s).", g.Name, treeLabel(st))
+		return fmt.Sprintf("The %s gate is proven on this tree (%s).", label, treeLabel(st))
 	case st.Tree == "":
-		return fmt.Sprintf("The %s gate cannot be proven here: %s.", g.Name, st.Reason)
+		return fmt.Sprintf("The %s gate cannot be proven here: %s.", label, st.Reason)
 	}
 	failed, missing := 0, 0
 	for _, c := range st.Commands {
@@ -48,5 +50,5 @@ func gateWhyLine(recs []history.Record, stderr io.Writer) string {
 		}
 	}
 	return fmt.Sprintf("The %s gate is not proven on this tree (%s): %d failed, %d missing. Prove it with: heavyq gate run %s",
-		g.Name, treeLabel(st), failed, missing, g.Name)
+		label, treeLabel(st), failed, missing, g.Name)
 }

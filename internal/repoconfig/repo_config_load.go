@@ -24,6 +24,27 @@ func Load(dir string) (*Repo, error) {
 	if err != nil || root == "" {
 		return nil, err
 	}
+	return loadFile(root)
+}
+
+// LoadOrDetect is Load, except that a repository without heavyq.toml gets the
+// default gate Detect makes from the files at its root. A heavyq.toml, even an
+// empty or invalid one, always wins: detection only fills the absence of a
+// file. It returns (nil, nil) outside a work tree and when nothing is detected.
+func LoadOrDetect(dir string) (*Repo, error) {
+	root, err := gitTopLevel(dir)
+	if err != nil || root == "" {
+		return nil, err
+	}
+	repo, err := loadFile(root)
+	if repo != nil || err != nil {
+		return repo, err
+	}
+	return Detect(root), nil
+}
+
+// loadFile reads and validates root/heavyq.toml; (nil, nil) when it is absent.
+func loadFile(root string) (*Repo, error) {
 	path := filepath.Join(root, FileName)
 	data, err := readBounded(path)
 	switch {
@@ -32,11 +53,7 @@ func Load(dir string) (*Repo, error) {
 	case err != nil:
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
-	repo, err := parse(root, path, data)
-	if err != nil {
-		return nil, err
-	}
-	return repo, nil
+	return parse(root, path, data)
 }
 
 // gitTopLevel returns the work tree root containing dir, or "" when dir is

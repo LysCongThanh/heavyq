@@ -33,6 +33,7 @@ usage:
   heavyq [--config FILE] status [--json]
   heavyq [--config FILE] why [lane]
   heavyq [--config FILE] gate status [name] [--json] | run [name] [--parallel] [--keep-going] [--lane NAME]
+  heavyq init [--agents-md] [--force] [--print]
   heavyq [--config FILE] dash [--control] [--addr 127.0.0.1:0] [--open]
   heavyq cancel <ticket|pid> | reprio <ticket|pid> <1-9>
   heavyq [--config FILE] pause|resume <machine>
@@ -62,6 +63,9 @@ run flags:
 
 gate: ` + "`gate status`" + ` says whether this exact code passed every command of a gate from heavyq.toml
 (exit 0 proven, 1 not, 2 usage); ` + "`gate run`" + ` runs the unproven ones through the queue with --cache.
+Without a heavyq.toml, the gate "ready" is detected from go.mod, package.json, pytest config or
+Cargo.toml and shown as "ready (detected)". ` + "`init`" + ` writes it to heavyq.toml (never overwrites without
+--force); --agents-md adds a "run heavyq gate run ready before saying done" section to AGENTS.md.
 
 Lower priority numbers run first; equal priorities are FIFO.
 Exit codes: the command's own; 2 usage; 75 max-wait; 76 remote unreachable
@@ -90,6 +94,8 @@ func Main(args []string, stdout, stderr io.Writer) int {
 		return historyCommand(args[1:], stdout, stderr)
 	case "hook":
 		return hookCommand(cfgPath, explicit, args[1:], os.Stdin, stdout, stderr)
+	case "init":
+		return initCommand(args[1:], stdout, stderr)
 	}
 	cfg, err := config.Load(cfgPath, explicit)
 	if err != nil {
@@ -112,7 +118,7 @@ func Main(args []string, stdout, stderr io.Writer) int {
 		return controlCommand(cfg, args[0], args[1:], stdout, stderr)
 	}
 	if p, err := strconv.Atoi(args[0]); err != nil || p < 1 || p > 9 {
-		fmt.Fprintf(stderr, "heavyq: first argument must be a priority 1-9 or a command (status, why, gate, dash, history, cache, hook, cancel, reprio, pause, resume, version)\n\n%s", usage)
+		fmt.Fprintf(stderr, "heavyq: first argument must be a priority 1-9 or a command (status, why, gate, init, dash, history, cache, hook, cancel, reprio, pause, resume, version)\n\n%s", usage)
 		return ExitUsage
 	}
 	return runCommand(cfg, args, stderr)
