@@ -24,6 +24,8 @@ type runOptions struct {
 	Ref      string
 	BaseRef  string
 	With     []string
+	Cache    bool
+	Verbose  bool
 	Argv     []string
 }
 
@@ -58,15 +60,20 @@ func parseRunArgs(args []string, cfg *config.Config) (runOptions, error) {
 		}
 		var v string
 		switch name {
-		case "--light", "--needs-ram":
+		case "--light", "--needs-ram", "--cache", "-v", "--verbose":
 			if hasVal {
 				return o, fmt.Errorf("%s takes no value", name)
 			}
 			rest = rest[1:]
-			if name == "--light" {
+			switch name {
+			case "--light":
 				o.Light = true
-			} else {
+			case "--needs-ram":
 				o.NeedsRAM = true
+			case "--cache":
+				o.Cache = true
+			default:
+				o.Verbose = true
 			}
 			continue
 		case "--lane", "--max-wait", "--remote", "--repo", "--ref", "--base-ref", "--with":

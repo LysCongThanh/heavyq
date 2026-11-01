@@ -24,6 +24,10 @@ type run struct {
 	sigs   chan os.Signal
 	stderr io.Writer
 	t0     time.Time
+	start  string      // our process start token
+	cache  *cacheState // nil without --cache
+	// interrupted: a signal stopped the command, so its result is not real.
+	interrupted bool
 }
 
 func runCommand(cfg *config.Config, args []string, stderr io.Writer) int {
@@ -47,11 +51,15 @@ func runCommand(cfg *config.Config, args []string, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "heavyq: cannot read own process start time:", err)
 		return ExitUsage
 	}
-	r := &run{cfg: cfg, opts: o, pl: pl, q: q, stderr: stderr, t0: time.Now(),
+	r := &run{cfg: cfg, opts: o, pl: pl, q: q, stderr: stderr, t0: time.Now(), start: start,
 		probes: newProbeCache(cfg.Queue.ProbeTimeout.Duration),
 		sigs:   make(chan os.Signal, 4)}
 	signal.Notify(r.sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 	defer signal.Stop(r.sigs)
+	defer r.cacheRelease()
+	if rc, done := r.cachePhase(o.Lane); done {
+		return rc
+	}
 
 	// Probe remotes once before enqueuing, outside the mutex, so a hanging
 	// ssh never delays anyone else's scheduling round.

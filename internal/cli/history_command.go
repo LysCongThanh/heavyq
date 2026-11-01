@@ -26,10 +26,10 @@ func historyCommand(args []string, w, stderr io.Writer) int {
 		fmt.Fprintf(w, "no runs recorded yet (%s)\n", path)
 		return 0
 	}
-	fmt.Fprintf(w, "%-19s  %-10s %-12s %-4s %8s %8s %4s  %s\n", "END", "MACHINE", "LANE", "PRIO", "WAIT", "RUN", "EXIT", "COMMAND")
+	fmt.Fprintf(w, "%-19s  %-10s %-12s %-4s %8s %8s %4s %-9s  %s\n", "END", "MACHINE", "LANE", "PRIO", "WAIT", "RUN", "EXIT", "CACHE", "COMMAND")
 	for _, r := range recs {
-		fmt.Fprintf(w, "%-19s  %-10s %-12s p%-3d %7.0fs %7.0fs %4d  %s\n", r.End.Local().Format("2006-01-02 15:04:05"),
-			r.Machine, r.Lane, r.Prio, r.WaitSecs, r.RunSecs, r.Exit, r.Cmd)
+		fmt.Fprintf(w, "%-19s  %-10s %-12s p%-3d %7.0fs %7.0fs %4d %-9s  %s\n", r.End.Local().Format("2006-01-02 15:04:05"),
+			r.Machine, r.Lane, r.Prio, r.WaitSecs, r.RunSecs, r.Exit, orDefault(r.Cache, "-"), r.Cmd)
 	}
 	return 0
 }

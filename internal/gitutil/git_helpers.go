@@ -49,6 +49,18 @@ func ResolveCommit(repo, ref string) (string, error) {
 	return sha, nil
 }
 
+// TreeOf resolves ref to the SHA of its root tree.
+func TreeOf(repo, ref string) (string, error) {
+	if strings.HasPrefix(ref, "-") {
+		return "", fmt.Errorf("invalid ref %q", ref)
+	}
+	sha, err := git(repo, "rev-parse", "--verify", "--quiet", ref+"^{tree}")
+	if err != nil || !shaRe.MatchString(sha) {
+		return "", fmt.Errorf("%s: no tree for %q", repo, ref)
+	}
+	return sha, nil
+}
+
 // IsClean reports whether the work tree has no modified or untracked files.
 func IsClean(repo string) bool {
 	out, err := git(repo, "status", "--porcelain", "--untracked-files=normal")

@@ -21,6 +21,11 @@ type Record struct {
 	RunSecs  float64   `json:"run_s"`
 	Exit     int       `json:"exit"`
 	Cmd      string    `json:"cmd"`
+	// Cache is "hit", "coalesced" (reused an identical in-flight run),
+	// "miss" (ran and was considered for storing) or "skip" (--cache given
+	// but not cacheable); "" without --cache.
+	Cache     string `json:"cache,omitempty"`
+	CacheNote string `json:"cache_note,omitempty"`
 }
 
 // DefaultPath is $HEAVYQ_HISTORY, else $XDG_STATE_HOME/heavyq/history.jsonl,

@@ -55,6 +55,7 @@ func statusCommand(cfg *config.Config, w io.Writer, stderr io.Writer) int {
 		fmt.Fprintf(w, "  %d. %-10s p%d  %-13s %8s  pid %-7d %s\n", i+1, t.Lane, t.Prio, kind,
 			fmtDur(now.Sub(t.Since)), t.Pid, t.Cmd)
 	}
+	printCoalesced(w, now)
 
 	fmt.Fprintln(w, "MACHINES")
 	printLocal(w, cfg, snap)

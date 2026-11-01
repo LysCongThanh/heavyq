@@ -30,8 +30,15 @@ func (r *run) execute(c *claim) int {
 	} else {
 		rc = r.runRemote(c)
 	}
+	runSecs := time.Since(runStart).Seconds()
+	ran := !r.interrupted && rc != 126 && rc != 127 &&
+		(c.machine == config.LocalName || (rc != ExitRemoteSetup && rc != ExitConnLost))
+	r.cacheFinish(c.machine, rc, ran, runSecs)
 	rec := history.Record{End: time.Now(), Machine: c.machine, Lane: r.me.Lane, Prio: r.me.Prio, Light: r.me.Light,
-		WaitSecs: waited.Seconds(), RunSecs: time.Since(runStart).Seconds(), Exit: rc, Cmd: r.me.Cmd}
+		WaitSecs: waited.Seconds(), RunSecs: runSecs, Exit: rc, Cmd: r.me.Cmd}
+	if r.cache != nil {
+		rec.Cache, rec.CacheNote = r.cache.status, r.cache.note
+	}
 	if err := history.Append(history.DefaultPath(), rec); err != nil {
 		fmt.Fprintln(r.stderr, "heavyq: warning: history not written:", err)
 	}
@@ -57,8 +64,12 @@ func (r *run) localDir() string {
 func (r *run) runLocal(c *claim) int {
 	cmd := exec.Command(r.opts.Argv[0], r.opts.Argv[1:]...)
 	cmd.Dir = r.localDir()
-	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
-	cmd.Env = append(os.Environ(), "HEAVYQ_MACHINE=local", "HEAVYQ_SLOT="+c.slot, "HEAVYQ_LANE="+r.me.Lane)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout, cmd.Stderr = r.cmdStreams()
+	// With --cache the streams are pipes: don't wait forever on a daemon that
+	// inherited them after the command itself exited.
+	cmd.WaitDelay = 10 * time.Second
+	cmd.Env = append(os.Environ(), "HEAVYQ_MACHINE=local", "HEAVYQ_SLOT="+c.slot, "HEAVYQ_LANE="+r.me.Lane, "HEAVYQ_ACTIVE=1")
 	// Slot and mutex descriptors are close-on-exec: the command (and any
 	// daemon it leaves behind) never holds a slot. The slot is released when
 	// this process exits.
@@ -103,9 +114,10 @@ func (r *run) runRemote(c *claim) int {
 		return signalExit(s)
 	default:
 	}
+	jobOut, jobErr := r.cmdStreams()
 	job, err := remote.StartJob(remote.JobSpec{Machine: m, Repo: name, SHA: r.pl.sha, Lane: r.me.Lane, Slot: c.slot,
 		Argv: r.opts.Argv, Subdir: r.pl.subdir, Siblings: sibs, BaseRef: baseRef, BaseSHA: r.pl.baseSHA,
-		Stdout: os.Stdout, Stderr: os.Stderr})
+		Stdout: jobOut, Stderr: jobErr})
 	if err != nil {
 		fmt.Fprintln(r.stderr, "heavyq:", err)
 		return ExitRemoteSetup
@@ -138,6 +150,7 @@ func (r *run) supervise(forward func(os.Signal), wait func() int) int {
 		case s := <-r.sigs:
 			if sigCode == 0 {
 				sigCode = signalExit(s)
+				r.interrupted = true
 				forward(syscall.SIGTERM)
 			} else {
 				forward(syscall.SIGKILL)

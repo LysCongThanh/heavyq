@@ -31,6 +31,7 @@ usage:
   heavyq [--config FILE] <prio 1-9> [flags] -- <command...>
   heavyq [--config FILE] status
   heavyq history [-n N]
+  heavyq [--config FILE] cache ls|stats|clear
   heavyq [--config FILE] hook claude-pretooluse | install claude | uninstall claude
   heavyq version
 
@@ -44,6 +45,9 @@ run flags:
   --ref REF            commit to run remotely (default: HEAD)
   --base-ref R/B       also recreate refs/remotes/R/B remotely (e.g. origin/main)
   --with REPO[@REF]    sibling repo needed next to the main one (repeatable)
+  --cache              reuse the result of an identical run on the same clean
+                       commit, or wait for one that is running right now
+  -v, --verbose        explain cache decisions
 
 Lower priority numbers run first; equal priorities are FIFO.
 Exit codes: the command's own; 2 usage; 75 max-wait; 76 remote unreachable
@@ -80,8 +84,11 @@ func Main(args []string, stdout, stderr io.Writer) int {
 	if args[0] == "status" || args[0] == "--status" {
 		return statusCommand(cfg, stdout, stderr)
 	}
+	if args[0] == "cache" {
+		return cacheCommand(cfg, args[1:], stdout, stderr)
+	}
 	if p, err := strconv.Atoi(args[0]); err != nil || p < 1 || p > 9 {
-		fmt.Fprintf(stderr, "heavyq: first argument must be a priority 1-9, status, history, hook or version\n\n%s", usage)
+		fmt.Fprintf(stderr, "heavyq: first argument must be a priority 1-9, status, history, cache, hook or version\n\n%s", usage)
 		return ExitUsage
 	}
 	return runCommand(cfg, args, stderr)
