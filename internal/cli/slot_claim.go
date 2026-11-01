@@ -22,6 +22,8 @@ type claim struct {
 	lock    *slots.Lock // local slots only; nil in dry mode
 	score   int
 	forced  bool // the resource gate would have refused without the bypass
+	// reading is the machine as it was when this claim was made (ledger).
+	reading admissionReading
 }
 
 // evalInput is one scheduling round for one ticket.
@@ -60,6 +62,7 @@ func evaluate(in evalInput) (*claim, map[string]string) {
 			reasons[op.Machine] = why
 			continue
 		}
+		c.reading = readingOf(v.state, in.ticket.Light)
 		if forced {
 			gate.Forced = false
 			c.forced = schedule.Gate(v.state, gate) != ""

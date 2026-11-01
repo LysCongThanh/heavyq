@@ -135,19 +135,3 @@ func TestE2EWhyMentionsTheGate(t *testing.T) {
 		t.Fatalf("why after: rc=%d\n%s", rc, out)
 	}
 }
-
-// Commands whose ledger spelling would be cut cannot be matched exactly.
-func TestE2EGateLongCommandIsReportedUnprovable(t *testing.T) {
-	h := newRig(t, baseConfig)
-	repo := gitRepo(t, h)
-	long := "true " + strings.Repeat("#", 300)
-	if err := os.WriteFile(filepath.Join(repo, "heavyq.toml"), []byte("[[gate]]\nname = \"ready\"\nrun = ['"+long+"']\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	gitIn(t, h, repo, "add", ".")
-	gitIn(t, h, repo, "commit", "-q", "-m", "gate")
-	rc, out := h.run("gate", "run")
-	if rc != 1 || !strings.Contains(out, "longer than the ledger keeps") {
-		t.Fatalf("rc=%d\n%s", rc, out)
-	}
-}

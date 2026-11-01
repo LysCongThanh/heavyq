@@ -52,8 +52,8 @@ versions follow [Semantic Versioning](https://semver.org/).
   duplicate gate names. It is trusted like a Makefile, and hooks never execute gates.
 - **`heavyq gate status [name] [--json]`**: is this exact code proven? Per gate command, `proven`, `failed`
   or `missing` on the tree checked out now (clean or dirty), with when, lane and run time, read from the
-  ledger without running anything (about 20 ms). The latest conclusive run on the tree decides; gave-up,
-  cancelled and interrupted runs are inconclusive; a cache hit counts. An unidentifiable tree (a submodule
+  ledger without running anything (about 20 ms). The latest conclusive run on the tree decides, unless the
+  command is flaky (below); gave-up, cancelled and interrupted runs are inconclusive; a cache hit counts. An unidentifiable tree (a submodule
   with edits of its own, no commit, not git) proves nothing and says why. Exit 0 proven, 1 not, 2 usage
   error. `--json` is documented in `docs/gates.md`.
 - **`heavyq gate run [name] [--parallel] [--keep-going] [--lane NAME]`**: runs the gate's unproven commands
@@ -63,6 +63,21 @@ versions follow [Semantic Versioning](https://semver.org/).
   when it ends.
 - **`internal/proof`**: the matching rules behind both (same repo, same tree, the exact `sh -c` command,
   exit 0 and a finished run), pure and table-tested.
+- **Flaky and under-load detection (#30).** The ledger records the machine as it was when a run was admitted:
+  `load1`, `free_mb`, `cores`, plus the limits applied to it (`max_load`, `job_mb`); local runs use the sample
+  the resource gate judged, remote runs the probe placement used. `heavyq gate status` (text and `--json`)
+  classifies every failed command: **`flaky`** when on this tree the command both passed and failed (not
+  proven, even if the latest run passed: "flaky: 1 pass / 1 fail on this tree"), **`under_load`** when the
+  failing run was admitted by the anti-starvation bypass, at or above the load limit, or with less free RAM
+  than its job budget ("rerun once before debugging"), else **`failed`**. A failure under load does not make
+  a command flaky, so a clean rerun proves it. `--json` gains `commands[].class`, `passes` and `fails`, and
+  `reason` now also carries the evidence. `heavyq why` shows the counts in its gate sentence
+  ("1 failed (1 flaky), 0 missing"). Lines without the new fields load as before and are never called under
+  load.
+- **`cmd_hash` in the ledger (#38).** Each line carries the sha256 of the exact argv the run executed, taken
+  before the command is redacted and cut to 200 bytes. Proofs match on it when the record has one, so a gate
+  command longer than 200 bytes can now be proven; records without it (written by older versions) still
+  match by their command string, and a long command they cannot identify stays `missing` until it runs again.
 - **heavyq proves itself.** This repository has a `heavyq.toml` with gate `ready` (gofmt, `go vet`,
   `go test -race`), and CI runs `heavyq gate run ready` with the freshly built binary instead of separate
   vet and test steps.

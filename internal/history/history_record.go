@@ -25,6 +25,9 @@ type Record struct {
 	RunSecs  float64   `json:"run_s"`
 	Exit     int       `json:"exit"`
 	Cmd      string    `json:"cmd"`
+	// CmdHash is the sha256 of the exact argv, taken before the redaction and
+	// the cut that Cmd went through (see CmdHash). "" on older lines.
+	CmdHash string `json:"cmd_hash,omitempty"`
 	// Cache is "hit", "coalesced" (reused an identical in-flight run),
 	// "miss" (ran and was considered for storing) or "skip" (--cache given
 	// but not cacheable); "" without --cache.
@@ -36,6 +39,16 @@ type Record struct {
 	Result string `json:"result,omitempty"`
 	// Forced: admitted by the anti-starvation bypass of the resource gate.
 	Forced bool `json:"forced,omitempty"`
+	// The machine as it was when the run was admitted (local: metrics.Local,
+	// remote: the probe placement used), with the limits the resource gate
+	// applied to it. All of it is absent when the machine could not be
+	// measured, so Cores > 0 marks a reading: a zero Load1 or FreeMB beside it
+	// is real. See Loaded.
+	Load1   float64 `json:"load1,omitempty"`
+	FreeMB  int     `json:"free_mb,omitempty"`
+	Cores   int     `json:"cores,omitempty"`
+	MaxLoad float64 `json:"max_load,omitempty"` // load1 at or above this stops the gate (max_load_ratio x cores)
+	JobMB   int     `json:"job_mb,omitempty"`   // RAM budget of the job (job_mb, or light_mb for --light)
 	// CPUSecs and MaxRSSMB are measured for local runs (user+system time of
 	// the command and its waited-for children, largest resident set).
 	CPUSecs  float64 `json:"cpu_s,omitempty"`

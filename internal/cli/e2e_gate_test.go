@@ -158,7 +158,7 @@ func TestE2EGateRerunAfterLedgerLossIsAnInstantCacheHit(t *testing.T) {
 }
 
 func TestE2EGateFailingCommandShowsFailedAndKeepGoingRunsTheRest(t *testing.T) {
-	h := newRig(t, baseConfig)
+	h := newRig(t, calmConfig) // a busy test machine must not turn this plain failure into "under load"
 	repo := gateRepo(t, h, "")
 	h.edit(repo, "broken\n")
 	rc, out := h.run("gate", "run", "ready")

@@ -124,27 +124,52 @@ simply has no gates. That is not an error for `heavyq why`; `gate status` and `g
 ## What "proven" means
 
 Proof is derived from the run ledger (`heavyq history`); there is no separate store. A gate command is
-**proven** on the code checked out now when the latest *conclusive* ledger record that matches it passed.
-A record matches when all of these hold:
+**proven** on the code checked out now when the runs of it on this tree agree that it passes. A ledger record
+is a run of the command when all of these hold:
 
 - same repository (all work trees of a clone share one id), and the same **tree id**: `HEAD`'s tree when the
   work tree is clean, `<HEAD tree>+<digest of the edits>` when it is dirty. Any edit changes the id and
   undoing it restores the old one, so a revert is proven again at once;
-- it ran the exact command heavyq runs for the gate, `sh -c '<command>'`, from the repository root (recorded
-  with the usual secret redaction);
+- it ran the exact command heavyq runs for the gate, `sh -c '<command>'`, from the repository root. Records
+  written since `cmd_hash` carry the sha256 of that exact argv (taken before any redaction or cut) and are
+  matched on it, however long the command is. Older records only have the redacted command string, which the
+  ledger cut at 200 bytes, and are matched on that string;
 - it ran to its end: runs that gave up, were cancelled or were interrupted are inconclusive and neither prove
-  nor fail anything. Exit 0 proves; any other exit code is a failure. A `--cache` hit or a run that reused an
+  nor fail anything. Exit 0 passes; any other exit code is a failure. A `--cache` hit or a run that reused an
   identical in-flight run counts, because the ledger only gives those the tree they proved.
 
-Of the matching conclusive records the **latest** decides, so a command that passed and then failed on the
-same tree is `failed`. A gate is proven when every command is. Everything else fails closed:
+A command that is not proven is classified by those runs. The first row that applies wins:
+
+| Class | When | State |
+|---|---|---|
+| `flaky` | on this tree the command both **passed** and **failed**, and at least one failure is not explained by load (below) | `failed` |
+| (none) | the latest run passed, and no failure on this tree is unexplained | `proven` |
+| `under_load` | the latest run failed, and the machine was over its limits when that run was admitted | `failed` |
+| `failed` | the latest run failed, with nothing to explain it | `failed` |
+
+- **Flaky is not proven**, even when the latest run passed. A tree on which the command has both passed and
+  failed stays unproven for good: heavyq cannot tell which result was the odd one out. Fix the flakiness, or
+  change the code (any edit is another tree). `gate status` says `flaky: N pass / M fail on this tree`. The
+  numbers count runs; a cache hit or coalesced result repeats a run that already has its own line, so it is
+  not counted again.
+- **Under load.** A failure is "under load" when its ledger record says the run was admitted past the resource
+  gate by the anti-starvation bypass (`forced`), or that at admission the 1-minute load was at or above the
+  machine's limit (`max_load_ratio` x cores), or less RAM was free than the job's budget (`job_mb`, or
+  `light_mb` for `--light`). The reading is the one the scheduler judged: the local machine, or for a remote
+  the probe placement used. A failure under load is still a failure, so the command is not proven, but it is
+  not evidence of flakiness: if the rerun passes, the command is proven. Rerun once before you debug.
+  A record without a machine reading (an older line, a result replayed from the cache, a platform that cannot
+  be measured) is never called under load.
+
+A gate is proven when every command is. Everything else fails closed:
 
 - A command with no matching record is `missing`.
 - If the tree cannot be identified (not a repository, no commit yet, a submodule or nested repository with
   changes of its own, more untracked content than heavyq can digest) nothing is provable. `gate status` says
   why and exits 1, and `gate run` refuses to start.
-- A command whose recorded form heavyq would have shortened (more than 200 bytes) cannot be matched exactly
-  and stays `missing`, with that reason. Keep gate commands short, or put the long part in a script.
+- A command longer than 200 bytes whose only runs are older records (no `cmd_hash`) is `missing`: the ledger
+  only kept a cut-off form of it, and two different long commands could look alike. Run it again (`gate run`)
+  and its hash is recorded.
 - Only the last 20,000 ledger records are read. An older proof counts as missing, and `gate run` then
   re-runs it, which the result cache usually answers at once.
 - An unreadable ledger proves nothing.
@@ -164,6 +189,19 @@ gate ready: NOT PROVEN on tree 30275da9949f+1c9be0e2 (uncommitted edits)
   1 failed, 1 missing. Prove it with: heavyq gate run ready
 ```
 
+A failure that is flaky or happened under load says so on its line, and the summary counts them:
+
+```
+  failed   2026-11-02 00:44:10  agent-3         31.2s  go test -race -count=1 ./...  (exit 1; flaky: 1 pass / 1 fail on this tree)
+  failed   2026-11-02 00:44:52  agent-3          9.1s  go vet ./...  (exit 1; under load: load 14.20 >= 12.00 at start)
+  2 failed (1 flaky, 1 under load), 0 missing. Prove it with: heavyq gate run ready
+  under load: the machine was over its limits when the run started; rerun once before debugging: heavyq gate run ready
+  flaky: it passed and failed on this very code, so this tree stays unproven; fix the flakiness or change the code
+```
+
+`heavyq why` closes with the same counts: `The ready gate is not proven on this tree (tree 30275da9949f):
+2 failed (1 flaky, 1 under load), 0 missing. Prove it with: heavyq gate run ready`.
+
 `RUN` shows `hit` or `coalesced` when the deciding run was answered from the cache. `--json` prints one
 object (additive changes only):
 
@@ -177,8 +215,8 @@ object (additive changes only):
   "commands": [
     {"cmd": "gofmt -l . | (! grep .)", "state": "proven", "at": "2026-11-02T00:39:05Z",
      "lane": "agent-3", "run_secs": 0.04, "cache": "miss", "exit": 0, "machine": "local"},
-    {"cmd": "go vet ./...", "state": "failed", "at": "2026-11-02T00:42:24Z", "lane": "agent-3",
-     "run_secs": 9.4, "exit": 1, "machine": "local"},
+    {"cmd": "go vet ./...", "state": "failed", "class": "failed", "at": "2026-11-02T00:42:24Z", "lane": "agent-3",
+     "run_secs": 9.4, "exit": 1, "machine": "local", "fails": 1},
     {"cmd": "go test -race -count=1 ./...", "state": "missing", "run_secs": 0}
   ]
 }
@@ -191,9 +229,11 @@ object (additive changes only):
 | `tree`, `commit`, `dirty` | the code asked about; `tree` is `""` when it cannot be identified (`commit` is omitted before the first commit) |
 | `reason` | set when nothing can be proven at all (unknown tree); omitted otherwise |
 | `commands[].cmd` | the command string from `heavyq.toml` (secrets redacted) |
-| `commands[].state` | `proven`, `failed` or `missing` |
-| `commands[].at`, `lane`, `run_secs`, `cache`, `exit`, `machine` | the deciding run; all but `run_secs` are omitted for `missing`. `cache` is `hit`, `coalesced`, `miss` or `skip` and is omitted without `--cache` |
-| `commands[].reason` | why a command is `missing`, when heavyq knows (`tree unknown`, too long to match) |
+| `commands[].state` | `proven`, `failed` or `missing`. A flaky command is `failed` |
+| `commands[].class` | only when `state` is `failed`: `flaky`, `under_load` or `failed` (see above); omitted otherwise |
+| `commands[].at`, `lane`, `run_secs`, `cache`, `exit`, `machine` | the deciding run; all but `run_secs` are omitted for `missing`. For `flaky` it is the latest failure that load does not explain. `cache` is `hit`, `coalesced`, `miss` or `skip` and is omitted without `--cache` |
+| `commands[].passes`, `fails` | runs on this tree that exited 0 / did not (cache replays are not counted again); each omitted when 0 |
+| `commands[].reason` | why a command is `missing` (`tree unknown`, too long to match), or the evidence for its class: `flaky: 1 pass / 1 fail on this tree`, `under load: load 14.20 >= 12.00 at start`, `under load: 800 MB free < 3072 MB job budget at start`, `under load: admitted past a resource limit by the anti-starvation bypass` |
 
 ## `heavyq gate run [name] [--parallel] [--keep-going] [--lane NAME]`
 
@@ -222,6 +262,19 @@ ledger with `gate = <name>`. The lane is `--lane`, else `$HEAVYQ_LANE`, else the
   read.
 - Commands that write into the work tree (a build output that is not git-ignored) change the tree under
   their own feet, so their results can never be proven. Ignore such outputs, or build outside the tree.
+
+## Ledger fields behind it
+
+`heavyq history` lines gain these fields (additive; older lines load as before and simply lack them):
+
+| Field | Meaning |
+|---|---|
+| `cmd_hash` | sha256 (hex) of the exact argv the run executed, joined with NUL, computed before redaction and truncation. `cmd` stays the redacted, 200-byte display form. The hash is of the unredacted command, so it could confirm a guess at a secret inside one: the ledger file is 0600, keep it private |
+| `load1`, `free_mb`, `cores` | the machine when the run was admitted: 1-minute load, available RAM, cores. For a local run it is the sample the resource gate judged, for a remote run the probe placement used. Absent when the machine cannot be measured, so `cores` > 0 marks a reading (a missing `load1` or `free_mb` beside it is a real 0) |
+| `max_load`, `job_mb` | the limits applied to that reading: load at or above `max_load` (`max_load_ratio` x cores), or free RAM below `job_mb` (`light_mb` for `--light`), is "over its limits" |
+| `forced` | admitted past the resource gate by the anti-starvation bypass (existing field) |
+
+Runs replayed from the cache, and tickets that never ran, carry no machine reading.
 
 ## heavyq proves itself
 

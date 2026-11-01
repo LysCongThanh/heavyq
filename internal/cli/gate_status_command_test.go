@@ -57,3 +57,52 @@ func TestPrintGateRedactsSecrets(t *testing.T) {
 		t.Fatal("redactedGate must not modify its argument")
 	}
 }
+
+func TestPrintGateNamesFlakyAndUnderLoadFailures(t *testing.T) {
+	zero, one, seven := 0, 1, 7
+	now := time.Now()
+	g := proof.Gate{Gate: "ready", Tree: strings.Repeat("a", 40), Commands: []proof.Command{
+		{Cmd: "go vet", State: proof.Proven, At: now, Exit: &zero},
+		{Cmd: "go test", State: proof.Failed, Class: proof.ClassFlaky, At: now, Exit: &one, Passes: 2, Fails: 1,
+			Reason: "flaky: 2 pass / 1 fail on this tree"},
+		{Cmd: "go build", State: proof.Failed, Class: proof.ClassUnderLoad, At: now, Exit: &seven,
+			Reason: "under load: load 9.00 >= 6.00 at start"},
+		{Cmd: "make lint", State: proof.Failed, Class: proof.ClassFailed, At: now, Exit: &one, Fails: 1},
+		{Cmd: "make e2e", State: proof.Missing},
+	}}
+	var out bytes.Buffer
+	printGate(&out, g)
+	got := out.String()
+	for _, want := range []string{
+		"(exit 1; flaky: 2 pass / 1 fail on this tree)",
+		"(exit 7; under load: load 9.00 >= 6.00 at start)",
+		"make lint  (exit 1)\n",
+		"3 failed (1 flaky, 1 under load), 1 missing. Prove it with: heavyq gate run ready",
+		"rerun once before debugging: heavyq gate run ready",
+		"this tree stays unproven",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("missing %q in:\n%s", want, got)
+		}
+	}
+}
+
+func TestGateCountsSummary(t *testing.T) {
+	cases := []struct {
+		n    gateCounts
+		want string
+	}{
+		{gateCounts{}, "0 failed, 0 missing"},
+		{gateCounts{failed: 2, missing: 1}, "2 failed, 1 missing"},
+		{gateCounts{failed: 3, flaky: 1, underLoad: 2}, "3 failed (1 flaky, 2 under load), 0 missing"},
+		{gateCounts{failed: 1, flaky: 1}, "1 failed (1 flaky), 0 missing"},
+	}
+	for _, c := range cases {
+		if got := c.n.String(); got != c.want {
+			t.Errorf("got %q, want %q", got, c.want)
+		}
+	}
+	if h := (gateCounts{failed: 2, missing: 1}).hints("ready"); len(h) != 0 {
+		t.Fatalf("plain failures need no hint: %v", h)
+	}
+}
