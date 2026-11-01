@@ -119,4 +119,49 @@ func TestExampleConfigLoads(t *testing.T) {
 	if r, ok := c.Machine("buildbox"); !ok || r.CacheHook == "" || r.GitURL != "buildbox:.heavyq/git" {
 		t.Fatalf("example remote: %+v", r)
 	}
+	if len(c.Hook.Rules) != 1 || !c.Hook.Rules[0].Cache || c.Cache.TTL.Duration != 24*time.Hour {
+		t.Fatalf("example hook/cache: %+v %+v", c.Hook, c.Cache)
+	}
+}
+
+func TestHookAndCacheSections(t *testing.T) {
+	c, err := Load(writeConfig(t, `
+[hook]
+permission = "allow"
+max_wait = "90s"
+[[hook.rule]]
+match = ["bun test", "deno task check"]
+light = true
+cache = true
+[cache]
+env = ["CI", "NODE_ENV"]
+max_size_mb = 10
+max_entry_mb = 50
+`), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !c.HookEnabled() || !c.HookDefaultRules() || c.Hook.MaxWait.Duration != 90*time.Second {
+		t.Fatalf("hook: %+v", c.Hook)
+	}
+	if r := c.Hook.Rules[0]; r.Priority != 4 || !r.Light || !r.Cache {
+		t.Fatalf("rule: %+v", r)
+	}
+	if c.Cache.TTL.Duration != 24*time.Hour || c.Cache.MaxEntryMB != 10 || c.Cache.CacheFailures {
+		t.Fatalf("cache: %+v", c.Cache)
+	}
+	for _, bad := range []string{
+		"[hook]\npermission = \"ask\"",
+		"[hook]\nbinary = \"heavyq; rm x\"",
+		"[[hook.rule]]\nmatch = []",
+		"[[hook.rule]]\nmatch = [\"npm test && x\"]",
+		"[[hook.rule]]\nmatch = [\"npm test\"]\npriority = 12",
+		"[[hook.rule]]\nmatch = [\"npm test\"]\nlane = \"a b\"",
+		"[cache]\nenv = [\"BAD-NAME\"]",
+		"[cache]\nmax_size_mb = -1",
+	} {
+		if _, err := Load(writeConfig(t, bad), true); err == nil {
+			t.Errorf("accepted %q", bad)
+		}
+	}
 }

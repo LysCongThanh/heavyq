@@ -82,6 +82,12 @@ func (c *Config) normalize() error {
 	if err := c.Local.normalizeCommon(); err != nil {
 		return fmt.Errorf("[local]: %w", err)
 	}
+	if err := c.Hook.normalize(); err != nil {
+		return err
+	}
+	if err := c.Cache.normalize(); err != nil {
+		return err
+	}
 	seen := map[string]bool{LocalName: true}
 	for i := range c.Remotes {
 		r := &c.Remotes[i]

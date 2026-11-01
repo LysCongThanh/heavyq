@@ -24,6 +24,8 @@ type Config struct {
 	Queue   QueueConfig     `toml:"queue"`
 	Local   MachineConfig   `toml:"local"`
 	Remotes []MachineConfig `toml:"remote"`
+	Hook    HookConfig      `toml:"hook"`
+	Cache   CacheConfig     `toml:"cache"`
 
 	// Path is the file the config was loaded from ("" when defaults only).
 	Path string `toml:"-"`

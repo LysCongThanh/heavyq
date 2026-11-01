@@ -46,3 +46,28 @@ key=$(sha256sum package-lock.json | cut -c1-16); c="$HEAVYQ_CACHE_DIR/nm-$key"
 if [ -d "$c" ]; then cp -al "$c" node_modules; exit; fi
 npm ci --no-audit --no-fund && { cp -al node_modules "$c.$$" && mv -T "$c.$$" "$c" || rm -rf "$c.$$"; } 2>/dev/null; true
 '''
+
+# Claude Code hook: `heavyq hook install claude`, then agents' heavy commands are
+# rewritten into heavyq runs (see docs/claude-code.md).
+[hook]
+enabled = true
+permission = ""          # "" = Claude Code asks/allows as usual; "allow" = approve rewritten commands
+max_wait = "5m"          # --max-wait for rewritten commands; also added to the Bash tool timeout
+binary = ""              # default: "heavyq" if on PATH, else this binary's absolute path
+default_rules = true     # built-in rules (npm/pnpm/yarn test|build|lint..., go test, pytest, cargo, make, gradle, mvn)
+
+# Your rules are checked before the built-in ones (example).
+[[hook.rule]]
+match = ["bun test", "deno task check"]   # whole-word prefixes of the command
+priority = 3
+light = false
+lane = ""                # "" = $HEAVYQ_LANE, else the git work tree's name
+cache = true             # add --cache
+
+# Result cache and coalescing for --cache runs.
+[cache]
+ttl = "24h"
+max_size_mb = 512        # oldest entries are evicted beyond this
+max_entry_mb = 64        # larger outputs are not stored
+cache_failures = false   # true = also replay non-zero exits to later runs
+env = []                 # variables whose values are part of the key, e.g. ["CI", "NODE_ENV"]
