@@ -54,8 +54,10 @@ heavyq 3 --lane api -- npm test
 - **The same gate runs once per commit.** With `--cache`, identical commands on the same clean tree share
   one run: whoever comes second waits for the first and gets its output and exit code. Finished results are
   replayed until they expire.
-- **History.** Every run is appended to a JSONL log (wait time, run time, machine, exit code, cache
-  hit/miss/coalesced). `heavyq history` prints it.
+- **History is a ledger of evidence.** Every run is appended to a JSONL log: wait time, run time, machine,
+  exit code, cache hit/miss/coalesced, and *which code it ran on* (commit, tree, dirty), plus the session,
+  item and gate that asked for it. "`go test ./...` passed on the code that is checked out now" becomes a
+  fact you can look up. `heavyq history` prints it.
 
 Single static Go binary. No daemon. The queue is a directory.
 
@@ -79,11 +81,12 @@ heavyq 6 --light --lane docs -- npm run lint      # may take a light slot right 
 heavyq 4 --max-wait 10m -- cargo test             # exit 75 if not started within 10 minutes
 
 heavyq 4 --cache -- npm test                      # same clean commit already tested? reuse that result
+heavyq 4 --session "$ID" --item T-12 -- npm test  # tag the run in history: who ran it, for which work item
 
 heavyq status      # what runs, what waits, and why (opens with a short story in plain words)
 heavyq why         # just that story: "2 agents wait because every heavy slot on local is taken."
 heavyq why api     # one lane: its running and waiting jobs, the reason per machine, its last run
-heavyq history     # recent runs
+heavyq history     # recent runs, with the commit each one ran on (-v: tree, session, item, gate)
 heavyq hook install claude   # let Claude Code agents use the queue without being told
 ```
 
@@ -123,6 +126,12 @@ go test ./... 2>&1 | tail -30
   remotes. Everything else is left exactly as typed: `;`, `||`, other `&&` chains, a background `&`,
   `$(...)`, backticks, redirections, several pipes, commands already wrapped, and any call made while
   `HEAVYQ_ACTIVE` is set (heavyq sets it for the commands it runs).
+- **Session.** The hook also leaves Claude Code's `session_id` in `<queue dir>/sessions/<lane>` (JSON
+  `{session_id, at}`, written atomically, mode 0600), so history says which session ran what. The command
+  itself stays the same in every session. A run on that lane uses the id when it has no `--session` or
+  `$HEAVYQ_SESSION` and the file is under 10 minutes old; stale files are pruned with dead tickets. An id
+  that isn't a plain tag (`A-Za-z0-9._:-`, 1-80 characters) is not written. Two sessions on one lane within
+  those 10 minutes can swap labels, which only mislabels the session: proof matches on the tree.
 - **Timeouts.** The hook adds `--max-wait` (`hook.max_wait`, default 5m) and raises the Bash tool's
   `timeout` by the same amount, so queue time doesn't use up the tool timeout. Exit 75 still means "busy,
   retry later". The agent is told so through `additionalContext`.
@@ -146,6 +155,37 @@ go test ./... 2>&1 | tail -30
 `heavyq <prio> --lane <worktree> --max-wait 9m -- <command>`"), or block unwrapped commands with
 [`examples/claude-code/require-heavyq.sh`](examples/claude-code/require-heavyq.sh), which makes the agent
 rerun them itself.
+
+## History as a ledger (commit, tree, session)
+
+Each run appends one JSON line. These fields say what it ran on and who asked:
+
+| Field | Meaning |
+|---|---|
+| `v`, `id` | schema (`2`) and a ULID: unique, and ordered by creation time at millisecond resolution only. Ids made in the same millisecond by different processes have no order, so order lines by their position in the file or by `end`. Lines without `v` are v1 and still load. |
+| `repo` | hash of the git common dir: the same for every work tree of one repository |
+| `worktree`, `subdir` | where the command ran |
+| `commit` | `HEAD`. For a remote run, the commit that was shipped. |
+| `tree` | the exact files. **Clean:** `HEAD`'s tree id, the same one the cache keys on. **Dirty:** `<HEAD tree>+<digest>`, where the digest covers `git diff HEAD --binary` (staged or not) and the names and contents of untracked files that aren't ignored. The same edits give the same id, any edit changes it, and reverting restores the clean id (also when the edits cancel out, like staged then reverted). **Absent:** the tree is unknown and never counts as proof (see below). |
+| `dirty` | uncommitted or untracked files at the start (absent = false). Remote runs ship a commit, so they are never dirty. |
+| `session`, `item`, `gate` | `--session`, `--item`, `--gate` (below) |
+
+- **Tags.** `--session ID`, `--item ID`, `--gate NAME`; `HEAVYQ_SESSION` and `HEAVYQ_ITEM` supply the first
+  two when the flags are absent, and for `session` the Claude Code hook's file comes after them (see the
+  hook section). Names are 1-80 characters of `A-Za-z0-9._:-`; anything else exits 2.
+- **Dirty trees are identified, never cached.** `--cache` still skips them. Hashing the edits of a
+  10,000-file repository takes about 35 ms (20 ms when clean).
+- **A tree that isn't certain isn't claimed.** The line keeps `commit` and `dirty` but records no `tree`
+  when: a local command edits the work tree it runs in; the tree changed between computing a cached or
+  coalesced result's key and replaying it (a result proves the tree it was computed on); a submodule or an
+  untracked nested repository has changes of its own (git only reports "dirty" for those, whatever they
+  are); more than 256 MiB of untracked content would have to be read; or `HEAD` moved while the tree was
+  being identified. Untracked files over 64 MiB are identified by size, mtime, inode and change time rather
+  than content. A submodule that sits at another commit is fine: the commit is part of the id.
+- **Outside a repository**, the identity fields are simply empty.
+- **Where.** `$HEAVYQ_HISTORY` if set (exactly that one file, never rotated). Otherwise one file per month,
+  `history-YYYY-MM.jsonl` (UTC) in `$XDG_STATE_HOME/heavyq`. `heavyq history` and the dashboard read across
+  the months, newest last, and still read the `history.jsonl` that older versions wrote.
 
 ## Never run the same gate twice (cache + coalescing)
 
@@ -348,7 +388,8 @@ Every key is optional. [`examples/config.toml`](examples/config.toml) has every 
 
 Environment: `HEAVYQ_LANE` (default lane), `HEAVYQ_REMOTE` (default `--remote`), `HEAVYQ_AUTO=0` (never
 auto-place), `HEAVYQ_DIR` (queue dir; default `$XDG_RUNTIME_DIR/heavyq`, else `/tmp/heavyq-<uid>`),
-`HEAVYQ_HISTORY` (default `$XDG_STATE_HOME/heavyq/history.jsonl`), `HEAVYQ_CONFIG`, `XDG_CACHE_HOME` (result
+`HEAVYQ_SESSION` / `HEAVYQ_ITEM` (default `--session` / `--item`), `HEAVYQ_HISTORY` (one history file;
+default: monthly files in `$XDG_STATE_HOME/heavyq`), `HEAVYQ_CONFIG`, `XDG_CACHE_HOME` (result
 cache), `CLAUDE_CONFIG_DIR` (`--scope user` target). Commands run locally get `HEAVYQ_MACHINE`, `HEAVYQ_SLOT`,
 `HEAVYQ_LANE` and `HEAVYQ_ACTIVE=1` (the hook never rewrites while it is set).
 

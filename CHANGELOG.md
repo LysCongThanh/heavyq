@@ -7,6 +7,25 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Ledger v2: every run is bound to the code it ran on.** History lines gain `v` (schema, `2`), `id` (a
+  ULID that sorts by time), `repo` (hash of the git common dir, shared by all work trees), `worktree`,
+  `subdir`, `commit`, `tree`, `dirty`, `session`, `item` and `gate`. Lines written by older versions (no
+  `v`) keep loading. Remote runs record the commit that was shipped, its tree, and `dirty: false`. Outside
+  a git repository the identity fields stay empty.
+- **Tree identity for dirty work trees.** A clean tree is identified by `HEAD`'s tree id, exactly what the
+  `--cache` key already used. A dirty one is `<HEAD tree>+<digest>`: the digest covers `git diff HEAD --binary`
+  (staged or not) and the names and contents of untracked files that aren't ignored. The same edits give the
+  same id, any edit changes it, reverting restores the clean id. About 20 ms clean and 35 ms dirty on a 10,000-file repository
+  (`go test ./internal/gitutil -run '^$' -bench TreeIdentity`). Dirty trees are still never cached.
+- **Run flags `--session`, `--item` and `--gate`**, plus `HEAVYQ_SESSION` and `HEAVYQ_ITEM`, recorded in the
+  ledger. Names are 1-80 characters of `A-Za-z0-9._:-`; anything else exits 2.
+- **The Claude Code hook records the session out of band.** When it wraps a command it writes
+  `<queue dir>/sessions/<lane>` (`{session_id, at}`, atomic, 0600). `heavyq <prio>` uses it when `--session`
+  and `HEAVYQ_SESSION` are absent and the file is under 10 minutes old with a valid id. The rewritten command
+  is unchanged, so exact permission rules keep matching across sessions. Stale files are pruned with dead
+  tickets.
+- **`heavyq history`** shows the short commit of each run (`+` when the work tree was dirty); `-v` adds the
+  tree, session, item and gate.
 - **`heavyq.toml`** at the git root: per-repository named gates (`[[gate]]` with `name`, `run`, `prio`,
   `light`, `remote`) and a reserved `[anchor]` section. The loader (`internal/repoconfig`) validates names,
   non-empty `run` lists, `prio` 1-9 and remote names, and refuses unknown keys (with the line) and
@@ -20,6 +39,25 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- **Monthly history files.** Without `HEAVYQ_HISTORY`, runs are appended to
+  `$XDG_STATE_HOME/heavyq/history-YYYY-MM.jsonl` (UTC). `heavyq history`, `heavyq cache stats` and the
+  dashboard read across the months, newest last, and still include the `history.jsonl` written by older
+  versions. `HEAVYQ_HISTORY` pointing at a file still means exactly that file, never rotated.
+- A run records its `commit` but no `tree` when the tree is not certain: a local command edited its own work
+  tree, the tree changed between a cached or coalesced result's key and its replay (the record used to get the
+  tree of replay time), a submodule or untracked nested repository has changes of its own, more than 256 MiB
+  of untracked content would have to be read, or `HEAD` moved during identification. An unknown tree can never
+  count as proof.
+- Tree identity details: `HEAD` is resolved once per identification and used in every git call; edits that
+  cancel out (staged, then reverted) give the clean id; `git diff` is pinned against user config
+  (`diff.algorithm`, `diff.indentHeuristic`, `diff.submodule`, `core.quotePath`, context, prefixes); untracked
+  files over 64 MiB are identified by size, mtime, inode and change time.
+- `git status` runs with `--ignore-submodules=none`, so `submodule.<name>.ignore` and `diff.ignoreSubmodules`
+  can no longer make a changed submodule look clean (this also tightens the `--cache` key).
+- Ledger ids are ULIDs that order by creation time at millisecond resolution only; order records by file
+  position or `end`.
+- heavyq's read-only git queries run with `GIT_OPTIONAL_LOCKS=0`, so they never make a concurrent `git add`
+  or `git commit` fail with "index.lock exists".
 - The dashboard's opening sentences are computed in Go and rendered from `snapshot.story`. The page keeps its
   own copy of the logic as a fallback for older servers and the demo data. The sentences are unchanged apart
   from two grammar fixes ("1 node process holds", and a lane that got in through the bypass is named once).

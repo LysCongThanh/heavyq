@@ -35,7 +35,7 @@ usage:
   heavyq [--config FILE] dash [--control] [--addr 127.0.0.1:0] [--open]
   heavyq cancel <ticket|pid> | reprio <ticket|pid> <1-9>
   heavyq [--config FILE] pause|resume <machine>
-  heavyq history [-n N]
+  heavyq history [-n N] [-v]
   heavyq [--config FILE] cache ls|stats|clear
   heavyq [--config FILE] hook claude-pretooluse | install claude | uninstall claude
   heavyq version
@@ -52,6 +52,11 @@ run flags:
   --with REPO[@REF]    sibling repo needed next to the main one (repeatable)
   --cache              reuse the result of an identical run on the same clean
                        commit, or wait for one that is running right now
+  --session ID         who ran it, recorded in history (default: $HEAVYQ_SESSION,
+                       else the Claude Code hook's session for this lane)
+  --item ID            which work item it belongs to (default: $HEAVYQ_ITEM)
+  --gate NAME          which gate it is part of
+                       (ids: 1-80 characters from A-Za-z0-9._:-)
   -v, --verbose        explain cache decisions
 
 Lower priority numbers run first; equal priorities are FIFO.

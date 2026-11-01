@@ -24,10 +24,12 @@ func (r *run) execute(c *claim) int {
 	}
 	fmt.Fprintf(r.stderr, "heavyq: our turn after %s (prio %d, lane %s, %s/%s): %s\n",
 		fmtDur(waited), r.me.Prio, r.me.Lane, c.machine, c.slot, r.me.Cmd)
+	co := r.checkoutFor(c.machine) // the code the command is about to see
 	runStart := time.Now()
 	var rc int
 	if c.machine == config.LocalName {
 		rc = r.runLocal(c)
+		co = r.settled(co)
 	} else {
 		rc = r.runRemote(c)
 	}
@@ -38,6 +40,7 @@ func (r *run) execute(c *claim) int {
 	rec := history.Record{End: time.Now(), Machine: c.machine, Lane: r.me.Lane, Prio: r.me.Prio, Light: r.me.Light,
 		WaitSecs: waited.Seconds(), RunSecs: runSecs, Exit: rc, Cmd: r.me.Cmd, Forced: c.forced,
 		CPUSecs: r.cpuSecs, MaxRSSMB: r.maxRSSMB}
+	r.tag(&rec, co)
 	switch {
 	case r.cancelled:
 		rec.Result = history.OutcomeCancelled

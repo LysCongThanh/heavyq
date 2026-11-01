@@ -12,6 +12,7 @@ import (
 	"github.com/LysCongThanh/heavyq/internal/gitutil"
 	"github.com/LysCongThanh/heavyq/internal/history"
 	"github.com/LysCongThanh/heavyq/internal/hook"
+	"github.com/LysCongThanh/heavyq/internal/queue"
 )
 
 const hookUsage = `usage:
@@ -71,7 +72,7 @@ func claudePreToolUse(cfgPath string, explicit bool, stdin io.Reader, stdout io.
 	}
 	out, why, err := hook.Decide(in, hook.Options{Rules: rules, Permission: cfg.Hook.Permission,
 		MaxWait: cfg.Hook.MaxWait.Duration, Binary: bin, Lane: os.Getenv("HEAVYQ_LANE"),
-		Active: os.Getenv("HEAVYQ_ACTIVE") != "", LaneFor: worktreeLane})
+		Active: os.Getenv("HEAVYQ_ACTIVE") != "", LaneFor: worktreeLane, SessionSink: recordHookSession})
 	if err != nil {
 		hookLog("error: %v", err)
 		return 0
@@ -85,6 +86,19 @@ func claudePreToolUse(cfgPath string, explicit bool, stdin io.Reader, stdout io.
 	}
 	hookLog("%s", why)
 	return 0
+}
+
+// recordHookSession hands the Claude session id to the runs of lane through
+// <queue dir>/sessions/<lane>. It is best effort: a failure costs the session
+// label in the ledger, never the rewrite.
+func recordHookSession(lane, id string) {
+	q, err := queue.Open(QueueDir())
+	if err == nil {
+		err = q.WriteSession(lane, id, time.Now())
+	}
+	if err != nil {
+		hookLog("warning: session not recorded: %v", err)
+	}
 }
 
 // worktreeLane is the name of the git work tree containing cwd, else cwd's

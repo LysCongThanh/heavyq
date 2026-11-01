@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 
 	"github.com/LysCongThanh/heavyq/internal/gitutil"
 )
@@ -37,20 +38,30 @@ type keyDoc struct {
 // Key returns the cache key of a run, or "" and the reason the run cannot
 // be cached (not in a repo, or the work tree differs from HEAD).
 func Key(in KeyInput) (string, string) {
+	key, _, why := KeyAndTree(in)
+	return key, why
+}
+
+// KeyAndTree is Key plus the tree id the key was computed on (keyDoc.Tree).
+// A result stored or replayed under the key proves that tree, whatever the
+// work tree holds by the time the result is used.
+func KeyAndTree(in KeyInput) (key, tree, why string) {
 	top, err := gitutil.TopLevel(in.Dir)
 	if err != nil {
-		return "", "not in a git repository"
+		return "", "", "not in a git repository"
 	}
-	if !gitutil.IsClean(top) {
-		return "", "work tree has uncommitted or untracked files"
+	// The same identity the ledger records for a clean tree (gitutil.WorkTree);
+	// a dirty tree has an identity too, but it is never cached.
+	tree, err = gitutil.CleanTree(top)
+	if errors.Is(err, gitutil.ErrDirty) {
+		return "", "", "work tree has uncommitted or untracked files"
 	}
-	tree, err := gitutil.TreeOf(top, "HEAD")
 	if err != nil {
-		return "", "no HEAD commit"
+		return "", "", "no HEAD commit"
 	}
 	sub, err := gitutil.Prefix(in.Dir)
 	if err != nil {
-		return "", "cannot resolve the subdirectory"
+		return "", "", "cannot resolve the subdirectory"
 	}
 	d := keyDoc{Schema: 1, Tree: tree, Clean: true, Argv: in.Argv, Subdir: sub,
 		Env: map[string]string{}, Version: in.Version}
@@ -69,8 +80,8 @@ func Key(in KeyInput) (string, string) {
 	}
 	b, err := json.Marshal(d) // map keys are sorted: canonical
 	if err != nil {
-		return "", "cannot encode the key"
+		return "", "", "cannot encode the key"
 	}
 	sum := sha256.Sum256(b)
-	return hex.EncodeToString(sum[:]), ""
+	return hex.EncodeToString(sum[:]), tree, ""
 }

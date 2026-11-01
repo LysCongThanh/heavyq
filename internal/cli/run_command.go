@@ -55,6 +55,9 @@ func runCommand(cfg *config.Config, args []string, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "heavyq:", err)
 		return ExitUsage
 	}
+	if o.Session == "" { // explicit flag and $HEAVYQ_SESSION win over the hook's file
+		o.Session = q.ReadSession(o.Lane, time.Now(), history.ValidTag)
+	}
 	start, err := procinfo.Default.StartTime(os.Getpid())
 	if err != nil {
 		fmt.Fprintln(stderr, "heavyq: cannot read own process start time:", err)
@@ -108,6 +111,7 @@ func (r *run) recordNoRun(rc int) {
 	}
 	rec := history.Record{End: time.Now(), Lane: r.me.Lane, Prio: r.me.Prio, Light: r.me.Light,
 		WaitSecs: time.Since(r.t0).Seconds(), Exit: rc, Cmd: r.me.Cmd, Result: result}
+	r.tag(&rec, r.checkoutFor(""))
 	if err := history.Append(history.DefaultPath(), rec); err != nil {
 		fmt.Fprintln(r.stderr, "heavyq: warning: history not written:", err)
 	}

@@ -168,9 +168,10 @@ func (d *Dir) List() (Snapshot, error) {
 	return s, nil
 }
 
-// Prune removes tickets whose owning process is gone. alive is
-// procinfo.ProcFS.Alive in production.
+// Prune removes tickets whose owning process is gone, and session files
+// older than SessionTTL. alive is procinfo.ProcFS.Alive in production.
 func (d *Dir) Prune(alive func(pid int, start string) bool) {
+	d.pruneSessions(time.Now())
 	s, err := d.List()
 	if err != nil {
 		return
