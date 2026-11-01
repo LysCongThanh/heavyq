@@ -108,6 +108,7 @@ func (r *run) recordNoRun(rc int) {
 	}
 	rec := history.Record{End: time.Now(), Lane: r.me.Lane, Prio: r.me.Prio, Light: r.me.Light,
 		WaitSecs: time.Since(r.t0).Seconds(), Exit: rc, Cmd: r.me.Cmd, Result: result}
+	r.tag(&rec, r.checkoutFor(""))
 	if err := history.Append(history.DefaultPath(), rec); err != nil {
 		fmt.Fprintln(r.stderr, "heavyq: warning: history not written:", err)
 	}

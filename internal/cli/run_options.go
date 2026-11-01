@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/LysCongThanh/heavyq/internal/config"
+	"github.com/LysCongThanh/heavyq/internal/history"
 	"github.com/LysCongThanh/heavyq/internal/queue"
 )
 
@@ -25,8 +26,13 @@ type runOptions struct {
 	BaseRef  string
 	With     []string
 	Cache    bool
-	Verbose  bool
-	Argv     []string
+	// Session, Item and Gate tag the run in the ledger: who ran it and why.
+	// Session and Item default to $HEAVYQ_SESSION and $HEAVYQ_ITEM.
+	Session string
+	Item    string
+	Gate    string
+	Verbose bool
+	Argv    []string
 }
 
 // parseRunArgs parses args starting with the priority.
@@ -76,7 +82,8 @@ func parseRunArgs(args []string, cfg *config.Config) (runOptions, error) {
 				o.Verbose = true
 			}
 			continue
-		case "--lane", "--max-wait", "--remote", "--repo", "--ref", "--base-ref", "--with":
+		case "--lane", "--max-wait", "--remote", "--repo", "--ref", "--base-ref", "--with",
+			"--session", "--item", "--gate":
 			if v, err = takeVal(); err != nil {
 				return o, err
 			}
@@ -100,7 +107,22 @@ func parseRunArgs(args []string, cfg *config.Config) (runOptions, error) {
 			o.BaseRef = v
 		case "--with":
 			o.With = append(o.With, v)
+		case "--session", "--item", "--gate":
+			if !history.ValidTag(v) {
+				return o, fmt.Errorf("%s %q: want 1-80 characters from A-Za-z0-9._:-", name, v)
+			}
+			switch name {
+			case "--session":
+				o.Session = v
+			case "--item":
+				o.Item = v
+			default:
+				o.Gate = v
+			}
 		}
+	}
+	if err := o.tagsFromEnv(); err != nil {
+		return o, err
 	}
 	if len(rest) == 0 {
 		return o, fmt.Errorf("missing '--' before the command")
@@ -122,6 +144,25 @@ func parseRunArgs(args []string, cfg *config.Config) (runOptions, error) {
 	}
 	o.Lane = queue.SanitizeLane(o.Lane)
 	return o, nil
+}
+
+// tagsFromEnv fills Session and Item from the environment when no flag set
+// them. A malformed value is refused rather than recorded or dropped.
+func (o *runOptions) tagsFromEnv() error {
+	for _, t := range []struct {
+		env string
+		dst *string
+	}{{"HEAVYQ_SESSION", &o.Session}, {"HEAVYQ_ITEM", &o.Item}} {
+		v := os.Getenv(t.env)
+		if *t.dst != "" || v == "" {
+			continue
+		}
+		if !history.ValidTag(v) {
+			return fmt.Errorf("$%s %q: want 1-80 characters from A-Za-z0-9._:-", t.env, v)
+		}
+		*t.dst = v
+	}
+	return nil
 }
 
 // parseWait accepts plain seconds ("90") or a Go duration ("5m").

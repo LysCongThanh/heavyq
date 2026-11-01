@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/LysCongThanh/heavyq/internal/cache"
+	"github.com/LysCongThanh/heavyq/internal/config"
 	"github.com/LysCongThanh/heavyq/internal/history"
 	"github.com/LysCongThanh/heavyq/internal/queue"
 	"github.com/LysCongThanh/heavyq/internal/slots"
@@ -126,6 +127,8 @@ func (r *run) replayCached(m *cache.Meta, coalesced bool, lane string) (int, boo
 	rec := history.Record{End: time.Now(), Machine: m.Machine, Lane: lane, Prio: r.opts.Prio, Light: r.opts.Light,
 		WaitSecs: time.Since(r.t0).Seconds(), Exit: m.Exit, Cmd: queue.TruncateCmd(r.opts.Argv), Cache: kind,
 		CacheNote: fmt.Sprintf("key %.16s, from %s", m.Key, when)}
+	// The key only exists for a clean tree, so this is the proof's tree.
+	r.tag(&rec, r.checkoutFor(config.LocalName))
 	if err := history.Append(history.DefaultPath(), rec); err != nil {
 		fmt.Fprintln(r.stderr, "heavyq: warning: history not written:", err)
 	}
