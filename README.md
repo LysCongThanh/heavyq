@@ -360,6 +360,15 @@ prio = 3          # 1-9, default 3
 - `heavyq why` ends with a sentence on whether the `ready` gate (from `heavyq.toml`, else the detected one) is
   proven here.
 
+## Stances
+
+A stance is a short document describing a way of thinking (`breakthrough`, `converge`, `skeptic`, `calm`,
+`surgeon` ship built in). Put your own in `.heavyq/stances/<name>.md` (repository) or
+`~/.config/heavyq/stances/<name>.md` (personal), in any language; a stance with the same name overrides the
+one below it. `heavyq stance ls [--json]` lists them with their source, `heavyq stance show <name> [--json]`
+prints one. Today this is the format and the read-only commands; switching agents into a stance when the
+evidence says they are stuck comes next. See [docs/stances.md](docs/stances.md).
+
 ## Comparison
 
 | | heavyq | [pueue](https://github.com/Nukesor/pueue) | [task-spooler](https://viric.name/soft/ts/) | GNU parallel / `sem` | plain `flock` |
