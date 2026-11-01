@@ -14,216 +14,200 @@
   --danger:#b42318;--danger-bg:#fef3f2;--danger-line:#fecdca;
   --warn-bg:#fff8eb;--warn-line:#fde3b5;--warn-fg:#92400e;
   --ok-bg:#f0faf4;--ok-line:#bfe6cf;--ok-fg:#067647;
-  --out:#7c3aed;--hatch:#f4f4f5;
-  --c1:#2e56a6;--c2:#c2410c;--c3:#0f766e;--c4:#a16207;--c5:#7c3aed;--c6:#64748b;
-  --grid:#e4e4e7;--axis:#71717a;
+  --out:#7c3aed;
+  --c1:#2e56a6;--c2:#c2410c;--c3:#0f766e;--c4:#a16207;--c5:#7c3aed;--c6:#64748b;--c7:#be185d;--c8:#15803d;
   --sh-card:0 0 0 1px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
   --sh-menu:0 0 0 1px rgba(0,0,0,.08),0 16px 40px -8px rgba(0,0,0,.22);
   --font:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
-  --r-tag:4px;--r-btn:6px;--r-card:8px;--dur:120ms;--ease:cubic-bezier(.2,0,0,1);
+  --r-btn:6px;--r-card:10px;--dur:160ms;--ease:cubic-bezier(.2,0,0,1);
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme=light]){
   --ink:#f4f4f5;--ink-2:#d4d4d8;--ink-3:#a1a1aa;--ink-4:#71717a;
-  --line:#2e2e33;--line-2:#232327;--line-3:#3f3f46;--bg:#111113;--bg-2:#18181b;
+  --line:#2e2e33;--line-2:#1f1f23;--line-3:#3f3f46;--bg:#111113;--bg-2:#18181b;
   --primary:#f4f4f5;--on-primary:#111113;--link:#7fa2e8;
   --st-run:#3dd68c;--st-wait:#f6c86a;--st-info:#7fa2e8;--st-off:#a1aec0;--st-none:#3f3f46;--st-bad:#f97066;
   --danger:#f04438;--danger-bg:#2a1210;--danger-line:#7a271a;
   --warn-bg:#2b2110;--warn-line:#5c4515;--warn-fg:#f6c86a;
   --ok-bg:#0f2a1b;--ok-line:#1f5c3a;--ok-fg:#7ee2a8;
-  --out:#b794f4;--hatch:#232327;
-  --c1:#7fa2e8;--c2:#f6a06a;--c3:#4fd1c5;--c4:#f6c86a;--c5:#b794f4;--c6:#a1aec0;
-  --grid:#2e2e33;--axis:#a1a1aa;
+  --out:#b794f4;
+  --c1:#7fa2e8;--c2:#f6a06a;--c3:#4fd1c5;--c4:#f6c86a;--c5:#b794f4;--c6:#a1aec0;--c7:#f472b6;--c8:#4ade80;
   --sh-card:0 0 0 1px rgba(255,255,255,.08),0 1px 2px rgba(0,0,0,.4);
   --sh-menu:0 0 0 1px rgba(255,255,255,.1),0 16px 40px -8px rgba(0,0,0,.7);
 }}
 :root[data-theme=dark]{
   --ink:#f4f4f5;--ink-2:#d4d4d8;--ink-3:#a1a1aa;--ink-4:#71717a;
-  --line:#2e2e33;--line-2:#232327;--line-3:#3f3f46;--bg:#111113;--bg-2:#18181b;
+  --line:#2e2e33;--line-2:#1f1f23;--line-3:#3f3f46;--bg:#111113;--bg-2:#18181b;
   --primary:#f4f4f5;--on-primary:#111113;--link:#7fa2e8;
   --st-run:#3dd68c;--st-wait:#f6c86a;--st-info:#7fa2e8;--st-off:#a1aec0;--st-none:#3f3f46;--st-bad:#f97066;
   --danger:#f04438;--danger-bg:#2a1210;--danger-line:#7a271a;
   --warn-bg:#2b2110;--warn-line:#5c4515;--warn-fg:#f6c86a;
   --ok-bg:#0f2a1b;--ok-line:#1f5c3a;--ok-fg:#7ee2a8;
-  --out:#b794f4;--hatch:#232327;
-  --c1:#7fa2e8;--c2:#f6a06a;--c3:#4fd1c5;--c4:#f6c86a;--c5:#b794f4;--c6:#a1aec0;
-  --grid:#2e2e33;--axis:#a1a1aa;
+  --out:#b794f4;
+  --c1:#7fa2e8;--c2:#f6a06a;--c3:#4fd1c5;--c4:#f6c86a;--c5:#b794f4;--c6:#a1aec0;--c7:#f472b6;--c8:#4ade80;
   --sh-card:0 0 0 1px rgba(255,255,255,.08),0 1px 2px rgba(0,0,0,.4);
   --sh-menu:0 0 0 1px rgba(255,255,255,.1),0 16px 40px -8px rgba(0,0,0,.7);
 }
-@media (prefers-reduced-motion:reduce){:root{--dur:0ms}}
+@media (prefers-reduced-motion:reduce){:root{--dur:0ms}*{animation:none!important}}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);font:400 13px/20px var(--font);-webkit-font-smoothing:antialiased}
-body{min-height:100vh}
 b,strong{font-weight:500}
-button{font:inherit;color:inherit}
-:focus-visible{outline:2px solid var(--link);outline-offset:1px}
+button,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--link);outline-offset:2px}
 .mono{font-family:var(--mono);font-size:12px}
 .num{font-variant-numeric:tabular-nums}
-.mute{color:var(--ink-3)}.mute4{color:var(--ink-4)}
 .label{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 *::-webkit-scrollbar{width:10px;height:10px}*::-webkit-scrollbar-thumb{background:color-mix(in oklab,var(--ink-4) 40%,transparent);border:2px solid transparent;background-clip:padding-box;border-radius:6px}*::-webkit-scrollbar-track{background:transparent}
 
-/* top bar */
-.top{position:sticky;top:0;z-index:5;height:49px;border-bottom:1px solid var(--line);background:color-mix(in oklab,var(--bg) 92%,transparent);backdrop-filter:blur(8px);display:flex;align-items:center;gap:10px;padding:0 16px}
+/* top */
+.top{position:sticky;top:0;z-index:5;height:49px;border-bottom:1px solid var(--line);background:color-mix(in oklab,var(--bg) 90%,transparent);backdrop-filter:blur(8px);display:flex;align-items:center;gap:10px;padding:0 16px}
 .brand{display:flex;align-items:center;gap:8px;font-weight:500;font-size:14px}
 .mark{width:22px;height:22px;border-radius:6px;background:var(--primary);color:var(--on-primary);display:grid;place-items:center;font:500 11px/1 var(--mono)}
 .chip{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 9px;border-radius:999px;font-size:12px;box-shadow:inset 0 0 0 1px var(--line);color:var(--ink-2);white-space:nowrap}
 .chip.warn{background:var(--warn-bg);box-shadow:inset 0 0 0 1px var(--warn-line);color:var(--warn-fg)}
 .chip.ok{background:var(--ok-bg);box-shadow:inset 0 0 0 1px var(--ok-line);color:var(--ok-fg)}
 .chip.bad{background:var(--danger-bg);box-shadow:inset 0 0 0 1px var(--danger-line);color:var(--danger)}
-.chip .mono{font-size:11px}
 .spacer{flex:1}
 .iconbtn{width:32px;height:32px;border:0;background:transparent;border-radius:var(--r-btn);display:grid;place-items:center;color:var(--ink-2);cursor:pointer}
 .iconbtn:hover{background:var(--line-2)}
-.hide-sm{}
-@media (max-width:640px){.hide-sm{display:none}}
-
-/* dots */
 .dot{display:inline-block;width:7px;height:7px;border-radius:2px;flex:none;background:var(--st-none)}
-.dot.run{background:var(--st-run)}.dot.wait{background:var(--st-wait)}.dot.info{background:var(--st-info)}.dot.off{background:var(--st-off)}.dot.bad{background:var(--st-bad)}.dot.out{background:var(--out)}
-.live .dot{border-radius:999px}
+.live .dot{border-radius:999px;background:currentColor}
 .live.on .dot{animation:pulse 2s var(--ease) infinite}
-@keyframes pulse{50%{opacity:.35}}
+@keyframes pulse{50%{opacity:.3}}
+@media (max-width:600px){.hide-sm{display:none}}
 
-/* page */
-main{max-width:1440px;margin:0 auto;padding:20px 16px 48px;container-type:inline-size}
-@media (min-width:768px){main{padding:24px 32px 64px}}
-.head{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 16px;margin-bottom:16px}
-.head h1{margin:0;font:500 20px/28px var(--font);letter-spacing:-.01em}
-.head p{margin:2px 0 0;color:var(--ink-3)}
-.seg{display:inline-flex;padding:2px;border-radius:8px;background:var(--line-2);gap:2px}
-.seg button{border:0;background:transparent;height:26px;padding:0 10px;border-radius:6px;cursor:pointer;color:var(--ink-3);font-size:12.5px}
-.seg button[aria-pressed=true]{background:var(--bg);color:var(--ink);box-shadow:var(--sh-card)}
+main{max-width:1320px;margin:0 auto;padding:28px 16px 64px;container-type:inline-size}
+@media (min-width:768px){main{padding:40px 40px 80px}}
 
-.card{background:var(--bg);border-radius:var(--r-card);box-shadow:var(--sh-card)}
-.card-h{display:flex;align-items:center;gap:8px;padding:12px 16px;min-height:48px}
-.card-h h2{margin:0;font:500 14px/20px var(--font)}
-.card-h .spacer{flex:1}
-.section-label{margin:24px 0 8px;display:flex;gap:8px;align-items:center}
-
-/* KPI */
-.kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-@container (min-width:720px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@container (min-width:1100px){.kpis{grid-template-columns:repeat(6,minmax(0,1fr))}}
-.kpi{padding:12px 14px 10px;min-width:0}
-.kpi .k{color:var(--ink-2);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.kpi .v{font:500 22px/30px var(--font);letter-spacing:-.02em;font-variant-numeric:tabular-nums;margin-top:2px;display:flex;align-items:baseline;gap:8px}
-.kpi .v small{font:400 12px/1 var(--font);color:var(--ink-3);letter-spacing:0}
-.kpi .s{color:var(--ink-3);font-size:12px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.kpi svg{display:block;width:100%;height:28px;margin-top:6px}
-.kpi.alert .v{color:var(--danger)}
-
-/* attention list */
-.att{list-style:none;margin:0;padding:0}
-.att li{display:flex;align-items:center;gap:12px;padding:12px 16px;border-top:1px solid var(--line-2)}
-.att li:first-child{border-top:0}
-.att .t{min-width:0;flex:1}
-.att .t b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.att .t span{color:var(--ink-3);font-size:12.5px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.att .val{font-family:var(--mono);font-size:12px;color:var(--ink-2);white-space:nowrap}
-.att .dot{margin-top:1px}
-@container (max-width:640px){.att li{flex-wrap:wrap}.att .t b,.att .t span{white-space:normal}.att .t{flex-basis:calc(100% - 24px)}}
+/* story */
+.story{max-width:860px}
+.story h1{margin:0;font:400 26px/36px var(--font);letter-spacing:-.022em;color:var(--ink-3);text-wrap:pretty}
+.story h1 em{font-style:normal;color:var(--ink)}
+.story h1 .k{font-variant-numeric:tabular-nums}
+.story h1 .hot{color:var(--danger)}
+.story h1 .lane-n{color:var(--ink);white-space:nowrap}
+.story h1 .lane-n i{display:inline-block;width:9px;height:9px;border-radius:999px;margin:0 6px 2px 2px;vertical-align:middle}
+@container (max-width:600px){.story h1{font-size:21px;line-height:30px}}
+.sub{margin-top:12px;color:var(--ink-3);display:flex;flex-wrap:wrap;gap:6px 16px}
+.sub span{white-space:nowrap}
+.sub b{color:var(--ink-2)}
+.acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
 
 /* buttons */
-.btn{height:28px;padding:0 10px;border-radius:var(--r-btn);border:0;cursor:pointer;font-size:12.5px;white-space:nowrap;background:var(--bg);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line-3);transition:background var(--dur) var(--ease)}
+.btn{height:30px;padding:0 12px;border-radius:var(--r-btn);border:0;cursor:pointer;font-size:12.5px;white-space:nowrap;background:var(--bg);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line-3);transition:background var(--dur) var(--ease)}
 .btn:hover{background:var(--line-2)}
 .btn.pri{background:var(--primary);color:var(--on-primary);box-shadow:none}
-.btn.pri:hover{opacity:.9}
+.btn.pri:hover{opacity:.88}
+.btn.sm{height:24px;padding:0 8px;font-size:12px}
 .btn.dan{color:var(--danger);box-shadow:inset 0 0 0 1px var(--danger-line)}
 .btn.dan:hover{background:var(--danger-bg)}
 .btn.dan.solid{background:var(--danger);color:#fff;box-shadow:none}
-.btn:disabled{opacity:.5;cursor:default}
-.step{display:inline-flex;align-items:center;border-radius:var(--r-btn);box-shadow:inset 0 0 0 1px var(--line-3);height:28px}
-.step button{border:0;background:transparent;width:26px;height:28px;cursor:pointer;color:var(--ink-2)}
-.step button:hover{background:var(--line-2)}
-.step span{min-width:22px;text-align:center;font:500 12px var(--mono)}
-.confirm{display:inline-flex;gap:6px;align-items:center;font-size:12.5px}
+.btn:disabled{opacity:.45;cursor:default}
+.step{display:inline-flex;align-items:center;border-radius:var(--r-btn);box-shadow:inset 0 0 0 1px var(--line-3);height:24px}
+.step button{border:0;background:transparent;width:22px;height:24px;cursor:pointer;color:var(--ink-2);border-radius:var(--r-btn)}
+.step button:hover:not(:disabled){background:var(--line-2)}
+.step button:disabled{opacity:.35;cursor:default}
+.step span{min-width:20px;text-align:center;font:500 11.5px var(--mono)}
 
-/* layout grid */
-.grid{display:grid;gap:16px;margin-top:16px}
-@container (min-width:1100px){.grid{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}}
-.col{display:grid;gap:16px;align-content:start;min-width:0}
-
-/* tables */
-.tbl{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
-.tbl th{font:400 10.5px/16px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);text-align:left;padding:8px 12px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--bg-2);white-space:nowrap}
-.tbl td{padding:10px 12px;border-bottom:1px solid var(--line-2);vertical-align:top}
-.tbl tr:last-child td{border-bottom:0}
-.tbl td.r,.tbl th.r{text-align:right;white-space:nowrap}
-.tbl td.mono{white-space:nowrap}
-.tbl td:first-child,.tbl th:first-child{padding-left:16px}.tbl td:last-child,.tbl th:last-child{padding-right:16px}
-.scroll{overflow:auto;max-height:520px}
-.cmd{font-family:var(--mono);font-size:12px;color:var(--ink-2);display:block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cmd:focus,.cmd:hover{white-space:normal;word-break:break-all;overflow:visible}
-.lane{display:inline-flex;align-items:center;gap:6px;font-weight:500;white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis}
-.lane i{width:8px;height:8px;border-radius:999px;flex:none}
-.tag{display:inline-flex;align-items:center;height:18px;padding:0 6px;border-radius:var(--r-tag);font:400 10.5px/1 var(--mono);letter-spacing:.04em;background:var(--line-2);color:var(--ink-2);margin-left:4px;vertical-align:1px;white-space:nowrap}
-.tag.warn{background:var(--warn-bg);color:var(--warn-fg)}.tag.bad{background:var(--danger-bg);color:var(--danger)}.tag.ok{background:var(--ok-bg);color:var(--ok-fg)}
-.why{display:flex;gap:6px;align-items:flex-start;color:var(--ink-2);font-size:12.5px;line-height:18px}
-.why .dot{margin-top:6px}
-.why b{font-weight:500;color:var(--ink)}
-.why+.why{margin-top:4px}
-.bypass{margin-top:6px;font-size:12px;color:var(--ink-3)}
-.bypass .bar{height:3px;border-radius:2px;background:var(--line-2);margin-top:4px;overflow:hidden;max-width:220px}
-.bypass .bar i{display:block;height:100%;background:var(--st-wait)}
-.empty{padding:28px 16px;text-align:center;color:var(--ink-3)}
-.empty b{display:block;color:var(--ink);font-weight:500;margin-bottom:2px}
-.cell-sub{color:var(--ink-3);font-size:12px}
-
-/* machines */
-.mach{padding:14px 16px;border-top:1px solid var(--line-2)}
-.mach:first-of-type{border-top:0}
-.mach-h{display:flex;align-items:center;gap:8px;margin-bottom:10px}
-.mach-h b{font-size:13.5px}
-.mach-h .spacer{flex:1}
-.meter{margin-top:8px}
-.meter .row{display:flex;justify-content:space-between;font-size:12px;color:var(--ink-3)}
-.meter .row b{color:var(--ink-2)}
-.bar{position:relative;height:8px;border-radius:4px;background:var(--line-2);overflow:hidden;margin-top:4px}
-.bar .used{position:absolute;inset:0 auto 0 0;background:var(--ink-4)}
-.bar .rsv{position:absolute;top:0;bottom:0;background:repeating-linear-gradient(135deg,var(--st-wait) 0 3px,transparent 3px 6px);opacity:.8}
-.bar .need{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink)}
-.bar.load .used{background:var(--st-info)}
-.bar.hot .used{background:var(--st-bad)}
-.slots{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
-.slot{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 8px;border-radius:var(--r-btn);font:400 11.5px/1 var(--mono);box-shadow:inset 0 0 0 1px var(--line);color:var(--ink-3);max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-.slot.held{color:var(--ink);box-shadow:inset 0 0 0 1px var(--line-3);background:var(--bg-2)}
-.slot.outside{color:var(--out);box-shadow:inset 0 0 0 1px color-mix(in oklab,var(--out) 40%,transparent)}
-.admits{margin-top:10px;display:flex;gap:6px;align-items:flex-start;font-size:12.5px;color:var(--ink-2)}
-.admits .dot{margin-top:6px}
-
-/* outside */
-.out-head{padding:0 16px 12px;color:var(--ink-2);font-size:13px;line-height:20px}
-.out-head b{color:var(--ink)}
-.obars{padding:0 16px 14px;display:grid;gap:9px}
-.obar .row{display:flex;justify-content:space-between;gap:8px;font-size:12.5px}
-.obar .row span:first-child{font-family:var(--mono);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.obar .row span:last-child{color:var(--ink-3);white-space:nowrap;font-variant-numeric:tabular-nums}
-.obar .bar{height:6px;margin-top:3px}
-.obar .bar .used{background:var(--out)}
-.obar.inq .bar .used{background:var(--st-run)}
-.legend{display:flex;gap:14px;flex-wrap:wrap;padding:0 16px 14px;font-size:12px;color:var(--ink-3)}
+/* section header */
+.sec{display:flex;align-items:center;gap:12px;margin:44px 0 12px;flex-wrap:wrap}
+.sec h2{margin:0;font:500 15px/22px var(--font)}
+.sec .spacer{flex:1}
+.seg{display:inline-flex;padding:2px;border-radius:8px;background:var(--line-2);gap:2px}
+.seg button{border:0;background:transparent;height:24px;padding:0 9px;border-radius:6px;cursor:pointer;color:var(--ink-3);font-size:12px}
+.seg button[aria-pressed=true]{background:var(--bg);color:var(--ink);box-shadow:var(--sh-card)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink-3)}
 .legend span{display:inline-flex;gap:6px;align-items:center}
+.sw{display:inline-block;width:18px;height:8px;border-radius:2px;background:var(--ink-3)}
+.sw.wait{background:repeating-linear-gradient(135deg,var(--ink-3) 0 1.5px,transparent 1.5px 4px);box-shadow:inset 0 0 0 1px color-mix(in oklab,var(--ink-3) 45%,transparent)}
 
-/* insights */
-.ins{display:grid;gap:16px;margin-top:16px}
-@container (min-width:1100px){.ins{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}}
-.chart{padding:4px 16px 14px}
-.chart svg{display:block;width:100%;height:200px;overflow:visible}
-.chart text{font:400 10.5px var(--mono);fill:var(--axis)}
+/* flow */
+.flow{border-radius:var(--r-card);box-shadow:var(--sh-card);background:var(--bg);overflow:hidden}
+.frow{display:grid;grid-template-columns:168px minmax(0,1fr) 300px;align-items:center;gap:0 16px;padding:0 16px;min-height:44px;border-top:1px solid var(--line-2)}
+.frow:first-child{border-top:0}
+.frow.idle .who{color:var(--ink-3)}
+.frow.active{background:linear-gradient(90deg,transparent,color-mix(in oklab,var(--line-2) 60%,transparent))}
+@container (max-width:860px){.frow{grid-template-columns:120px minmax(0,1fr);padding:8px 12px}.frow .st{grid-column:1/-1;padding:4px 0 2px}}
+.who{display:flex;align-items:center;gap:8px;min-width:0;font-weight:500}
+.who i{width:9px;height:9px;border-radius:999px;flex:none}
+.who span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.track{position:relative;height:28px}
+.track::before{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:var(--line-2)}
+.seg-w,.seg-r{position:absolute;top:8px;height:12px;border-radius:3px;min-width:2px}
+.seg-w{background:repeating-linear-gradient(135deg,var(--c) 0 1.5px,transparent 1.5px 4.5px);box-shadow:inset 0 0 0 1px color-mix(in oklab,var(--c) 45%,transparent);opacity:.9}
+.seg-r{background:var(--c)}
+.seg-r.remote{background:color-mix(in oklab,var(--c) 35%,transparent);box-shadow:inset 0 0 0 1.5px var(--c)}
+.seg-r.fail{box-shadow:inset -3px 0 0 var(--st-bad)}
+.seg-w.live{animation:breathe 2.4s var(--ease) infinite}
+@keyframes breathe{50%{opacity:.45}}
+.mk{position:absolute;top:50%;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:999px;display:grid;place-items:center;font:600 9.5px/1 var(--font);color:#fff;box-shadow:0 0 0 2px var(--bg)}
+.mk.cache{background:var(--st-run)}.mk.gave{background:var(--st-bad)}.mk.cancel{background:var(--st-off)}.mk.forced{background:var(--st-wait);color:#1a1a1a}
+.legend .mk{position:static;margin:0;box-shadow:none}
+.now{position:absolute;top:-6px;bottom:-6px;right:0;width:0;border-right:1.5px solid var(--ink)}
+.st{font-size:12.5px;color:var(--ink-2);display:flex;align-items:center;gap:8px;min-width:0}
+.st .txt{min-width:0;flex:1;line-height:17px}
+.st .txt b{color:var(--ink)}
+.st .txt>:first-child,.st .txt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.st .txt small{display:block;color:var(--ink-3);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.st .why{color:var(--warn-fg)}
+.axis{display:grid;grid-template-columns:168px minmax(0,1fr) 300px;gap:0 16px;padding:8px 16px 10px;border-top:1px solid var(--line)}
+@container (max-width:860px){.axis{grid-template-columns:120px minmax(0,1fr);padding:8px 12px}}
+.axis .ticks{position:relative;height:14px;font:400 10.5px/14px var(--mono);color:var(--ink-4)}
+.axis .ticks span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.axis .ticks span.nowl{transform:translateX(-100%);color:var(--ink)}
+.more{padding:10px 16px;color:var(--ink-3);font-size:12.5px;border-top:1px solid var(--line-2)}
+.empty{padding:36px 16px;text-align:center;color:var(--ink-3)}
+.empty b{display:block;color:var(--ink);font-weight:500;margin-bottom:2px}
+.confirm{display:inline-flex;gap:6px;align-items:center}
 
-.filter{height:28px;border-radius:var(--r-btn);border:0;box-shadow:inset 0 0 0 1px var(--line-3);background:var(--bg);color:var(--ink);padding:0 8px;font:inherit;font-size:12.5px;max-width:180px}
+/* capacity */
+.caps{display:grid;gap:10px}
+.cap{display:grid;grid-template-columns:168px minmax(0,1fr) 300px;gap:0 16px;align-items:center;padding:12px 16px;border-radius:var(--r-card);box-shadow:var(--sh-card)}
+@container (max-width:860px){.cap{grid-template-columns:1fr;gap:8px;padding:12px}}
+.cap .name{display:flex;align-items:center;gap:8px;font-weight:500}
+.cap .name .tag{margin:0}
+.bar{position:relative;height:14px;border-radius:4px;background:var(--line-2);display:flex}
+.bar>span{height:100%;flex:none}
+.bar>span:first-child{border-radius:4px 0 0 4px}
+.bar .o{background:color-mix(in oklab,var(--out) 70%,transparent)}
+.bar .u{background:var(--ink-4);opacity:.55}
+.bar .rv{background:repeating-linear-gradient(135deg,var(--st-wait) 0 2px,transparent 2px 5px)}
+.bar .need{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink);border-radius:1px}
+.cap .meta{font-size:12.5px;color:var(--ink-3);line-height:18px}
+.cap .meta b{color:var(--ink)}
+.slots{display:inline-flex;gap:3px;vertical-align:-1px;margin-left:2px}
+.slots i{width:9px;height:9px;border-radius:2px;box-shadow:inset 0 0 0 1px var(--line-3)}
+.slots i.outside{background:color-mix(in oklab,var(--out) 70%,transparent);box-shadow:none}
+.cap.down{opacity:.75}
+.cap.down .bar{background:repeating-linear-gradient(135deg,var(--line-2) 0 4px,transparent 4px 8px)}
 
-/* states */
-.stale main{opacity:.6;transition:opacity 300ms}
-.gate{max-width:480px;margin:12vh auto;padding:28px;text-align:center}
-.gate h1{font:500 20px/28px var(--font);margin:12px 0 6px}
+/* history */
+details.hist{margin-top:44px;border-radius:var(--r-card);box-shadow:var(--sh-card)}
+details.hist summary{cursor:pointer;padding:14px 16px;display:flex;gap:12px;align-items:center;list-style:none}
+details.hist summary::-webkit-details-marker{display:none}
+details.hist summary h2{margin:0;font:500 15px/22px var(--font)}
+details.hist summary .chev{transition:transform var(--dur) var(--ease);color:var(--ink-3)}
+details.hist[open] summary .chev{transform:rotate(90deg)}
+.filter{height:28px;border-radius:var(--r-btn);border:0;box-shadow:inset 0 0 0 1px var(--line-3);background:var(--bg);padding:0 8px;font-size:12.5px;max-width:180px}
+.scroll{overflow:auto;max-height:480px}
+.tbl{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.tbl th{font:400 10.5px/16px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);text-align:left;padding:8px 12px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--bg-2);white-space:nowrap;position:sticky;top:0}
+.tbl td{padding:9px 12px;border-bottom:1px solid var(--line-2);vertical-align:top}
+.tbl td.r,.tbl th.r{text-align:right;white-space:nowrap}
+.tbl td:first-child,.tbl th:first-child{padding-left:16px}.tbl td:last-child,.tbl th:last-child{padding-right:16px}
+.cmd{font-family:var(--mono);font-size:12px;color:var(--ink-2);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cmd:focus,.cmd:hover{white-space:normal;word-break:break-all}
+.tag{display:inline-flex;align-items:center;height:18px;padding:0 6px;border-radius:4px;font:400 10.5px/1 var(--mono);background:var(--line-2);color:var(--ink-2);margin-right:4px;white-space:nowrap}
+.tag.warn{background:var(--warn-bg);color:var(--warn-fg)}.tag.bad{background:var(--danger-bg);color:var(--danger)}.tag.ok{background:var(--ok-bg);color:var(--ok-fg)}
+
+.stale main{opacity:.55;transition:opacity 300ms}
+.gate{max-width:460px;margin:14vh auto;padding:32px;text-align:center;border-radius:var(--r-card);box-shadow:var(--sh-card)}
+.gate h1{font:500 20px/28px var(--font);margin:14px 0 6px}
 .gate p{color:var(--ink-3);margin:0}
 .gate code{font-family:var(--mono);font-size:12px;background:var(--line-2);padding:2px 6px;border-radius:4px}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#18181b;color:#fafafa;padding:10px 16px;border-radius:8px;box-shadow:var(--sh-menu);font-size:13px;z-index:20;max-width:calc(100% - 32px)}
 .toast.bad{background:var(--danger);color:#fff}
-.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 </style>
 </head>
 <body>
@@ -234,11 +218,10 @@ main{max-width:1440px;margin:0 auto;padding:20px 16px 48px;container-type:inline
   <div class="spacer"></div>
   <span class="chip live" id="live"><span class="dot"></span><span id="livetxt">connecting</span></span>
   <button class="iconbtn" id="theme" aria-label="Toggle theme" title="Toggle theme">
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="5.5"/><path d="M8 2.5v11" /><path d="M8 2.5a5.5 5.5 0 0 1 0 11z" fill="currentColor" stroke="none"/></svg>
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M8 2.5a5.5 5.5 0 0 1 0 11z" fill="currentColor" stroke="none"/></svg>
   </button>
 </header>
 <div id="app"></div>
-<div class="sr" aria-live="polite" id="announce"></div>
 <script>
 "use strict";
 /* ───────── helpers ───────── */
@@ -247,217 +230,187 @@ const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
 const sess={get(k){try{return sessionStorage.getItem(k)}catch(e){return null}},set(k,v){try{sessionStorage.setItem(k,v)}catch(e){}}};
 function dur(s){s=Math.max(0,Math.round(s));if(s<60)return s+"s";if(s<3600){const m=Math.floor(s/60),r=s%60;return m+"m"+(r?" "+String(r).padStart(2,"0")+"s":"")}const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h+"h "+String(m).padStart(2,"0")+"m"}
-function mb(v){if(!v)return "0 MB";return v>=1024?(v/1024).toFixed(v>=10240?0:1)+" GB":Math.round(v)+" MB"}
-function cores(p){const c=p/100;return (c>=10?c.toFixed(0):c.toFixed(1))+(c===1?" core":" cores")}
-const PAL=["--c1","--c2","--c3","--c4","--c5","--c6"];
-function laneColor(l){let h=0;for(const ch of String(l))h=(h*31+ch.charCodeAt(0))>>>0;return `var(${PAL[h%PAL.length]})`}
-const lane=l=>`<span class="lane" title="${esc(l)}"><i style="background:${laneColor(l)}"></i>${esc(l)}</span>`;
-function reasonTone(r){if(r==="")return "run";if(/unreachable/.test(r))return "bad";if(/paused/.test(r))return "off";if(/^behind/.test(r))return "none";return "wait"}
-function humanReason(r){
-  if(r==="")return "nothing blocks it: starts on the next poll";
-  return r.replace(/^RAM (\d+) MB \(minus (\d+) MB held for just-started jobs\) < (\d+) MB needed$/,(_,f,h,n)=>`RAM ${mb(+f)} free, ${mb(+h)} held for jobs that just started; needs ${mb(+n)}`)
-          .replace(/^RAM (\d+) MB < (\d+) MB needed \(job (\d+) \+ reserve (\d+)\)$/,(_,f,n,j,r2)=>`RAM ${mb(+f)} free; needs ${mb(+n)} (job ${mb(+j)} + reserve ${mb(+r2)})`)
-          .replace(/^load ([\d.]+) >= ([\d.]+) .*$/,(_,l,m)=>`load ${l} over the limit of ${(+m).toFixed(0)}`)
-          .replace(/^paused.*$/,"machine paused")}
-function sparkPath(vals,w,h){if(!vals.length)return "";const mx=Math.max(...vals,1),st=vals.length>1?w/(vals.length-1):0;return vals.map((v,i)=>(i?"L":"M")+(i*st).toFixed(1)+","+(h-2-(v/mx)*(h-4)).toFixed(1)).join("")}
-function spark(vals,color){const p=sparkPath(vals,200,28);return `<svg viewBox="0 0 200 28" preserveAspectRatio="none" aria-hidden="true"><path d="${p} L200,28 L0,28 Z" fill="${color}" opacity=".08"/><path d="${p}" fill="none" stroke="${color}" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg>`}
+function ago(ms){return dur((Date.now()-ms)/1000)+" ago"}
+function mb(v){v=Math.max(0,v||0);return v>=1024?(v/1024).toFixed(v>=10240?0:1)+" GB":Math.round(v)+" MB"}
+function cores(p){const c=p/100;return (c>=10?c.toFixed(0):c.toFixed(1))+(Math.abs(c-1)<.05?" core":" cores")}
+const PAL=["--c1","--c2","--c3","--c4","--c5","--c6","--c7","--c8"];
+function laneColor(l){let h=2166136261;for(const ch of String(l)){h^=ch.charCodeAt(0);h=Math.imul(h,16777619)>>>0}return `var(${PAL[h%PAL.length]})`}
+const plural=(n,w)=>n+" "+(n===1?w:w+"s");
+const hm=t=>{const d=new Date(t);return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")};
 
 /* ───────── state ───────── */
-const S={token:null,demo:false,meta:null,snap:null,at:0,ins:null,hist:null,win:store.get("hq.win")||"1h",laneFilter:"",confirm:null,stale:false,live:false};
+const WINS={"30m":1800,"1h":3600,"6h":21600,"24h":86400};
+const INS={"30m":"1h","1h":"1h","6h":"6h","24h":"24h"};
+const S={token:null,demo:false,meta:null,snap:null,at:0,ins:null,hist:[],win:WINS[store.get("hq.flow")]?store.get("hq.flow"):"30m",laneFilter:"",confirm:null,live:false,histOpen:false};
 const app=$("#app");
 
-/* theme */
 (function(){const t=store.get("hq.theme");if(t)document.documentElement.dataset.theme=t;
- $("#theme").onclick=()=>{const dark=document.documentElement.dataset.theme?document.documentElement.dataset.theme==="dark":matchMedia("(prefers-color-scheme: dark)").matches;const n=dark?"light":"dark";document.documentElement.dataset.theme=n;store.set("hq.theme",n);if(S.snap)render()}})();
-
-/* token */
+ $("#theme").onclick=()=>{const cur=document.documentElement.dataset.theme;const dark=cur?cur==="dark":matchMedia("(prefers-color-scheme: dark)").matches;const n=dark?"light":"dark";document.documentElement.dataset.theme=n;store.set("hq.theme",n)}})();
 (function(){const h=location.hash;const m=h.match(/token=([0-9a-f]+)/);
  if(m){S.token=m[1];sess.set("hq.token",S.token);history.replaceState(null,"",location.pathname)}
- else if(h==="#demo"){S.demo=true}
- else S.token=sess.get("hq.token")})();
+ else if(h==="#demo")S.demo=true;else S.token=sess.get("hq.token")})();
 
 /* ───────── API ───────── */
 async function api(path,opt={}){const r=await fetch("/api/v1/"+path,{...opt,headers:{"Authorization":"Bearer "+S.token,"Content-Type":"application/json"}});
- if(r.status===401){gate("Token rejected","The dashboard was restarted. Open the new link printed by <code>heavyq dash</code>.");throw new Error("401")}
- return r}
-let toastT;function toast(msg,bad){let t=$(".toast");if(!t){t=document.createElement("div");t.className="toast";t.setAttribute("role","status");document.body.appendChild(t)}t.className="toast"+(bad?" bad":"");t.textContent=msg;clearTimeout(toastT);toastT=setTimeout(()=>t.remove(),3500)}
-async function act(path,body,ok){
- if(S.demo){demoAct(path,body);toast(ok);return}
- try{const r=await api(path,{method:"POST",body:JSON.stringify(body||{})});if(r.ok){toast(ok);return}
-  const e=await r.json().catch(()=>({}));toast(e.error||("Request failed ("+r.status+")"),true)}catch(e){if(e.message!=="401")toast("Network error",true)}}
-
-async function stream(){
- for(let delay=1000;;delay=Math.min(delay*2,10000)){
+ if(r.status===401){gate("Token rejected","The dashboard was restarted. Open the new link printed by <code>heavyq dash</code>.");throw new Error("401")}return r}
+let toastT;function toast(msg,bad){let t=$(".toast");if(!t){t=document.createElement("div");t.setAttribute("role","status");document.body.appendChild(t)}t.className="toast"+(bad?" bad":"");t.textContent=msg;clearTimeout(toastT);toastT=setTimeout(()=>t.remove(),3500)}
+async function act(path,body,ok){if(S.demo){demoAct(path,body);toast(ok);return}
+ try{const r=await api(path,{method:"POST",body:JSON.stringify(body||{})});if(r.ok){toast(ok);return}const e=await r.json().catch(()=>({}));toast(e.error||("Request failed ("+r.status+")"),true)}catch(e){if(e.message!=="401")toast("Network error",true)}}
+async function stream(){for(let delay=1000;;delay=Math.min(delay*2,10000)){
   try{const r=await api("stream");const rd=r.body.getReader(),dec=new TextDecoder();let buf="";setLive(true);delay=1000;
    for(;;){const {value,done}=await rd.read();if(done)break;buf+=dec.decode(value,{stream:true});let i;
     while((i=buf.indexOf("\n\n"))>=0){const ev=buf.slice(0,i);buf=buf.slice(i+2);let name="message",data="";
      for(const l of ev.split("\n")){if(l.startsWith("event: "))name=l.slice(7);else if(l.startsWith("data: "))data+=l.slice(6)}
-     if(name==="snapshot"&&data){try{onSnap(JSON.parse(data))}catch(e){}}}}}
-  catch(e){if(e.message==="401")return}
+     if(name==="snapshot"&&data){try{onSnap(JSON.parse(data))}catch(e){}}}}}catch(e){if(e.message==="401")return}
   setLive(false);await new Promise(r=>setTimeout(r,delay))}}
-async function loadInsights(){if(S.demo){S.ins=DEMO.insights;return render()}try{const r=await api("insights?window="+S.win);if(r.ok){S.ins=await r.json();render()}}catch(e){}}
-async function loadHistory(){if(S.demo){S.hist=DEMO.history;return render()}try{const r=await api("history?n=200");if(r.ok){S.hist=(await r.json()).records;render()}}catch(e){}}
+async function loadInsights(){if(S.demo)return;try{const r=await api("insights?window="+INS[S.win]);if(r.ok){S.ins=await r.json();render()}}catch(e){}}
+async function loadHistory(){if(S.demo)return;try{const r=await api("history?n=1000");if(r.ok){S.hist=(await r.json()).records;render()}}catch(e){}}
 function onSnap(s){S.snap=s;S.at=Date.now();render()}
-function setLive(on){S.live=on;S.stale=!on&&!!S.snap;document.body.classList.toggle("stale",S.stale);renderLive()}
-function renderLive(){const el=$("#live");el.classList.toggle("on",S.live);el.className="chip live"+(S.demo?" warn":S.live?" on ok":S.snap?" bad":"");
- const age=S.at?Math.round((Date.now()-S.at)/1000):0;
- $("#livetxt").textContent=S.demo?"demo data":S.live?"live":S.snap?`disconnected · ${dur(age)} old · retrying`:"connecting"}
-
-/* ───────── derived ───────── */
+function setLive(on){S.live=on;document.body.classList.toggle("stale",!on&&!!S.snap);renderLive()}
+function renderLive(){const el=$("#live"),age=S.at?(Date.now()-S.at)/1000:0;
+ el.className="chip live"+(S.demo?" warn":S.live?" on ok":S.snap?" bad":"");
+ $("#livetxt").textContent=S.demo?"demo data":S.live?"live":S.snap?`disconnected · ${dur(age)} old`:"connecting"}
+const canAct=()=>S.demo||(S.meta&&S.meta.control);
 const el=()=>S.at?(Date.now()-S.at)/1000:0;
-function attention(s){
- const out=[],e=el();
- for(const m of s.machines){
-  if(!m.reachable)out.push({tone:"bad",title:`${m.name} is unreachable`,sub:"jobs that may only run there wait; others go elsewhere",val:"",act:null});
-  else if(m.paused)out.push({tone:"off",title:`${m.name} is paused`,sub:"no new jobs start there; running jobs finish",val:"",act:{kind:"resume",m:m.name,label:"Resume"}});}
+
+/* ───────── reasons ───────── */
+function ramShort(r){const m=r.match(/^RAM (\d+) MB(?: \(minus (\d+) MB held[^)]*\))? < (\d+) MB needed/);if(!m)return null;return Math.max(0,+m[3]-(+m[1]-(+(m[2]||0))))}
+function shortWhy(r){if(r==="")return "starts on the next poll";const s=ramShort(r);if(s!==null)return mb(s)+" short on RAM";
+ if(/slots busy/.test(r))return "slots busy";if(/^load/.test(r))return "load over limit";if(/unreachable/.test(r))return "unreachable";if(/paused/.test(r))return "paused";
+ const b=r.match(/^behind (.*)$/);if(b)return "behind "+b[1].replace(/ \(p\d\)/g,"");return r}
+function causeOf(m,r){const s=ramShort(r);if(s!==null)return `<em>${esc(m)}</em> is <em class="k">${mb(s)}</em> short on RAM`;
+ if(/slots busy/.test(r))return `every heavy slot on <em>${esc(m)}</em> is taken`;
+ if(/^load/.test(r))return `<em>${esc(m)}</em> is over its load limit`;
+ if(/unreachable/.test(r))return `<em>${esc(m)}</em> is unreachable`;
+ if(/paused/.test(r))return `<em>${esc(m)}</em> is paused`;return esc(m+": "+r)}
+const laneN=l=>`<span class="lane-n"><i style="background:${laneColor(l)}"></i>${esc(l)}</span>`;
+
+/* ───────── story: the state of the queue as sentences ───────── */
+function story(s){const W=s.waiting.length,R=s.running.length,e=el(),parts=[];
  const head=s.waiting[0];
- if(head){const w=head.wait_s+e;const blocked=Object.values(head.reasons).every(r=>r!=="");
-  if(blocked&&w>60)out.push({tone:"wait",title:`${head.lane} has waited ${dur(w)} at the head of the queue`,sub:humanReason(firstReason(head)),val:"p"+head.prio,act:{kind:"prio",id:head.id,prio:head.prio}})}
- for(const t of s.running)if(t.forced)out.push({tone:"bad",title:`${t.lane} started through the anti-starvation bypass`,sub:"the machine was over its RAM/load limit for "+dur(s.config.force_after_s)+"; consider more slots elsewhere or a smaller job",val:t.machine,act:null});
- const ot=s.cpu&&s.cpu.available?s.cpu.outside_total:null,lm=s.machines.find(m=>m.name==="local");
- if(ot&&lm&&lm.total_mb&&ot.rss_mb/lm.total_mb>.4)out.push({tone:"out",title:`${mb(ot.rss_mb)} of RAM is used outside the queue`,sub:topOutside(s),val:Math.round(ot.rss_mb/lm.total_mb*100)+"% of RAM",act:null});
- if(S.ins&&S.ins.gave_up>0)out.push({tone:"wait",title:`${S.ins.gave_up} job${S.ins.gave_up>1?"s":""} gave up waiting in the last ${S.win}`,sub:"they hit --max-wait or their remote was down: agents saw a failure without running anything",val:"",act:null});
- return out}
-function firstReason(t){for(const r of Object.values(t.reasons))if(r)return r;return ""}
-function topOutside(s){const o=s.cpu.outside[0];return o?`${o.name} ×${o.procs} alone holds ${mb(o.rss_mb)}`:""}
+ if(!W&&!R)parts.push(`<em>All quiet.</em> Nothing runs, nothing waits.`);
+ else if(!W)parts.push(`<em>${plural(R,"job")}</em> running and <em>nobody waits</em>.`);
+ else{const rs=Object.entries(head.reasons);
+  if(rs.some(([,r])=>r===""))parts.push(`<em>${plural(W,"agent")} ${W===1?"waits":"wait"}</em>, and ${laneN(head.lane)} starts on the next poll.`);
+  else{const causes=rs.filter(([,r])=>!/^behind/.test(r)).slice(0,2).map(([m,r])=>causeOf(m,r));
+   parts.push(`<em>${plural(W,"agent")} ${W===1?"waits":"wait"}</em> because ${causes.join(" and ")||"the queue ahead is full"}.`)}}
+ const c=s.cpu,lm=s.machines.find(m=>m.name==="local");
+ if(c&&c.available&&lm&&lm.total_mb){const ot=c.outside_total,top=c.outside[0];
+  if(ot.rss_mb/lm.total_mb>.3&&top)parts.push(`Outside the queue, <em>${top.procs} ${esc(top.name)} process${top.procs===1?"":"es"}</em> hold <em class="k">${mb(top.rss_mb)}</em>${c.outside.length>1?`, everything else <em class="k">${mb(ot.rss_mb-top.rss_mb)}</em>`:""}.`)}
+ if(head&&head.bypass_in_s>=0&&s.config.resource_gate&&Object.values(head.reasons).every(r=>r!==""))
+  {const left=head.bypass_in_s-e;parts.push(left>0?`${laneN(head.lane)} skips the RAM and load checks in <em class="k">${dur(left)}</em>.`:`${laneN(head.lane)} now skips the RAM and load checks.`)}
+ const forced=s.running.filter(t=>t.forced);if(forced.length)parts.push(`${forced.map(t=>laneN(t.lane)).join(", ")} got in through that bypass.`);
+ const down=s.machines.filter(m=>!m.reachable);if(down.length)parts.push(`<span class="hot">${down.map(m=>esc(m.name)).join(", ")} ${down.length>1?"are":"is"} unreachable.</span>`);
+ const i=S.ins,local=s.running.filter(t=>t.machine==="local").length,rem=R-local;
+ const sub=[R?`<span><b>${R}</b> running${rem?` · ${local} local, ${rem} remote`:""}</span>`:"",W?`<span><b>${W}</b> waiting</span>`:"",
+  i?`<span>last ${INS[S.win]}: <b>${i.runs}</b> runs · wait p95 <b>${dur(i.wait_p95_s)}</b> · <b>${i.gave_up}</b> gave up · <b>${i.cache_hits+i.coalesced}</b> didn't need to run</span>`:""].filter(Boolean).join("");
+ const acts=[];
+ if(canAct()){if(head&&head.prio>1&&Object.values(head.reasons).every(r=>r!==""))acts.push(`<button class="btn pri" data-act="prio" data-id="${esc(head.id)}" data-v="${head.prio-1}">Raise ${esc(head.lane)} to p${head.prio-1}</button>`);
+  for(const m of s.machines)if(m.paused)acts.push(`<button class="btn" data-act="resume" data-m="${esc(m.name)}">Resume ${esc(m.name)}</button>`)}
+ return `<section class="story"><h1>${parts.join(" ")}</h1><div class="sub">${sub}</div>${acts.length?`<div class="acts">${acts.join("")}</div>`:""}</section>`}
+
+/* ───────── flow: one row per lane (agent), wait hatched, run solid ───────── */
+function lanesModel(s){const now=Date.now(),t0=now-WINS[S.win]*1000,L=new Map();
+ const get=l=>{if(!L.has(l))L.set(l,{lane:l,segs:[],marks:[],last:0,state:null,lastRec:null});return L.get(l)};
+ const clip=(a,b)=>[Math.max(a,t0),Math.min(b,now)];
+ for(const r of S.hist){const end=Date.parse(r.end);if(!(end>=t0))continue;const run=(r.run_s||0)*1000,rs=end-run,enq=rs-(r.wait_s||0)*1000,x=get(r.lane);
+  const hit=r.cache==="hit"||r.cache==="coalesced";
+  const tip=`${r.cmd}\nwaited ${dur(r.wait_s)}${r.run_s&&!hit?" · ran "+dur(r.run_s):""}${r.machine?" · "+r.machine:""}${r.result?" · "+r.result.replace("_"," "):r.exit?" · exit "+r.exit:""}${r.forced?" · bypass":""}`;
+  if(r.wait_s>.5){const [a,b]=clip(enq,rs);if(b>a)x.segs.push({k:"w",a,b,tip})}
+  if(run>0&&!hit){const [a,b]=clip(rs,end);if(b>a)x.segs.push({k:"r",a,b,tip,remote:!!r.machine&&r.machine!=="local",fail:!r.result&&r.exit!==0})}
+  if(hit)x.marks.push({k:"cache",t:end,g:"✓",tip:(r.cache==="hit"?"cache hit":"shared an identical run")+"\n"+r.cmd});
+  if(r.result==="gave_up")x.marks.push({k:"gave",t:end,g:"✕",tip:"gave up\n"+tip});
+  if(r.result==="cancelled")x.marks.push({k:"cancel",t:end,g:"–",tip:"cancelled\n"+tip});
+  if(r.forced)x.marks.push({k:"forced",t:rs,g:"!",tip:"admitted by the anti-starvation bypass\n"+tip});
+  if(end>=x.last){x.last=end;x.lastRec=r}}
+ s.running.forEach((t,i)=>{const x=get(t.lane),claim=Date.parse(t.claimed_at),since=Date.parse(t.since),tip=`${t.cmd}\nrunning on ${t.machine}/${t.slot}`;
+  if(claim-since>500){const [a,b]=clip(since,claim);if(b>a)x.segs.push({k:"w",a,b,tip})}
+  const [a,b]=clip(claim,now);if(b>a)x.segs.push({k:"r",a,b,tip,remote:t.machine!=="local"});
+  if(t.forced)x.marks.push({k:"forced",t:claim,g:"!",tip:"admitted by the anti-starvation bypass"});
+  x.state={k:"run",t,order:i};x.last=now});
+ s.waiting.forEach(t=>{const x=get(t.lane),[a,b]=clip(Date.parse(t.since),now);if(b>a)x.segs.push({k:"w",a,b,live:true,tip:`${t.cmd}\nwaiting #${t.position}`});
+  if(!x.state)x.state={k:"wait",t,order:t.position};x.last=now});
+ const arr=[...L.values()].filter(x=>x.state||x.segs.length||x.marks.length);
+ const rank=x=>x.state?(x.state.k==="run"?0:1):2;
+ arr.sort((a,b)=>rank(a)-rank(b)||(rank(a)<2?a.state.order-b.state.order:b.last-a.last));
+ return {arr,t0,now}}
+
+function cancelBtn(t){if(!canAct())return "";if(t.cancel_requested)return `<span class="tag warn">stopping…</span>`;
+ if(S.confirm===t.id)return `<span class="confirm"><button class="btn sm dan solid" data-act="cancel" data-id="${esc(t.id)}" id="cf-yes">Cancel job</button><button class="btn sm" data-act="noconfirm">Keep</button></span>`;
+ return `<button class="btn sm dan" data-act="confirm" data-id="${esc(t.id)}" aria-label="Cancel ${esc(t.lane)}" title="Cancel">✕</button>`}
+function status(x){const e=el();
+ if(x.state&&x.state.k==="run"){const t=x.state.t;return `<div class="st"><span class="dot" style="background:var(--st-run)"></span><div class="txt"><b>running ${dur(t.run_s+e)}</b> · <span class="mono">${esc(t.machine)}/${esc(t.slot)}</span><small title="${esc(t.cmd)}">${t.machine==="local"?cores(t.cpu_pct)+" · "+mb(t.rss_mb)+" · ":""}${esc(t.cmd)}</small></div>${cancelBtn(t)}</div>`}
+ if(x.state&&x.state.k==="wait"){const t=x.state.t,rs=Object.values(t.reasons),why=rs.includes("")?"":rs[0]||"";
+  const step=canAct()&&!t.cancel_requested?`<span class="step" role="group" aria-label="Priority of ${esc(t.lane)}"><button data-act="prio" data-id="${esc(t.id)}" data-v="${t.prio-1}" ${t.prio<=1?"disabled":""} aria-label="Raise priority">−</button><span>p${t.prio}</span><button data-act="prio" data-id="${esc(t.id)}" data-v="${t.prio+1}" ${t.prio>=9?"disabled":""} aria-label="Lower priority">+</button></span>`:`<span class="mono">p${t.prio}</span>`;
+  return `<div class="st"><span class="dot" style="background:var(--st-wait)"></span><div class="txt"><b>#${t.position} waiting ${dur(t.wait_s+e)}</b><small class="why" title="${esc(Object.entries(t.reasons).map(([m,r])=>m+": "+(r||"starts on the next poll")).join("\n"))}">${esc(shortWhy(why))}</small></div>${step}${cancelBtn(t)}</div>`}
+ const r=x.lastRec;if(!r)return `<div class="st"></div>`;
+ const what=r.cache==="hit"?"cache hit":r.cache==="coalesced"?"shared a run":r.result==="gave_up"?"gave up":r.result==="cancelled"?"cancelled":r.result==="interrupted"?"interrupted":r.exit?"failed (exit "+r.exit+")":"passed";
+ return `<div class="st"><span class="dot"></span><div class="txt">${esc(what)} ${ago(Date.parse(r.end))}<small title="${esc(r.cmd)}">${esc(r.cmd)}</small></div></div>`}
+function flow(s){const {arr,t0,now}=lanesModel(s),span=now-t0,pc=t=>((t-t0)/span*100).toFixed(3)+"%",wd=(a,b)=>((b-a)/span*100).toFixed(3)+"%";
+ const MAX=16,rows=arr.slice(0,MAX).map(x=>{const c=laneColor(x.lane);
+  const segs=x.segs.map(g=>`<span class="${g.k==="w"?"seg-w":"seg-r"}${g.live?" live":""}${g.remote?" remote":""}${g.fail?" fail":""}" style="left:${pc(g.a)};width:${wd(g.a,g.b)}" title="${esc(g.tip)}"></span>`).join("");
+  const marks=x.marks.filter(m=>m.t>=t0).map(m=>`<span class="mk ${m.k}" style="left:${pc(m.t)}" title="${esc(m.tip)}">${m.g}</span>`).join("");
+  return `<div class="frow${x.state?" active":" idle"}" style="--c:${c}"><div class="who"><i style="background:${c}"></i><span title="${esc(x.lane)}">${esc(x.lane)}</span></div><div class="track">${segs}${marks}<span class="now"></span></div>${status(x)}</div>`}).join("");
+ const step={"30m":300,"1h":600,"6h":3600,"24h":4*3600}[S.win]*1000;let ticks="";
+ for(let t=Math.ceil(t0/step)*step;t<now-step*.4;t+=step)ticks+=`<span style="left:${pc(t)}">${hm(t)}</span>`;
+ ticks+=`<span class="nowl" style="left:100%">now</span>`;
+ return `<div class="sec"><h2>Agents</h2><span class="legend"><span><i class="sw wait"></i>waiting</span><span><i class="sw"></i>running</span><span><i class="mk cache">✓</i>didn't need to run</span><span><i class="mk gave">✕</i>gave up</span><span><i class="mk forced">!</i>bypass</span></span><span class="spacer"></span>
+ <div class="seg" role="group" aria-label="Time window">${Object.keys(WINS).map(w=>`<button data-win="${w}" aria-pressed="${S.win===w}">${w}</button>`).join("")}</div></div>
+ <div class="flow">${arr.length?rows+(arr.length>MAX?`<div class="more">+ ${arr.length-MAX} quieter lanes</div>`:"")+`<div class="axis"><span></span><div class="ticks">${ticks}</div></div>`:`<div class="empty"><b>No activity in the last ${S.win}</b>Heavy commands from your agents draw a line here, one row per lane.</div>`}</div>`}
+
+/* ───────── capacity: what fills each machine, and the room a job needs ───────── */
+function capacity(s){return `<div class="sec"><h2>Machines</h2><span class="legend"><span><i class="sw" style="background:color-mix(in oklab,var(--out) 70%,transparent)"></i>outside the queue</span><span><i class="sw" style="background:var(--c1)"></i>queued jobs</span><span><i class="sw" style="background:repeating-linear-gradient(135deg,var(--st-wait) 0 2px,transparent 2px 5px)"></i>held for jobs that just started</span><span><i class="sw" style="width:2px;background:var(--ink)"></i>a heavy job needs the room right of this</span></span></div>
+ <div class="caps">${s.machines.map(m=>{
+  const ctl=canAct()&&m.reachable?`<button class="btn sm" data-act="${m.paused?"resume":"pause"}" data-m="${esc(m.name)}">${m.paused?"Resume":"Pause"}</button>`:"";
+  const slots=`<span class="slots" aria-label="slots">${m.slots.map(x=>`<i class="${x.state}" title="${esc(x.name)}: ${x.state==="held"?esc(x.lane):x.state==="outside"?"locked outside the queue":"free"}" ${x.state==="held"?`style="background:${laneColor(x.lane)};box-shadow:none"`:""}></i>`).join("")}</span>`;
+  if(!m.reachable)return `<div class="cap down"><div class="name"><span class="dot" style="background:var(--st-bad)"></span>${esc(m.name)}</div><div class="bar"></div><div class="meta"><b>unreachable</b> · jobs that can only run here wait</div></div>`;
+  let bar,meta;const need=m.job_mb+m.reserve_mb;
+  if(m.metrics_known){const total=m.total_mb||Math.max(m.free_mb+m.reserved_mb+need,m.free_mb*1.3),used=Math.max(0,total-m.free_mb);
+   const isLocal=m.name==="local",c=s.cpu&&s.cpu.available&&isLocal?s.cpu:null;
+   const outMB=c?Math.min(c.outside_total.rss_mb,used):0,lanes=isLocal?s.running.filter(t=>t.machine==="local"):[];
+   const laneMB=Math.min(lanes.reduce((a,t)=>a+t.rss_mb,0),used-outMB),rest=Math.max(0,used-outMB-laneMB),pct=v=>(Math.max(0,v)/total*100).toFixed(2)+"%";
+   bar=`<div class="bar" role="img" aria-label="${mb(m.free_mb)} free of ${mb(total)}">${outMB?`<span class="o" style="width:${pct(outMB)}" title="outside the queue: ${mb(outMB)}"></span>`:""}${lanes.map(t=>`<span style="width:${pct(t.rss_mb)};background:${laneColor(t.lane)}" title="${esc(t.lane)}: ${mb(t.rss_mb)}"></span>`).join("")}<span class="u" style="width:${pct(rest)}" title="${c?"system and caches":"in use"}: ${mb(rest)}"></span><span class="rv" style="width:${pct(Math.min(m.reserved_mb,m.free_mb))}" title="held for just-started jobs: ${mb(m.reserved_mb)}"></span><span class="need" style="left:calc(${(Math.max(0,1-need/total)*100).toFixed(2)}% - 1px)" title="a heavy job needs ${mb(need)} free"></span></div>`;
+   const ok=m.admits==="";meta=`<b>${mb(m.free_mb)}</b> free${m.total_mb?" of "+mb(m.total_mb):""}, needs ${mb(need)} · load <b class="num">${m.load1.toFixed(1)}</b>/${m.max_load.toFixed(0)} ${slots}<br><span style="color:${ok&&!m.paused?"var(--ok-fg)":"var(--warn-fg)"}">${m.paused?"paused":ok?"ready for a heavy job":esc(shortWhy(m.admits))}</span>`}
+  else{bar=`<div class="bar"></div>`;meta=`resources not measured here: slots only ${slots}<br>${m.admits===""?"ready":esc(shortWhy(m.admits))}`}
+  return `<div class="cap"><div class="name"><span class="dot" style="background:${m.paused?"var(--st-off)":m.admits===""?"var(--st-run)":"var(--st-wait)"}"></span>${esc(m.name)}${m.paused?'<span class="tag">paused</span>':""}<span class="spacer"></span>${ctl}</div>${bar}<div class="meta">${meta}</div></div>`}).join("")}</div>`}
+
+/* ───────── history ───────── */
+function historyBlock(){const h=S.hist;if(!h.length)return "";const ls=[...new Set(h.map(r=>r.lane))].sort();
+ const rows=h.slice().reverse().filter(r=>!S.laneFilter||r.lane===S.laneFilter).slice(0,100).map(r=>{
+  let tone="ok",txt="passed";if(r.result==="gave_up"){tone="warn";txt="gave up"}else if(r.result==="cancelled"){tone="";txt="cancelled"}else if(r.result==="interrupted"){tone="";txt="interrupted"}else if(r.exit){tone="bad";txt="exit "+r.exit}
+  if(r.cache==="hit"){tone="ok";txt="cache hit"}else if(r.cache==="coalesced"){tone="ok";txt="shared"}
+  return `<tr><td class="mono" style="color:var(--ink-3)">${hm(r.end)}</td><td><span class="who" style="font-weight:400"><i style="background:${laneColor(r.lane)}"></i><span>${esc(r.lane)}</span></span></td><td style="max-width:0;width:40%"><span class="cmd" tabindex="0" title="${esc(r.cmd)}">${esc(r.cmd)}</span></td><td><span class="tag ${tone}">${txt}</span>${r.forced?'<span class="tag warn">bypass</span>':""}</td><td class="mono">${esc(r.machine||"—")}</td><td class="r num">${dur(r.wait_s)}</td><td class="r num">${r.run_s?dur(r.run_s):"—"}</td><td class="r num">${r.max_rss_mb?mb(r.max_rss_mb):"—"}</td></tr>`}).join("");
+ return `<details class="hist" ${S.histOpen?"open":""} id="histd"><summary><svg class="chev" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg><h2>Every run</h2><span class="label">${h.length} recorded</span><span class="spacer"></span>
+ <label class="sr" for="lanef">Filter by lane</label><select class="filter" id="lanef"><option value="">All lanes</option>${ls.map(l=>`<option ${l===S.laneFilter?"selected":""}>${esc(l)}</option>`).join("")}</select></summary>
+ <div class="scroll"><table class="tbl"><thead><tr><th>End</th><th>Lane</th><th>Command</th><th>Result</th><th>Machine</th><th class="r">Wait</th><th class="r">Run</th><th class="r">Peak RAM</th></tr></thead><tbody>${rows}</tbody></table></div></details>`}
 
 /* ───────── render ───────── */
-function gate(title,html){app.innerHTML=`<div class="gate card"><span class="mark" style="margin:auto;width:32px;height:32px;font-size:13px">hq</span><h1>${title}</h1><p>${html}</p></div>`}
-function render(){
- const s=S.snap;if(!s)return;renderLive();
+function gate(t,html){app.innerHTML=`<div class="gate"><span class="mark" style="margin:auto;width:32px;height:32px;font-size:13px">hq</span><h1>${t}</h1><p>${html}</p></div>`}
+function render(){const s=S.snap;if(!s)return;renderLive();
  $("#hostchip").hidden=false;$("#host").textContent=s.host+" · v"+s.version;
  const mc=$("#modechip");mc.hidden=false;
- if(S.demo){mc.className="chip warn";mc.textContent="demo"}
- else if(S.meta&&S.meta.control){mc.className="chip ok";mc.textContent="control"}
- else{mc.className="chip";mc.innerHTML=`read-only<span class="hide-sm mute"> · start with <span class="mono">--control</span> to act</span>`}
- const focus=document.activeElement&&document.activeElement.id;
- const scroll=[...document.querySelectorAll(".scroll")].map(x=>x.scrollTop);
- app.innerHTML=`<main>${pageHead(s)}${kpis(s)}${attentionBlock(s)}<div class="grid"><div class="col">${running(s)}${waiting(s)}${coalesced(s)}</div><div class="col">${machines(s)}${outside(s)}</div></div>${insights()}${recent()}</main>`;
- document.querySelectorAll(".scroll").forEach((x,i)=>x.scrollTop=scroll[i]||0);
- if(focus){const f=document.getElementById(focus);if(f)f.focus()}}
-const canAct=()=>S.demo||(S.meta&&S.meta.control);
-
-function pageHead(s){const m=s.machines.length;return `<div class="head"><div><h1>Queue</h1><p>${m} machine${m>1?"s":""} · gate ${s.config.resource_gate?"on":"off (slots only)"} · bypass after ${dur(s.config.force_after_s)}</p></div><div class="spacer" style="flex:1"></div>
- <div class="seg" role="group" aria-label="Insights window">${["1h","6h","24h","7d"].map(w=>`<button data-win="${w}" aria-pressed="${S.win===w}">${w}</button>`).join("")}</div></div>`}
-
-function kpis(s){const e=el(),i=S.ins,b=i?i.buckets:[];
- const headWait=s.waiting[0]?s.waiting[0].wait_s+e:0;
- const runCores=s.running.filter(t=>t.machine==="local").reduce((a,t)=>a+t.cpu_pct,0);
- const saved=i?i.cache_hits+i.coalesced:0;
- const tiles=[
-  {k:"Running",v:s.running.length,u:"",sub:s.running.length?cores(runCores)+" local":"idle",sp:null},
-  {k:"Waiting",v:s.waiting.length,u:"",sub:s.waiting.length?"head waited "+dur(headWait):"nobody waits",sp:null,alert:headWait>s.config.force_after_s*.66},
-  {k:"Wait p95 · "+S.win,v:i?dur(i.wait_p95_s):"—",u:"",sub:i?"p50 "+dur(i.wait_p50_s)+" · max "+dur(i.wait_max_s):"",sp:b.map(x=>x.wait_p95_s),c:"var(--st-wait)"},
-  {k:"Runs · "+S.win,v:i?i.runs:"—",u:"",sub:i?(i.failed+" failed · "+dur(i.run_s)+" busy"):"",sp:b.map(x=>x.runs),c:"var(--c1)"},
-  {k:"Gave up · "+S.win,v:i?i.gave_up:"—",u:"",sub:i?(i.forced+" forced · "+i.cancelled+" cancelled"):"",sp:b.map(x=>x.gave_up),c:"var(--st-bad)",alert:i&&i.gave_up>0},
-  {k:"Didn't need to run",v:i?saved:"—",u:"",sub:i?(i.cache_hits+" cache hits · "+i.coalesced+" coalesced"):"",sp:null}];
- return `<div class="kpis">${tiles.map(t=>`<div class="card kpi${t.alert?" alert":""}"><div class="k">${esc(t.k)}</div><div class="v num">${esc(t.v)}</div><div class="s">${esc(t.sub)}</div>${t.sp&&t.sp.length?spark(t.sp,t.c):'<svg viewBox="0 0 200 28" aria-hidden="true"></svg>'}</div>`).join("")}</div>`}
-
-function attentionBlock(s){const a=attention(s);
- return `<div class="section-label"><span class="label">Needs attention · ${a.length}</span></div><div class="card">${a.length?`<ul class="att">${a.map(x=>`<li><span class="dot ${x.tone}"></span><div class="t"><b>${esc(x.title)}</b><span>${esc(x.sub)}</span></div>${x.val?`<span class="val">${esc(x.val)}</span>`:""}${attAction(x.act)}</li>`).join("")}</ul>`:`<div class="empty"><b>All clear</b>Every waiting job has a free path, and nothing is starving.</div>`}</div>`}
-function attAction(a){if(!a||!canAct())return "";if(a.kind==="resume")return `<button class="btn pri" data-act="resume" data-m="${esc(a.m)}">Resume</button>`;
- if(a.kind==="prio")return a.prio>1?`<button class="btn pri" data-act="prio" data-id="${esc(a.id)}" data-v="${a.prio-1}">Raise to p${a.prio-1}</button>`:"";return ""}
-
-function cancelCell(t){if(!canAct())return "";
- if(t.cancel_requested)return `<span class="tag warn">stopping…</span>`;
- if(S.confirm===t.id)return `<span class="confirm">Cancel? <button class="btn dan solid" data-act="cancel" data-id="${esc(t.id)}" id="cf-yes">Yes</button><button class="btn" data-act="noconfirm">No</button></span>`;
- return `<button class="btn dan" data-act="confirm" data-id="${esc(t.id)}" aria-label="Cancel ${esc(t.lane)}">Cancel</button>`}
-
-function running(s){const e=el();
- const rows=s.running.map(t=>`<tr><td>${lane(t.lane)}<div class="cell-sub">p${t.prio}${t.light?'<span class="tag">light</span>':""}${t.forced?'<span class="tag bad">forced</span>':""}${t.machine!=="local"?'<span class="tag">remote</span>':""}</div></td>
-  <td style="max-width:0;width:40%"><span class="cmd" tabindex="0" title="${esc(t.cmd)}">${esc(t.cmd)}</span><div class="cell-sub">waited ${dur(t.wait_s)}</div></td>
-  <td class="mono">${esc(t.machine)}<span class="mute">/${esc(t.slot)}</span></td>
-  <td class="r num">${dur(t.run_s+e)}</td>
-  <td class="r num">${t.machine==="local"?cores(t.cpu_pct):"—"}<div class="cell-sub">${t.rss_mb?mb(t.rss_mb):""}</div></td>
-  <td class="r">${cancelCell(t)}</td></tr>`).join("");
- return `<div class="card"><div class="card-h"><span class="dot run"></span><h2>Running</h2><span class="mute num">${s.running.length}</span></div>
- ${s.running.length?`<div class="scroll"><table class="tbl"><thead><tr><th>Lane</th><th>Command</th><th>Where</th><th class="r">Time</th><th class="r">CPU · RAM</th><th class="r"><span class="sr">Actions</span></th></tr></thead><tbody>${rows}</tbody></table></div>`:`<div class="empty"><b>Nothing running</b>Heavy commands from your agents appear here.</div>`}</div>`}
-
-function waiting(s){const e=el();
- const rows=s.waiting.map(t=>{const rs=Object.entries(t.reasons);const shown=t.position===1?rs:rs.filter(([,r])=>r!=="").slice(0,1);
-  const why=(shown.length?shown:rs).map(([m,r])=>`<div class="why"><span class="dot ${reasonTone(r)}"></span><span><b>${esc(m)}</b> · ${esc(humanReason(r))}</span></div>`).join("");
-  let by="";if(t.bypass_in_s>=0&&s.config.resource_gate){const left=Math.max(0,t.bypass_in_s-e),pct=100-left/s.config.force_after_s*100;
-   by=`<div class="bypass">${left>0?`gate bypass in <b class="num">${dur(left)}</b>`:"gate bypass applies now"}<div class="bar"><i style="width:${Math.min(100,Math.max(0,pct)).toFixed(1)}%"></i></div></div>`}
-  const prio=canAct()&&!t.cancel_requested?`<span class="step" role="group" aria-label="Priority of ${esc(t.lane)}"><button data-act="prio" data-id="${esc(t.id)}" data-v="${Math.max(1,t.prio-1)}" aria-label="Raise priority" ${t.prio<=1?"disabled":""}>−</button><span>p${t.prio}</span><button data-act="prio" data-id="${esc(t.id)}" data-v="${Math.min(9,t.prio+1)}" aria-label="Lower priority" ${t.prio>=9?"disabled":""}>+</button></span>`:`<span class="mono">p${t.prio}</span>`;
-  return `<tr><td class="num mute">${t.position}</td><td>${lane(t.lane)}<div class="cell-sub">${esc(t.target)}${t.light?'<span class="tag">light</span>':""}</div></td>
-  <td style="max-width:0;width:34%"><span class="cmd" tabindex="0" title="${esc(t.cmd)}">${esc(t.cmd)}</span><div class="cell-sub num">waited ${dur(t.wait_s+e)}</div></td>
-  <td style="min-width:220px">${why}${by}</td><td>${prio}</td><td class="r">${cancelCell(t)}</td></tr>`}).join("");
- return `<div class="card"><div class="card-h"><span class="dot wait"></span><h2>Waiting</h2><span class="mute num">${s.waiting.length}</span><span class="spacer"></span><span class="label">turn order</span></div>
- ${s.waiting.length?`<div class="scroll"><table class="tbl"><thead><tr><th>#</th><th>Lane</th><th>Command</th><th>Why it waits</th><th>Prio</th><th class="r"><span class="sr">Actions</span></th></tr></thead><tbody>${rows}</tbody></table></div>`:`<div class="empty"><b>Nobody waits</b>Every job got a slot right away.</div>`}</div>`}
-
-function coalesced(s){if(!s.coalesced.length)return "";const e=el();
- return `<div class="card"><div class="card-h"><span class="dot info"></span><h2>Sharing one result</h2><span class="mute num">${s.coalesced.length}</span></div><ul class="att">${s.coalesced.map(g=>{const n=g.followers.length+(g.leader?1:0);const cmd=(g.leader||g.followers[0]).cmd;
-  return `<li><span class="dot info"></span><div class="t"><b>${n} runs share one result</b><span class="mono">${esc(cmd)}</span><span>${g.leader?`leader ${esc(g.leader.lane)} · running ${dur((Date.now()-Date.parse(g.leader.since))/1000)}`:"leader finishing"} · waiting: ${g.followers.map(f=>esc(f.lane)).join(", ")}</span></div></li>`}).join("")}</ul></div>`}
-
-function machines(s){return `<div class="card"><div class="card-h"><h2>Machines</h2><span class="spacer"></span><span class="label">heavy job needs RAM + slot</span></div>${s.machines.map(m=>{
- const tone=!m.reachable?"bad":m.paused?"off":m.admits===""?"run":"wait";
- const ctl=canAct()&&m.reachable?`<button class="btn" data-act="${m.paused?"resume":"pause"}" data-m="${esc(m.name)}">${m.paused?"Resume":"Pause"}</button>`:"";
- let body="";
- if(!m.reachable)body=`<div class="admits"><span class="dot bad"></span>unreachable: probes fail; jobs that can only run here wait or give up after the remote-down limit</div>`;
- else{
-  if(m.metrics_known){const total=m.total_mb||Math.max(m.free_mb+m.job_mb+m.reserve_mb,m.free_mb*1.25);
-   const used=Math.max(0,total-m.free_mb),need=m.job_mb+m.reserve_mb;
-   const usedPct=used/total*100,rsvPct=Math.min(m.reserved_mb/total*100,100-usedPct),needPos=Math.max(0,100-need/total*100);
-   const loadPct=Math.min(100,m.load1/Math.max(m.max_load,.01)*100*0.8);
-   body+=`<div class="meter"><div class="row"><span>RAM</span><span><b class="num">${mb(m.free_mb)}</b> free${m.total_mb?" of "+mb(m.total_mb):""} · needs ${mb(need)}</span></div>
-    <div class="bar" title="free must stay right of the marker"><div class="used" style="width:${usedPct.toFixed(1)}%"></div><div class="rsv" style="left:${usedPct.toFixed(1)}%;width:${rsvPct.toFixed(1)}%"></div><div class="need" style="left:${needPos.toFixed(1)}%"></div></div></div>
-    <div class="meter"><div class="row"><span>Load</span><span><b class="num">${m.load1.toFixed(1)}</b> / ${m.max_load.toFixed(0)} limit · ${m.cores} cores</span></div>
-    <div class="bar load${m.load1>=m.max_load?" hot":""}"><div class="used" style="width:${loadPct.toFixed(1)}%"></div><div class="need" style="left:80%"></div></div></div>`}
-  else body+=`<div class="admits"><span class="dot off"></span>resources not measured on this platform: slots only</div>`;
-  body+=`<div class="slots">${m.slots.map(x=>`<span class="slot ${x.state}" title="${esc(x.name)}: ${x.state==="held"?esc(x.lane):x.state==="outside"?"locked outside the queue":"free"}">${x.state==="held"?`<i class="dot" style="background:${laneColor(x.lane)};border-radius:999px"></i>`:x.state==="outside"?'<i class="dot out"></i>':'<i class="dot"></i>'}${esc(x.name)}${x.state==="held"?" · "+esc(x.lane):x.state==="outside"?" · outside":""}</span>`).join("")}</div>
-   <div class="admits"><span class="dot ${tone}"></span>${m.paused?"paused: no new jobs start here":m.admits===""?"ready for a heavy job":esc(humanReason(m.admits))}</div>`}
- return `<div class="mach"><div class="mach-h"><span class="dot ${tone}"></span><b>${esc(m.name)}</b>${m.paused?'<span class="tag">paused</span>':""}<span class="spacer"></span>${ctl}</div>${body}</div>`}).join("")}</div>`}
-
-function outside(s){const c=s.cpu;if(!c||!c.available)return `<div class="card"><div class="card-h"><h2>Outside the queue</h2></div><div class="empty">Process accounting needs Linux (/proc).</div></div>`;
- const lm=s.machines.find(m=>m.name==="local")||{},total=lm.total_mb||1,ot=c.outside_total,lanesRss=c.lanes.reduce((a,u)=>a+u.rss_mb,0);
- const max=Math.max(...c.outside.map(u=>u.rss_mb),...c.lanes.map(u=>u.rss_mb),1);
- const row=(u,cls)=>`<div class="obar ${cls}"><div class="row"><span>${esc(u.name)}${u.procs>1?` <span class="mute">×${u.procs}</span>`:""}</span><span>${mb(u.rss_mb)} · ${cores(u.cpu_pct)}</span></div><div class="bar"><div class="used" style="width:${(u.rss_mb/max*100).toFixed(1)}%"></div></div></div>`;
- return `<div class="card"><div class="card-h"><span class="dot out"></span><h2>Outside the queue</h2><span class="spacer"></span><span class="label">local · now</span></div>
- <div class="out-head">Outside the queue: <b>${mb(ot.rss_mb)}</b> and <b>${cores(ot.cpu_pct)}</b>${lm.total_mb?` (${Math.round(ot.rss_mb/total*100)}% of RAM)`:""}. Queued jobs use ${mb(lanesRss)}.${c.outside[0]?` <b>${esc(c.outside[0].name)}</b> ×${c.outside[0].procs} alone holds ${mb(c.outside[0].rss_mb)}.`:""}</div>
- <div class="obars">${c.outside.map(u=>row(u,"")).join("")}${c.lanes.map(u=>row({...u,name:"lane "+u.name},"inq")).join("")}</div>
- <div class="legend"><span><i class="dot out"></i>not started by heavyq</span><span><i class="dot run"></i>queued jobs</span></div></div>`}
-
-function insights(){const i=S.ins;if(!i)return "";
- const b=i.buckets,W=600,H=180,mx=Math.max(...b.map(x=>x.runs),1),mw=Math.max(...b.map(x=>x.wait_p95_s),1),bw=W/b.length;
- const bars=b.map((x,k)=>{const h=x.runs/mx*(H-24);return `<rect x="${(k*bw+bw*.2).toFixed(1)}" y="${(H-h).toFixed(1)}" width="${(bw*.6).toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="var(--c1)" opacity=".85"><title>${x.runs} runs</title></rect>${x.gave_up?`<circle cx="${(k*bw+bw/2).toFixed(1)}" cy="${(H-h-8).toFixed(1)}" r="3" fill="var(--st-bad)"><title>${x.gave_up} gave up</title></circle>`:""}`}).join("");
- const line=b.map((x,k)=>(k?"L":"M")+(k*bw+bw/2).toFixed(1)+","+(H-x.wait_p95_s/mw*(H-24)).toFixed(1)).join("");
- const fmt=t=>{const d=new Date(t);return S.win==="7d"?(d.getMonth()+1)+"/"+d.getDate():String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")};
- const ticks=b.map((x,k)=>k%3===0?`<text x="${(k*bw+bw/2).toFixed(1)}" y="${H+16}" text-anchor="middle">${fmt(x.start)}</text>`:"").join("");
- const grid=[.25,.5,.75,1].map(f=>`<line x1="0" x2="${W}" y1="${(H-f*(H-24)).toFixed(1)}" y2="${(H-f*(H-24)).toFixed(1)}" stroke="var(--grid)" stroke-dasharray="2 3"/>`).join("");
- const lanes=i.lanes.slice(0,8).map(l=>`<tr><td>${lane(l.lane)}</td><td class="r num">${l.runs}</td><td class="r num">${l.failed?`<span style="color:var(--danger)">${l.failed}</span>`:0}</td><td class="r num">${l.gave_up||0}</td><td class="r num">${dur(l.wait_p50_s)}</td><td class="r num">${dur(l.run_s)}</td></tr>`).join("");
- return `<div class="section-label"><span class="label">Last ${S.win}</span></div><div class="ins">
-  <div class="card"><div class="card-h"><h2>Runs and waiting</h2><span class="spacer"></span><span class="legend" style="padding:0"><span><i class="dot info"></i>runs</span><span><i class="dot wait"></i>wait p95</span><span><i class="dot bad" style="border-radius:999px"></i>gave up</span></span></div>
-   <div class="chart">${i.runs||i.gave_up?`<svg viewBox="0 0 ${W} ${H+20}" role="img" aria-label="Runs per period with wait p95">${grid}${bars}<path d="${line}" fill="none" stroke="var(--st-wait)" stroke-width="2" vector-effect="non-scaling-stroke"/>${ticks}</svg>`:`<div class="empty"><b>No runs in this window</b>History fills as jobs finish.</div>`}</div></div>
-  <div class="card"><div class="card-h"><h2>Busiest lanes</h2></div>${lanes?`<div class="scroll" style="max-height:236px"><table class="tbl"><thead><tr><th>Lane</th><th class="r">Runs</th><th class="r">Failed</th><th class="r">Gave up</th><th class="r">Wait p50</th><th class="r">Busy</th></tr></thead><tbody>${lanes}</tbody></table></div>`:`<div class="empty">No lanes yet.</div>`}</div></div>`}
-
-const OUT={"":["ok","ran"],gave_up:["warn","gave up"],cancelled:["","cancelled"],interrupted:["","interrupted"]};
-function recent(){const h=S.hist;if(!h)return "";const ls=[...new Set(h.map(r=>r.lane))].sort();
- const rows=h.slice().reverse().filter(r=>!S.laneFilter||r.lane===S.laneFilter).slice(0,60).map(r=>{let [tone,txt]=OUT[r.result||""]||["",r.result];
-  if(!r.result&&r.exit!==0){tone="bad";txt="exit "+r.exit}
-  const cache=r.cache==="hit"||r.cache==="coalesced"?`<span class="tag ok">${r.cache==="hit"?"cache hit":"coalesced"}</span>`:"";
-  const d=new Date(r.end);
-  return `<tr><td class="mono mute">${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}:${String(d.getSeconds()).padStart(2,"0")}</td><td>${lane(r.lane)}</td><td style="max-width:0;width:38%"><span class="cmd" tabindex="0" title="${esc(r.cmd)}">${esc(r.cmd)}</span></td>
-  <td><span class="tag ${tone}">${esc(txt)}</span>${cache}${r.forced?'<span class="tag bad">forced</span>':""}</td><td class="mono">${esc(r.machine||"—")}</td><td class="r num">${dur(r.wait_s)}</td><td class="r num">${r.run_s?dur(r.run_s):"—"}</td><td class="r num">${r.cpu_s?cores(r.cpu_s/Math.max(r.run_s,1)*100):"—"}<div class="cell-sub">${r.max_rss_mb?mb(r.max_rss_mb)+" peak":""}</div></td></tr>`}).join("");
- return `<div class="section-label"><span class="label">Recent runs</span></div><div class="card"><div class="card-h"><h2>History</h2><span class="spacer"></span>
-  <label class="sr" for="lanef">Filter by lane</label><select class="filter" id="lanef"><option value="">All lanes</option>${ls.map(l=>`<option ${l===S.laneFilter?"selected":""}>${esc(l)}</option>`).join("")}</select></div>
-  ${rows?`<div class="scroll"><table class="tbl"><thead><tr><th>End</th><th>Lane</th><th>Command</th><th>Result</th><th>Machine</th><th class="r">Wait</th><th class="r">Run</th><th class="r">Avg CPU · peak</th></tr></thead><tbody>${rows}</tbody></table></div>`:`<div class="empty"><b>No runs recorded yet</b>Finished jobs are listed here.</div>`}</div>`}
+ if(S.demo){mc.className="chip warn";mc.textContent="demo"}else if(S.meta&&S.meta.control){mc.className="chip ok";mc.textContent="control"}else{mc.className="chip";mc.innerHTML=`read-only<span class="hide-sm" style="color:var(--ink-4)"> · <span class="mono">--control</span> to act</span>`}
+ const focus=document.activeElement&&document.activeElement.id,sc=[...document.querySelectorAll(".scroll")].map(x=>x.scrollTop);
+ app.innerHTML=`<main>${story(s)}${flow(s)}${capacity(s)}${historyBlock()}</main>`;
+ document.querySelectorAll(".scroll").forEach((x,i)=>x.scrollTop=sc[i]||0);if(focus){const f=document.getElementById(focus);if(f)f.focus()}}
 
 /* ───────── events ───────── */
 document.addEventListener("click",ev=>{
- const w=ev.target.closest("[data-win]");if(w){S.win=w.dataset.win;store.set("hq.win",S.win);loadInsights();render();return}
- const b=ev.target.closest("[data-act]");if(!b)return;const a=b.dataset.act;
+ const w=ev.target.closest("[data-win]");if(w){S.win=w.dataset.win;store.set("hq.flow",S.win);if(!S.demo)loadInsights();render();return}
+ const b=ev.target.closest("[data-act]");if(!b)return;const a=b.dataset.act;ev.preventDefault();
  if(a==="confirm"){S.confirm=b.dataset.id;render();const y=$("#cf-yes");if(y)y.focus();return}
  if(a==="noconfirm"){S.confirm=null;render();return}
- if(a==="cancel"){S.confirm=null;const t=[...S.snap.running,...S.snap.waiting].find(x=>x.id===b.dataset.id);if(t)t.cancel_requested=true;render();
-  act("tickets/"+encodeURIComponent(b.dataset.id)+"/cancel",null,"Cancel requested: the job stops within a few seconds");return}
+ if(a==="cancel"){S.confirm=null;const t=[...S.snap.running,...S.snap.waiting].find(x=>x.id===b.dataset.id);if(t)t.cancel_requested=true;render();act("tickets/"+encodeURIComponent(b.dataset.id)+"/cancel",null,"Cancel requested: the job stops within a few seconds");return}
  if(a==="prio"){act("tickets/"+encodeURIComponent(b.dataset.id)+"/prio",{prio:+b.dataset.v},"Priority p"+b.dataset.v+" requested: applied on the next poll");return}
- if(a==="pause"||a==="resume"){act("machines/"+encodeURIComponent(b.dataset.m)+"/"+a,null,b.dataset.m+(a==="pause"?" paused":" resumed"));if(!S.demo)setTimeout(async()=>{try{const r=await api("snapshot");if(r.ok)onSnap(await r.json())}catch(e){}},300)}});
+ if(a==="pause"||a==="resume")act("machines/"+encodeURIComponent(b.dataset.m)+"/"+a,null,b.dataset.m+(a==="pause"?" paused: no new jobs start there":" resumed"))});
+document.addEventListener("toggle",ev=>{if(ev.target.id==="histd")S.histOpen=ev.target.open},true);
 document.addEventListener("change",ev=>{if(ev.target.id==="lanef"){S.laneFilter=ev.target.value;render()}});
 document.addEventListener("keydown",ev=>{if(ev.key==="Escape"&&S.confirm){S.confirm=null;render()}});
-setInterval(()=>{if(S.snap&&!document.hidden&&!S.confirm&&!document.querySelector(".cmd:focus,select:focus"))render();else renderLive()},1000);
+setInterval(()=>{if(S.snap&&!document.hidden&&!S.confirm&&!document.querySelector(".cmd:focus,select:focus,summary:focus"))render();else renderLive()},1000);
 
-/* ───────── demo ───────── */
+/* ───────── demo (#demo): sample data, lightly animated ───────── */
 const DEMO=(()=>{const now=Date.now(),iso=s=>new Date(now-s*1000).toISOString();
+ let seed=7;const rnd=()=>{seed=(seed*1103515245+12345)&0x7fffffff;return seed/0x7fffffff};
  const snap={schema:1,generated_at:iso(0),version:"0.3.0",host:"dev-ws",config:{path:"",resource_gate:true,force_after_s:900,hold_for_s:60,poll_s:2,remote_down_max_s:600},
  machines:[
   {name:"local",reachable:true,paused:false,metrics_known:true,cores:16,load1:13.4,max_load:12,free_mb:2810,total_mb:31794,reserved_mb:0,job_mb:3072,light_mb:1024,reserve_mb:2048,
@@ -474,36 +427,41 @@ const DEMO=(()=>{const now=Date.now(),iso=s=>new Date(now-s*1000).toISOString();
   {id:"3-01762011288000000000-50122-wt-billing-fix",pid:50122,lane:"wt-billing-fix",prio:3,light:false,target:"auto",candidates:["local","build-box"],cmd:"npm test",since:iso(312),wait_s:312,cancel_requested:false,position:1,reasons:{local:"RAM 2810 MB < 5120 MB needed (job 3072 + reserve 2048)","build-box":"all heavy slots busy"},bypass_in_s:588},
   {id:"3-01762011500000000000-50388-wt-search-ui",pid:50388,lane:"wt-search-ui",prio:3,light:false,target:"local",candidates:["local"],cmd:"pytest -x tests/integration",since:iso(100),wait_s:100,cancel_requested:false,position:2,reasons:{local:"behind wt-billing-fix (p3)"},bypass_in_s:-1},
   {id:"6-01762011595000000000-50801-wt-payments-v2",pid:50801,lane:"wt-payments-v2",prio:6,light:false,target:"auto",candidates:["local","build-box"],cmd:"go test -race -count=1 ./internal/...",since:iso(5),wait_s:5,cancel_requested:false,position:3,reasons:{local:"behind wt-billing-fix (p3), wt-search-ui (p3)","build-box":"behind wt-billing-fix (p3)"},bypass_in_s:-1}],
- coalesced:[{leader:{lane:"wt-auth-refactor",pid:47001,cmd:"go test ./...",since:iso(180)},followers:[{lane:"wt-auth-review",pid:47220,cmd:"go test ./...",since:iso(150)},{lane:"wt-auth-docs",pid:47390,cmd:"go test ./...",since:iso(118)}]}],
+ coalesced:[{leader:{lane:"wt-auth-refactor",pid:47001,cmd:"go test ./...",since:iso(180)},followers:[{lane:"wt-auth-review",pid:47220,cmd:"go test ./...",since:iso(150)}]}],
  cpu:{available:true,interval_ms:500,lanes:[{name:"wt-search",procs:31,cpu_pct:412,rss_mb:2380},{name:"wt-docs",procs:6,cpu_pct:96,rss_mb:640}],
-  outside:[{name:"claude",procs:14,cpu_pct:85,rss_mb:11240},{name:"node",procs:38,cpu_pct:44,rss_mb:3120},{name:"gopls",procs:5,cpu_pct:12,rss_mb:1480},{name:"chrome",procs:22,cpu_pct:9,rss_mb:1310},{name:"dockerd",procs:1,cpu_pct:4,rss_mb:240},{name:"kitty",procs:1,cpu_pct:3,rss_mb:190}],
+  outside:[{name:"claude",procs:14,cpu_pct:85,rss_mb:11240},{name:"node",procs:38,cpu_pct:44,rss_mb:3120},{name:"gopls",procs:5,cpu_pct:12,rss_mb:1480},{name:"chrome",procs:22,cpu_pct:9,rss_mb:1310}],
   outside_total:{name:"outside",procs:412,cpu_pct:160,rss_mb:17980}}};
- const runs=[5,7,6,9,8,10,7,8,6,7,6,7],w95=[30,42,55,120,260,404,310,380,210,640,911,312],gu=[0,0,0,0,1,1,0,1,0,1,0,0];
- const insights={from:iso(3600),to:iso(0),runs:86,failed:9,gave_up:4,cancelled:1,interrupted:3,forced:2,cache_hits:17,coalesced:6,wait_p50_s:18,wait_p95_s:404,wait_max_s:911,run_s:7420,cpu_s:51210,
-  lanes:[{lane:"wt-search",runs:21,failed:2,gave_up:1,wait_p50_s:22,run_s:2210,cpu_s:15400},{lane:"wt-auth-refactor",runs:18,failed:1,gave_up:0,wait_p50_s:9,run_s:1640,cpu_s:11920},{lane:"main",runs:9,failed:0,gave_up:0,wait_p50_s:140,run_s:1310,cpu_s:0},{lane:"wt-docs",runs:24,failed:2,gave_up:1,wait_p50_s:3,run_s:1280,cpu_s:15050},{lane:"wt-billing-fix",runs:14,failed:4,gave_up:2,wait_p50_s:61,run_s:980,cpu_s:8840}],
-  buckets:runs.map((r,k)=>({start:iso(3600-k*300),runs:r,gave_up:gu[k],wait_p95_s:w95[k],run_s:r*80}))};
- const H=(s,l,c,o)=>({end:iso(s),machine:"local",lane:l,prio:3,light:false,wait_s:12,run_s:60,exit:0,cmd:c,...o});
- const history=[H(540,"wt-docs","pnpm lint",{light:true,wait_s:2,run_s:14,cpu_s:13,max_rss_mb:610}),H(470,"wt-payments-v2","go test -race ./...",{machine:"",wait_s:600,run_s:0,exit:75,result:"gave_up"}),
-  H(410,"wt-search","go test ./...",{wait_s:0,run_s:.2,cache:"hit"}),H(250,"main","pnpm build && pnpm test:e2e --shard=1/4",{machine:"build-box",wait_s:120,run_s:301,exit:1}),
-  H(220,"wt-billing-fix","npm test",{wait_s:61,run_s:88,cpu_s:402,max_rss_mb:1980}),H(175,"wt-search-ui","pytest -x tests/integration",{wait_s:15,run_s:20,exit:78,result:"cancelled"}),
-  H(120,"wt-auth-review","go test ./...",{wait_s:30,run_s:0,cache:"coalesced"}),H(30,"wt-search","go test ./...",{wait_s:911,run_s:71,forced:true,cpu_s:380,max_rss_mb:2210})];
+ /* synthetic history: each lane loops think → wait → run backwards in time, stopping before its live ticket */
+ const cmds={"wt-search":"go test ./...","wt-docs":"pnpm lint","wt-auth-refactor":"go test ./...","main":"pnpm build && pnpm test:e2e --shard=1/4","wt-billing-fix":"npm test","wt-search-ui":"pytest -x tests/integration","wt-payments-v2":"go test -race -count=1 ./internal/...","wt-auth-review":"go test ./...","wt-infra":"terraform validate && go test ./infra/..."};
+ const liveSince={};for(const t of [...snap.running,...snap.waiting])liveSince[t.lane]=Math.max(liveSince[t.lane]||0,(now-Date.parse(t.since))/1000);
+ const history=[];
+ for(const lane of Object.keys(cmds)){const stop=(liveSince[lane]||0)+30;let t=stop+40+rnd()*200;
+  while(t<3300){const wait=rnd()<.4?2+rnd()*20:rnd()<.7?40+rnd()*220:300+rnd()*500,run=lane==="main"?200+rnd()*300:25+rnd()*110;
+   const end=t;let rec={end:iso(end),machine:lane==="main"||rnd()<.2?"build-box":"local",lane,prio:lane==="main"?4:3,light:lane==="wt-docs",wait_s:wait,run_s:run,exit:0,cmd:cmds[lane]};
+   const x=rnd();if(x<.12)rec={...rec,run_s:0,cache:rnd()<.5?"hit":"coalesced"};else if(x<.18&&wait>40)rec={...rec,machine:"",run_s:0,exit:75,result:"gave_up"};else if(x<.26)rec.exit=1;else if(x<.28)rec={...rec,exit:78,result:"cancelled"};
+   if(!rec.result&&!rec.cache&&wait>300&&rnd()<.5)rec.forced=true;
+   if(rec.machine==="local"&&rec.run_s)rec.max_rss_mb=Math.round(500+rnd()*2200);
+   history.push(rec);t=end+rec.run_s+wait+30+rnd()*240}}
+ history.sort((a,b)=>Date.parse(a.end)-Date.parse(b.end));
+ const insights={runs:86,failed:9,gave_up:4,cancelled:1,interrupted:3,forced:2,cache_hits:17,coalesced:6,wait_p50_s:18,wait_p95_s:404,wait_max_s:911,run_s:7420,cpu_s:51210,lanes:[],buckets:[]};
  return {snap,insights,history}})();
 function demoAct(path,body){const s=S.snap,m=path.match(/^machines\/([^/]+)\/(pause|resume)$/);
- if(m){const x=s.machines.find(y=>y.name===decodeURIComponent(m[1]));if(x)x.paused=m[2]==="pause";}
+ if(m){const x=s.machines.find(y=>y.name===decodeURIComponent(m[1]));if(x)x.paused=m[2]==="pause"}
  const p=path.match(/^tickets\/([^/]+)\/prio$/);if(p){const t=s.waiting.find(y=>y.id===decodeURIComponent(p[1]));if(t)t.prio=body.prio}
- const c=path.match(/^tickets\/([^/]+)\/cancel$/);if(c){const id=decodeURIComponent(c[1]);setTimeout(()=>{s.running=s.running.filter(t=>t.id!==id);s.waiting=s.waiting.filter(t=>t.id!==id).map((t,i)=>({...t,position:i+1}));render()},1500)}
+ const c=path.match(/^tickets\/([^/]+)\/cancel$/);if(c){const id=decodeURIComponent(c[1]);setTimeout(()=>{const t=[...s.running,...s.waiting].find(y=>y.id===id);
+  if(t)S.hist.push({end:new Date().toISOString(),machine:t.machine||"",lane:t.lane,prio:t.prio,wait_s:t.wait_s,run_s:t.run_s||0,exit:78,cmd:t.cmd,result:"cancelled"});
+  s.running=s.running.filter(y=>y.id!==id);s.waiting=s.waiting.filter(y=>y.id!==id).map((y,i)=>({...y,position:i+1}));render()},1500)}
  render()}
-function startDemo(){S.meta={control:true};onSnap(DEMO.snap);S.ins=DEMO.insights;S.hist=DEMO.history;render();
+function startDemo(){S.meta={control:true};S.hist=DEMO.history;S.ins=DEMO.insights;onSnap(DEMO.snap);
  setInterval(()=>{const s=S.snap;for(const t of s.running)if(t.machine==="local")t.cpu_pct=Math.max(20,t.cpu_pct*(.9+Math.random()*.2));
-  const lm=s.machines[0];lm.load1=Math.max(6,Math.min(16,lm.load1+(Math.random()-.5)*.6));render()},2000);
- setTimeout(()=>{const s=S.snap,h=s.waiting.shift();if(!h)return;const e=(Date.now()-S.at)/1000;
-  s.running.unshift({...h,machine:"local",slot:"heavy-2",claimed_at:new Date().toISOString(),run_s:-e,wait_s:h.wait_s+e,forced:false,cpu_pct:240,rss_mb:1210});
-  s.machines[0].slots[1]={name:"heavy-2",kind:"heavy",state:"held",ticket:h.id,lane:h.lane};
-  s.waiting.forEach((t,i)=>{t.position=i+1;if(i===0){t.reasons={local:"all heavy slots busy"};t.bypass_in_s=900-e}});render()},20000)}
+  const lm=s.machines[0];lm.load1=Math.max(6,Math.min(16,lm.load1+(Math.random()-.5)*.6))},2000);
+ setTimeout(()=>{const s=S.snap,h=s.waiting.shift();if(!h)return;const e=el(),nowIso=new Date().toISOString();
+  s.running.unshift({...h,machine:"local",slot:"heavy-2",claimed_at:nowIso,run_s:-e,wait_s:h.wait_s+e,forced:false,cpu_pct:240,rss_mb:1210});
+  s.machines[0].slots[1]={name:"heavy-2",kind:"heavy",state:"held",ticket:h.id,lane:h.lane};s.machines[0].admits="all heavy slots busy";
+  s.waiting.forEach((t,i)=>{t.position=i+1;if(i===0){t.reasons={local:"all heavy slots busy"};t.bypass_in_s=900-e}})},20000)}
 
 /* ───────── boot ───────── */
-(async()=>{
- if(S.demo)return startDemo();
+(async()=>{if(S.demo)return startDemo();
  if(!S.token)return gate("Open the dashboard link","Run <code>heavyq dash</code> and open the link it prints: it carries the access token.");
  try{const r=await api("meta");if(!r.ok)return gate("Dashboard unavailable","The server answered "+r.status+".");S.meta=await r.json()}catch(e){if(e.message!=="401")gate("Cannot reach heavyq","Is <code>heavyq dash</code> still running?");return}
  loadInsights();loadHistory();setInterval(loadInsights,30000);setInterval(loadHistory,15000);stream()})();
