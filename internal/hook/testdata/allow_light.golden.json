@@ -1,0 +1,13 @@
+{
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "permissionDecision": "allow",
+    "permissionDecisionReason": "heavyq hook: wrapped in the heavyq queue (hook.permission = allow)",
+    "updatedInput": {
+      "command": "cd web && heavyq 4 --lane wt-web --light --max-wait 90s -- npm run lint",
+      "description": "Lint",
+      "timeout": 210000
+    },
+    "additionalContext": "heavyq: \"npm run lint\" matched hook rule \"npm run lint\", so it ran through the shared heavyq queue (prio 4, lane wt-web). Exit 75 means the queue stayed busy for 1m30s: retry later, do not bypass heavyq."
+  }
+}

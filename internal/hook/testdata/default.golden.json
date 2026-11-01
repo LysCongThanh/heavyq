@@ -1,0 +1,12 @@
+{
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "updatedInput": {
+      "command": "heavyq 4 --lane wt-api --max-wait 300s -- go test ./... 2>&1 | tail -30",
+      "description": "Run tests",
+      "run_in_background": false,
+      "timeout": 500000
+    },
+    "additionalContext": "heavyq: \"go test ./...\" matched hook rule \"go test\", so it ran through the shared heavyq queue (prio 4, lane wt-api). Exit 75 means the queue stayed busy for 5m0s: retry later, do not bypass heavyq."
+  }
+}
