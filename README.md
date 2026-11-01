@@ -227,6 +227,8 @@ installed. Everything lives under `work_dir` (default `~/.heavyq`).
 
 ## Dashboard and control
 
+![heavyq dashboard: machines, running and waiting jobs with reasons, usage outside the queue](docs/dashboard.png)
+
 ```bash
 heavyq dash              # read-only; prints http://127.0.0.1:PORT/#token=...
 heavyq dash --control    # the page can also cancel jobs, change priorities, pause machines
