@@ -25,8 +25,31 @@ type procSample struct {
 	rssKB uint64
 }
 
-// snapshot reads every numeric entry under Root.
+// snapshot lists every process from the platform's source.
 func (p ProcFS) snapshot() map[int]procSample {
+	if p.UsePS {
+		return psSnapshot()
+	}
+	return p.procSnapshot()
+}
+
+// sampleTwice takes two snapshots, interval apart, and returns the interval
+// the CPU deltas span. /proc is read in microseconds, so that is the nominal
+// interval; ps takes tens of milliseconds per run, so the measured time
+// between the two reads is used instead.
+func (p ProcFS) sampleTwice(interval time.Duration) (a, b map[int]procSample, span time.Duration) {
+	a = p.snapshot()
+	t0 := time.Now()
+	time.Sleep(interval)
+	b = p.snapshot()
+	if p.UsePS {
+		return a, b, time.Since(t0)
+	}
+	return a, b, interval
+}
+
+// procSnapshot reads every numeric entry under Root.
+func (p ProcFS) procSnapshot() map[int]procSample {
 	out := map[int]procSample{}
 	ents, err := os.ReadDir(p.Root)
 	if err != nil {
@@ -61,10 +84,8 @@ type GroupCPU struct {
 // (pid -> group label). Processes with no such ancestor go to outside.
 // Results are sorted by descending CPU.
 func (p ProcFS) Attribute(roots map[int]string, outside string, interval time.Duration) []GroupCPU {
-	a := p.snapshot()
-	time.Sleep(interval)
-	b := p.snapshot()
-	return attribute(a, b, roots, outside, interval)
+	a, b, span := p.sampleTwice(interval)
+	return attribute(a, b, roots, outside, span)
 }
 
 func attribute(a, b map[int]procSample, roots map[int]string, outside string, interval time.Duration) []GroupCPU {

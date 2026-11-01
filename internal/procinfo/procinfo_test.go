@@ -115,6 +115,9 @@ func TestBreakdownReal(t *testing.T) {
 	if len(byRoot) != 1 || byRoot[0].RSSMB <= 0 || len(outside) == 0 {
 		t.Fatalf("byRoot=%+v outside=%d groups", byRoot, len(outside))
 	}
+	if Default.UsePS {
+		return // comm of the /proc stat file only exists on the /proc source
+	}
 	if comm, _, err := Default.stat(os.Getpid()); err != nil || comm == "" {
 		t.Fatalf("comm of self = %q %v", comm, err)
 	}

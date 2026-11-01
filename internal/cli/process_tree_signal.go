@@ -9,8 +9,13 @@ import (
 
 // processTree is everything a local command started. On Linux heavyq is a
 // child subreaper, so the tree is simply heavyq's own descendants: orphans
-// re-parent to us and stay reachable. Elsewhere it is the command's
-// descendants as seen at signal time.
+// re-parent to us and stay reachable. Elsewhere (macOS has no subreaper) it
+// is the command's descendants as seen at signal time, found by walking the
+// ppid map of `ps`: a cancel reaches every grandchild still attached to its
+// parent, but a process whose parent already exited has re-parented to
+// launchd and can be missed (typically a daemon started by the command, or
+// a grandchild that outlived a command that died on SIGTERM before the
+// SIGKILL pass).
 type processTree struct {
 	root int // heavyq itself (subreaper) or the command's pid
 }

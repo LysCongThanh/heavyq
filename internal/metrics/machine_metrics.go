@@ -13,11 +13,12 @@ import (
 
 // Metrics is one resource sample of a machine.
 type Metrics struct {
-	FreeMB  int     // MemAvailable in MiB
+	FreeMB  int     // MemAvailable in MiB (macOS: free+inactive+purgeable+speculative, see parseVMStat)
 	TotalMB int     // MemTotal in MiB (0 when unknown)
 	Load1   float64 // 1-minute load average
 	Cores   int
-	// Known is false when the platform cannot be measured (e.g. no /proc);
+	// Known is false when the platform cannot be measured (no /proc, or the
+	// macOS sysctl/vm_stat commands failed);
 	// the gate then only enforces slots.
 	Known bool
 }
