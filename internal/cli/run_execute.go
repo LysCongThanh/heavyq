@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -31,11 +32,20 @@ func (r *run) execute(c *claim) int {
 		rc = r.runRemote(c)
 	}
 	runSecs := time.Since(runStart).Seconds()
-	ran := !r.interrupted && rc != 126 && rc != 127 &&
+	ran := !r.interrupted && !r.cancelled && rc != 126 && rc != 127 &&
 		(c.machine == config.LocalName || (rc != ExitRemoteSetup && rc != ExitConnLost))
 	r.cacheFinish(c.machine, rc, ran, runSecs)
 	rec := history.Record{End: time.Now(), Machine: c.machine, Lane: r.me.Lane, Prio: r.me.Prio, Light: r.me.Light,
-		WaitSecs: waited.Seconds(), RunSecs: runSecs, Exit: rc, Cmd: r.me.Cmd}
+		WaitSecs: waited.Seconds(), RunSecs: runSecs, Exit: rc, Cmd: r.me.Cmd, Forced: c.forced,
+		CPUSecs: r.cpuSecs, MaxRSSMB: r.maxRSSMB}
+	switch {
+	case r.cancelled:
+		rec.Result = history.OutcomeCancelled
+	case r.interrupted:
+		rec.Result = history.OutcomeInterrupted
+	case rc == ExitRemoteSetup || rc == 126 || rc == 127:
+		rec.Result = history.OutcomeGaveUp // the command never started
+	}
 	if r.cache != nil {
 		rec.Cache, rec.CacheNote = r.cache.status, r.cache.note
 	}
@@ -69,6 +79,7 @@ func (r *run) runLocal(c *claim) int {
 	// With --cache the streams are pipes: don't wait forever on a daemon that
 	// inherited them after the command itself exited.
 	cmd.WaitDelay = 10 * time.Second
+	subreaper := becomeSubreaper()
 	cmd.Env = append(os.Environ(), "HEAVYQ_MACHINE=local", "HEAVYQ_SLOT="+c.slot, "HEAVYQ_LANE="+r.me.Lane, "HEAVYQ_ACTIVE=1")
 	// Slot and mutex descriptors are close-on-exec: the command (and any
 	// daemon it leaves behind) never holds a slot. The slot is released when
@@ -80,8 +91,11 @@ func (r *run) runLocal(c *claim) int {
 		}
 		return 126
 	}
+	r.tree = newProcessTree(cmd.Process.Pid, subreaper)
 	return r.supervise(func(s os.Signal) { _ = cmd.Process.Signal(s) }, func() int {
-		return processExit(cmd.Wait())
+		rc := processExit(cmd.Wait())
+		r.cpuSecs, r.maxRSSMB = childUsage(cmd.ProcessState)
+		return rc
 	})
 }
 
@@ -135,18 +149,37 @@ func (r *run) runRemote(c *claim) int {
 
 // supervise waits for the child while forwarding termination signals: the
 // first signal becomes SIGTERM, any further one SIGKILL. After a signal the
-// exit code is 128+signal regardless of the child's code.
+// exit code is 128+signal regardless of the child's code. An operator cancel
+// request is handled like a first signal (SIGTERM, then SIGKILL after
+// cancelGrace) and exits ExitCancelled.
 func (r *run) supervise(forward func(os.Signal), wait func() int) int {
 	done := make(chan int, 1)
 	go func() { done <- wait() }()
 	sigCode := 0
+	tick := time.NewTicker(controlPoll)
+	defer tick.Stop()
+	var killAt <-chan time.Time
 	for {
 		select {
 		case rc := <-done:
+			if r.cancelled {
+				r.reapCancelled(killAt)
+			}
 			if sigCode != 0 {
 				return sigCode
 			}
 			return rc
+		case <-tick.C:
+			if sigCode == 0 && controlBox().CancelRequested(r.me.Name) {
+				fmt.Fprintln(r.stderr, "heavyq: cancelled by an operator; stopping the command")
+				sigCode, r.cancelled = ExitCancelled, true
+				r.tree.signal(syscall.SIGTERM)
+				forward(syscall.SIGTERM)
+				killAt = time.After(cancelGrace)
+			}
+		case <-killAt:
+			r.tree.signal(syscall.SIGKILL)
+			forward(syscall.SIGKILL)
 		case s := <-r.sigs:
 			if sigCode == 0 {
 				sigCode = signalExit(s)
@@ -157,6 +190,43 @@ func (r *run) supervise(forward func(os.Signal), wait func() int) int {
 			}
 		}
 	}
+}
+
+// reapCancelled keeps the slot until everything the cancelled command
+// started is gone: survivors get the rest of the grace period, then SIGKILL.
+func (r *run) reapCancelled(killAt <-chan time.Time) {
+	for r.tree.alive() {
+		select {
+		case <-killAt:
+			r.tree.signal(syscall.SIGKILL)
+			time.Sleep(100 * time.Millisecond)
+			return
+		case <-time.After(100 * time.Millisecond):
+		}
+	}
+}
+
+const (
+	controlPoll = time.Second      // how often a running ticket checks for a cancel request
+	cancelGrace = 10 * time.Second // SIGTERM -> SIGKILL delay for a cancelled command
+)
+
+// childUsage returns the CPU seconds (user+system) and peak resident set of
+// an exited command and the children it waited for.
+func childUsage(ps *os.ProcessState) (float64, int) {
+	if ps == nil {
+		return 0, 0
+	}
+	cpu := (ps.UserTime() + ps.SystemTime()).Seconds()
+	ru, ok := ps.SysUsage().(*syscall.Rusage)
+	if !ok {
+		return cpu, 0
+	}
+	rss := int64(ru.Maxrss) / 1024 // KiB on Linux
+	if runtime.GOOS == "darwin" {
+		rss /= 1024 // bytes on macOS
+	}
+	return cpu, int(rss)
 }
 
 // processExit converts a Wait error into a shell-style exit code.

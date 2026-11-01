@@ -23,6 +23,11 @@ func (r *run) waitForTurn() (*claim, int) {
 	var headSince, downSince, lastMsg, lastDownWarn time.Time
 	lastPos := ""
 	for {
+		if controlBox().CancelRequested(r.me.Name) {
+			fmt.Fprintln(r.stderr, "heavyq: cancelled by an operator while waiting")
+			r.cancelled = true
+			return nil, ExitCancelled
+		}
 		r.probes.refresh(r.cfg, r.me.Candidates)
 		if len(r.pl.siblings) > 0 || !r.pl.refIsHead {
 			r.pl.refreshLocal()
@@ -67,6 +72,13 @@ func (r *run) round(headSince *time.Time) (*claim, int, int, []*queue.Ticket, er
 	}
 	defer unlock()
 	r.q.Prune(procinfo.Default.Alive)
+	if p, ok := controlBox().TakePrio(r.me.Name); ok && p != r.me.Prio {
+		if err := r.q.Reprio(r.me, p); err != nil {
+			fmt.Fprintln(r.stderr, "heavyq: warning: priority not changed:", err)
+		} else {
+			fmt.Fprintf(r.stderr, "heavyq: priority changed to %d by an operator\n", p)
+		}
+	}
 	snap, err := r.q.List()
 	if err != nil {
 		return nil, 0, 0, nil, err
@@ -80,10 +92,15 @@ func (r *run) round(headSince *time.Time) (*claim, int, int, []*queue.Ticket, er
 	for _, op := range opps {
 		head = head || op.Head
 	}
+	was := *headSince
 	if !head {
 		*headSince = time.Time{}
 	} else if headSince.IsZero() {
 		*headSince = time.Now()
+	}
+	if !was.Equal(*headSince) { // publish the anti-starvation clock for status / dash
+		r.me.HeadSince = *headSince
+		_ = r.q.Rewrite(r.me)
 	}
 	var waited time.Duration
 	if head {
@@ -97,6 +114,7 @@ func (r *run) round(headSince *time.Time) (*claim, int, int, []*queue.Ticket, er
 	if c == nil {
 		return nil, pos, len(snap.Waiting), ahead, nil
 	}
+	r.me.Forced = c.forced
 	if err := r.q.Claim(r.me, c.machine, c.slot); err != nil {
 		c.lock.Release()
 		return nil, 0, 0, nil, err

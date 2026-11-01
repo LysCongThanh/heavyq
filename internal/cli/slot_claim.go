@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/LysCongThanh/heavyq/internal/config"
+	"github.com/LysCongThanh/heavyq/internal/control"
 	"github.com/LysCongThanh/heavyq/internal/metrics"
 	"github.com/LysCongThanh/heavyq/internal/queue"
 	"github.com/LysCongThanh/heavyq/internal/remote"
@@ -20,6 +21,7 @@ type claim struct {
 	slot    string
 	lock    *slots.Lock // local slots only; nil in dry mode
 	score   int
+	forced  bool // the resource gate would have refused without the bypass
 }
 
 // evalInput is one scheduling round for one ticket.
@@ -41,9 +43,14 @@ func evaluate(in evalInput) (*claim, map[string]string) {
 	reasons := map[string]string{}
 	var best *claim
 	for _, op := range in.opps {
+		if controlBox().Paused(op.Machine) {
+			reasons[op.Machine] = pausedReason
+			continue
+		}
 		v := buildView(in.cfg, op.Machine, in.snap, in.probes, in.cfg.Queue.HoldFor.Duration)
 		forced := op.Head && in.headWait >= in.cfg.Queue.ForceAfter.Duration
-		why := schedule.Gate(v.state, schedule.GateInput{Enabled: in.cfg.GateEnabled(), Forced: forced, Light: in.ticket.Light})
+		gate := schedule.GateInput{Enabled: in.cfg.GateEnabled(), Forced: forced, Light: in.ticket.Light}
+		why := schedule.Gate(v.state, gate)
 		if why != "" {
 			reasons[op.Machine] = why
 			continue
@@ -52,6 +59,10 @@ func evaluate(in evalInput) (*claim, map[string]string) {
 		if c == nil {
 			reasons[op.Machine] = why
 			continue
+		}
+		if forced {
+			gate.Forced = false
+			c.forced = schedule.Gate(v.state, gate) != ""
 		}
 		c.score = metrics.Score(v.state.Metrics, in.cfg.Queue.LoadWeightMB, in.needsRAM)
 		if best == nil || c.score > best.score {
@@ -103,3 +114,9 @@ func pickSlot(cfg *config.Config, v machineView, op schedule.Opportunity, dry bo
 }
 
 func slotName(path string) string { return strings.TrimSuffix(filepath.Base(path), ".lock") }
+
+// pausedReason is the wait reason on a machine paused by an operator.
+const pausedReason = "paused (heavyq resume to admit again)"
+
+// controlBox is the operator request mailbox of the queue directory.
+func controlBox() control.Mailbox { return control.Mailbox{Dir: filepath.Join(QueueDir(), "ctl")} }

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/LysCongThanh/heavyq/internal/config"
+	"github.com/LysCongThanh/heavyq/internal/history"
 	"github.com/LysCongThanh/heavyq/internal/procinfo"
 	"github.com/LysCongThanh/heavyq/internal/queue"
 )
@@ -28,6 +29,14 @@ type run struct {
 	cache  *cacheState // nil without --cache
 	// interrupted: a signal stopped the command, so its result is not real.
 	interrupted bool
+	// cancelled: an operator stopped the ticket (heavyq cancel / dashboard).
+	cancelled bool
+	// tree is the local command's process tree (nil for remote runs); an
+	// operator cancel signals all of it, not just the direct child.
+	tree *processTree
+	// usage of the local command once it exited (zero for remote runs).
+	cpuSecs  float64
+	maxRSSMB int
 }
 
 func runCommand(cfg *config.Config, args []string, stderr io.Writer) int {
@@ -73,13 +82,35 @@ func runCommand(cfg *config.Config, args []string, stderr io.Writer) int {
 		return ExitUsage
 	}
 	defer q.Remove(r.me)
+	defer func() { controlBox().Forget(r.me.Name) }()
 
 	c, rc := r.waitForTurn()
 	if c == nil {
+		r.recordNoRun(rc)
 		return rc
 	}
 	defer c.lock.Release()
 	return r.execute(c)
+}
+
+// recordNoRun writes a history line for a ticket that left the queue
+// without running: gave up (max-wait, remote down), cancelled or interrupted.
+// Usage errors are not recorded.
+func (r *run) recordNoRun(rc int) {
+	result := history.OutcomeGaveUp
+	switch {
+	case r.cancelled:
+		result = history.OutcomeCancelled
+	case rc > 128 && rc != ExitConnLost:
+		result = history.OutcomeInterrupted
+	case rc != ExitMaxWait && rc != ExitRemoteDown:
+		return
+	}
+	rec := history.Record{End: time.Now(), Lane: r.me.Lane, Prio: r.me.Prio, Light: r.me.Light,
+		WaitSecs: time.Since(r.t0).Seconds(), Exit: rc, Cmd: r.me.Cmd, Result: result}
+	if err := history.Append(history.DefaultPath(), rec); err != nil {
+		fmt.Fprintln(r.stderr, "heavyq: warning: history not written:", err)
+	}
 }
 
 // signalExit maps a signal to the conventional 128+n exit code.

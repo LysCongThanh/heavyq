@@ -22,6 +22,7 @@ const (
 	ExitMaxWait     = 75
 	ExitRemoteDown  = 76
 	ExitRemoteSetup = 77
+	ExitCancelled   = 78
 	ExitConnLost    = 255
 )
 
@@ -29,7 +30,10 @@ const usage = `heavyq - a priority, resource-aware queue for heavy commands
 
 usage:
   heavyq [--config FILE] <prio 1-9> [flags] -- <command...>
-  heavyq [--config FILE] status
+  heavyq [--config FILE] status [--json]
+  heavyq [--config FILE] dash [--control] [--addr 127.0.0.1:0] [--open]
+  heavyq cancel <ticket|pid> | reprio <ticket|pid> <1-9>
+  heavyq [--config FILE] pause|resume <machine>
   heavyq history [-n N]
   heavyq [--config FILE] cache ls|stats|clear
   heavyq [--config FILE] hook claude-pretooluse | install claude | uninstall claude
@@ -51,7 +55,8 @@ run flags:
 
 Lower priority numbers run first; equal priorities are FIFO.
 Exit codes: the command's own; 2 usage; 75 max-wait; 76 remote unreachable
-too long; 77 remote setup failed; 255 connection to the remote lost.
+too long; 77 remote setup failed; 78 cancelled by an operator; 255
+connection to the remote lost.
 `
 
 // Main runs heavyq with args (without the program name) and returns the exit code.
@@ -82,13 +87,18 @@ func Main(args []string, stdout, stderr io.Writer) int {
 		return ExitUsage
 	}
 	if args[0] == "status" || args[0] == "--status" {
-		return statusCommand(cfg, stdout, stderr)
+		return statusCommand(cfg, args[1:], stdout, stderr)
 	}
-	if args[0] == "cache" {
+	switch args[0] {
+	case "cache":
 		return cacheCommand(cfg, args[1:], stdout, stderr)
+	case "dash":
+		return dashCommand(cfg, args[1:], stdout, stderr)
+	case "cancel", "reprio", "pause", "resume":
+		return controlCommand(cfg, args[0], args[1:], stdout, stderr)
 	}
 	if p, err := strconv.Atoi(args[0]); err != nil || p < 1 || p > 9 {
-		fmt.Fprintf(stderr, "heavyq: first argument must be a priority 1-9, status, history, cache, hook or version\n\n%s", usage)
+		fmt.Fprintf(stderr, "heavyq: first argument must be a priority 1-9 or a command (status, dash, history, cache, hook, cancel, reprio, pause, resume, version)\n\n%s", usage)
 		return ExitUsage
 	}
 	return runCommand(cfg, args, stderr)
