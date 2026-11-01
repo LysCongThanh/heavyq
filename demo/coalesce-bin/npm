@@ -1,0 +1,7 @@
+#!/bin/sh
+# Demo stand-in for `npm test`: takes a few seconds and counts how many
+# times it really ran (one line per run in $DEMO_RUNS).
+echo run >> "$DEMO_RUNS"
+echo "> shop@1.0.0 test"
+sleep 4
+echo "Tests: 42 passed, 42 total"

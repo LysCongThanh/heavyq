@@ -18,7 +18,9 @@ The remote path is tested through a `sh -c` transport, which runs the same code 
 
 | Package | Responsibility |
 |---|---|
-| `internal/cli` | flags, the wait loop, execution, `status`, `history` |
+| `internal/cli` | flags, the wait loop, execution, `status`, `history`, `cache`, `hook` commands |
+| `internal/hook` | Claude Code `PreToolUse` hook: safe shell-form parser, wrap rules, settings install/uninstall |
+| `internal/cache` | `--cache`: key by git tree, output recorder/replay, result store (TTL, size cap), in-flight coalescing |
 | `internal/schedule` | pure rules: who may claim which machine, the resource gate, outside-repo path detection |
 | `internal/queue` | tickets as files, ordering, claim, prune |
 | `internal/slots` | `flock(2)` slot files (compatible with `flock <file> cmd`) |
@@ -39,6 +41,9 @@ The remote path is tested through a `sh -c` transport, which runs the same code 
 - **Fail closed.** If a value is unsafe or unknown (a config value, a remote name, a path), refuse it and
   say why. Never guess and run.
 - **Exit codes are API.** Don't change the meaning of 2, 75, 76, 77 or 255.
+- **The hook fails open.** `heavyq hook claude-pretooluse` must never block an agent: on any doubt it
+  leaves the command unchanged (exit 0, no output) and logs. New command shapes need table tests in
+  `internal/hook/claude_pretooluse_test.go`; output changes need `go test ./internal/hook -update`.
 
 ## Good first issues
 

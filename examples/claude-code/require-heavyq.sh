@@ -2,6 +2,10 @@
 # Claude Code PreToolUse hook (matcher: "Bash"): blocks heavy commands that are
 # not wrapped in heavyq and tells the agent how to rerun them. Requires jq.
 #
+# Since v0.2 heavyq has a native hook that rewrites the command instead of
+# blocking it: `heavyq hook install claude` (see README). Keep this script if
+# you prefer the agent to see and type the heavyq command itself.
+#
 # Install:
 #   cp require-heavyq.sh ~/.claude/hooks/ && chmod +x ~/.claude/hooks/require-heavyq.sh
 #   and add to ~/.claude/settings.json:
