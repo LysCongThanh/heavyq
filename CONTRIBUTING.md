@@ -29,6 +29,7 @@ The remote path is tested through a `sh -c` transport, which runs the same code 
 | `internal/metrics` | RAM / load / cores, placement score |
 | `internal/remote` | transport, probe, `git push` of exact commits, the embedded remote job script |
 | `internal/config` | TOML config, defaults, validation |
+| `internal/repoconfig` | per-repo `heavyq.toml`: named gates, validation (trusted like a Makefile) |
 | `internal/history` | JSONL run log |
 
 ## House rules
