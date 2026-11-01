@@ -26,6 +26,12 @@ type Snapshot struct {
 	// holds the RAM, when the bypass applies), computed by Story at
 	// GeneratedAt. Added within schema 1: older readers ignore it.
 	Story []Sentence `json:"story"`
+	// Gates is the proof state of the main gate of each recently active
+	// lane's work tree, and Exceptions what needs a human right now (see
+	// ComputeExceptions). Both added within schema 1; empty arrays when
+	// there is nothing to say.
+	Gates      []LaneGate  `json:"gates"`
+	Exceptions []Exception `json:"exceptions"`
 }
 
 // Config is the part of the configuration a viewer needs to interpret values.

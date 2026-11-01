@@ -94,6 +94,26 @@ main{max-width:1320px;margin:0 auto;padding:28px 16px 64px;container-type:inline
 .sub b{color:var(--ink-2)}
 .acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
 
+/* tower: what needs the human; one calm line when nothing does */
+.tower{max-width:860px;margin-bottom:36px}
+.calm{margin:0;font:400 15px/22px var(--font);color:var(--ink-2);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.calm .dot{width:8px;height:8px;border-radius:999px;background:var(--st-run)}
+.calm b{color:var(--ink);font-weight:500}
+.calm .snooze{color:var(--ink-3);font-size:12.5px}
+.calm .snooze button,.tfoot button{border:0;background:none;padding:0;color:var(--link);cursor:pointer;font:inherit;text-decoration:underline}
+.tcards{display:grid;gap:10px;margin-top:10px}
+.tcard{display:grid;grid-template-columns:9px minmax(0,1fr) auto;gap:2px 12px;padding:12px 12px 12px 14px;border-radius:var(--r-card);box-shadow:var(--sh-card);background:var(--bg)}
+.tcard>i{width:9px;height:9px;border-radius:999px;margin-top:6px;background:var(--st-wait)}
+.tcard.critical>i{background:var(--st-bad)}
+.tcard.critical{background:linear-gradient(90deg,var(--danger-bg),var(--bg) 40%)}
+.tcard p{margin:0;font-size:14px;line-height:21px;color:var(--ink);text-wrap:pretty}
+.tcard .ev{grid-column:2;display:flex;flex-wrap:wrap;gap:0 14px;color:var(--ink-3);font-size:12px;min-width:0}
+.tcard .ev .mono{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tcard .ta{grid-column:2;display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px}
+.tcard .x{grid-column:3;grid-row:1}
+.tcard code{font:12px/18px var(--mono);padding:3px 8px;border-radius:var(--r-btn);background:var(--line-2);color:var(--ink-2);user-select:all;overflow-wrap:anywhere}
+.tfoot{margin-top:12px;color:var(--ink-3);font-size:12.5px}
+
 /* buttons */
 .btn{height:30px;padding:0 12px;border-radius:var(--r-btn);border:0;cursor:pointer;font-size:12.5px;white-space:nowrap;background:var(--bg);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line-3);transition:background var(--dur) var(--ease)}
 .btn:hover{background:var(--line-2)}
@@ -285,6 +305,33 @@ function causeOf(m,r){const s=ramShort(r);if(s!==null)return `<em>${esc(m)}</em>
  if(/paused/.test(r))return `<em>${esc(m)}</em> is paused`;return esc(m+": "+r)}
 const laneN=l=>`<span class="lane-n"><i style="background:${laneColor(l)}"></i>${esc(l)}</span>`;
 
+/* ───────── tower: facts heavyq measured that need a human (snapshot.exceptions, computed in Go) ───────── */
+const SNOOZE_MS=600000,KIND={red_gate:"red gate",loop:"loop",starved:"starved",machine:"machine"};
+function snoozed(){try{const d=JSON.parse(store.get("hq.snooze")||"{}"),n=Date.now();for(const k in d)if(n-d[k]>=SNOOZE_MS)delete d[k];return d}catch(e){return {}}}
+const snooze=(id,on)=>{const d=snoozed();if(on)d[id]=Date.now();else if(id)delete d[id];else for(const k in d)delete d[k];store.set("hq.snooze",JSON.stringify(d))};
+function towerAction(e){const a=e.action;if(!a)return "";const cmd=`<code title="Run this in a terminal">${esc(a.command)}</code><button class="btn sm" data-act="copy" data-cmd="${esc(a.command)}">Copy</button>`;
+ if(!canAct()||a.kind==="run")return cmd;
+ if(a.kind==="cancel")return S.confirm===a.target?`<span class="confirm"><button class="btn sm dan solid" data-act="cancel" data-id="${esc(a.target)}" id="cf-yes">Cancel job</button><button class="btn sm" data-act="noconfirm">Keep</button></span>`:`<button class="btn sm dan" data-act="confirm" data-id="${esc(a.target)}">Cancel job</button>`;
+ if(a.kind==="raise")return `<button class="btn sm pri" data-act="prio" data-id="${esc(a.target)}" data-v="${a.value}">Raise to p${a.value}</button>`;
+ if(a.kind==="resume")return `<button class="btn sm pri" data-act="resume" data-m="${esc(a.target)}">Resume ${esc(a.target)}</button>`;return cmd}
+function towerCard(e){const v=e.evidence||{},ev=[];
+ if(v.at&&Date.parse(v.at)>0)ev.push(`<span>${ago(Date.parse(v.at))}</span>`);
+ if(e.lane)ev.push(laneN(e.lane));if(e.machine)ev.push(`<span class="mono">${esc(e.machine)}</span>`);
+ if(v.tree)ev.push(`<span class="mono" title="${esc(v.tree)}">tree ${esc(v.tree.slice(0,8))}</span>`);
+ if(v.cmd){const c=v.cmd.replace(/^sh -c /,"");ev.push(`<span class="mono" title="${esc(c)}">${esc(c)}</span>`)}
+ if(v.count>1)ev.push(`<span>${v.count}×</span>`);if(v.detail)ev.push(`<span>${esc(v.detail)}</span>`);
+ const act=towerAction(e);
+ return `<article class="tcard ${esc(e.severity)}" aria-label="${esc(KIND[e.kind]||e.kind)}"><i></i><p><span class="label" style="margin-right:8px">${esc(KIND[e.kind]||e.kind)}</span>${esc(e.text).replace(/`([^`]+)`/g,'<span class="mono">$1</span>')}</p>
+ <button class="iconbtn x" data-act="snooze" data-id="${esc(e.id)}" aria-label="Dismiss for 10 minutes" title="Dismiss for 10 minutes">✕</button>
+ <div class="ev">${ev.join("")}</div>${act?`<div class="ta">${act}</div>`:""}</article>`}
+function tower(s){const all=Array.isArray(s.exceptions)?s.exceptions:[],sn=snoozed(),shown=all.filter(e=>!sn[e.id]),hidden=all.length-shown.length;
+ const lanes=new Set(s.running.map(t=>t.lane)).size,un=(s.gates||[]).filter(g=>g.state==="unproven"),unt=un.length?` title="${esc(un.map(g=>g.lane).join(", "))}"`:"";
+ const counts=`${plural(lanes,"lane")} working${Array.isArray(s.gates)?`, <span${unt}>${un.length} unproven</span>`:""}.`;
+ const hid=hidden?`<span class="snooze">${hidden} dismissed · <button data-act="unsnooze">show</button></span>`:"";
+ if(!shown.length)return `<section class="tower" aria-label="Needs you"><p class="calm"><span class="dot"></span><span><b>Nothing needs you.</b> ${counts}</span>${hid}</p></section>`;
+ return `<section class="tower" aria-label="Needs you"><div class="label">Needs you · ${shown.length}</div><div class="tcards">${shown.map(towerCard).join("")}</div>
+ <div class="tfoot">${counts} Unproven is a count, not an alarm. ${hid}</div></section>`}
+
 /* ───────── story: the state of the queue as sentences ───────── */
 /* snapshot.story is built in Go (the same sentences as `heavyq why`): sentences of spans. storyFallback below is the
    same logic in JS, kept for servers that predate the field and for the demo data. */
@@ -397,13 +444,15 @@ function render(){const s=S.snap;if(!s)return;renderLive();
  const mc=$("#modechip");mc.hidden=false;
  if(S.demo){mc.className="chip warn";mc.textContent="demo"}else if(S.meta&&S.meta.control){mc.className="chip ok";mc.textContent="control"}else{mc.className="chip";mc.innerHTML=`read-only<span class="hide-sm" style="color:var(--ink-4)"> · <span class="mono">--control</span> to act</span>`}
  const focus=document.activeElement&&document.activeElement.id,sc=[...document.querySelectorAll(".scroll")].map(x=>x.scrollTop);
- app.innerHTML=`<main>${story(s)}${flow(s)}${capacity(s)}${historyBlock()}</main>`;
+ app.innerHTML=`<main>${tower(s)}${story(s)}${flow(s)}${capacity(s)}${historyBlock()}</main>`;
  document.querySelectorAll(".scroll").forEach((x,i)=>x.scrollTop=sc[i]||0);if(focus){const f=document.getElementById(focus);if(f)f.focus()}}
 
 /* ───────── events ───────── */
 document.addEventListener("click",ev=>{
  const w=ev.target.closest("[data-win]");if(w){S.win=w.dataset.win;store.set("hq.flow",S.win);if(!S.demo)loadInsights();render();return}
  const b=ev.target.closest("[data-act]");if(!b)return;const a=b.dataset.act;ev.preventDefault();
+ if(a==="snooze"||a==="unsnooze"){snooze(b.dataset.id,a==="snooze");render();return}
+ if(a==="copy"){const c=b.dataset.cmd;(navigator.clipboard?navigator.clipboard.writeText(c):Promise.reject()).then(()=>toast("Copied: "+c),()=>toast("Copy is blocked here: select the command and copy it",true));return}
  if(a==="confirm"){S.confirm=b.dataset.id;render();const y=$("#cf-yes");if(y)y.focus();return}
  if(a==="noconfirm"){S.confirm=null;render();return}
  if(a==="cancel"){S.confirm=null;const t=[...S.snap.running,...S.snap.waiting].find(x=>x.id===b.dataset.id);if(t)t.cancel_requested=true;render();act("tickets/"+encodeURIComponent(b.dataset.id)+"/cancel",null,"Cancel requested: the job stops within a few seconds");return}
@@ -434,6 +483,13 @@ const DEMO=(()=>{const now=Date.now(),iso=s=>new Date(now-s*1000).toISOString();
   {id:"3-01762011500000000000-50388-wt-search-ui",pid:50388,lane:"wt-search-ui",prio:3,light:false,target:"local",candidates:["local"],cmd:"pytest -x tests/integration",since:iso(100),wait_s:100,cancel_requested:false,position:2,reasons:{local:"behind wt-billing-fix (p3)"},bypass_in_s:-1},
   {id:"6-01762011595000000000-50801-wt-payments-v2",pid:50801,lane:"wt-payments-v2",prio:6,light:false,target:"auto",candidates:["local","build-box"],cmd:"go test -race -count=1 ./internal/...",since:iso(5),wait_s:5,cancel_requested:false,position:3,reasons:{local:"behind wt-billing-fix (p3), wt-search-ui (p3)","build-box":"behind wt-billing-fix (p3)"},bypass_in_s:-1}],
  coalesced:[{leader:{lane:"wt-auth-refactor",pid:47001,cmd:"go test ./...",since:iso(180)},followers:[{lane:"wt-auth-review",pid:47220,cmd:"go test ./...",since:iso(150)}]}],
+ gates:[{lane:"wt-search",gate:"ready",tree:"9ac1f03e57d2b6a4",state:"failed",failed:[{cmd:"go test -race -count=1 ./internal/...",at:iso(140),count:1}]},
+  {lane:"wt-auth-refactor",gate:"ready",tree:"5be0c1d7a932f4e8",state:"proven"},{lane:"wt-docs",gate:"ready",tree:"c07a41e29d5b8f36",state:"unproven"},{lane:"wt-search-ui",gate:"ready",tree:"e41d9b02c7a5f368",state:"unproven"}],
+ exceptions:[
+  {id:"red_gate|wt-search|9ac1f03e57d2b6a4",kind:"red_gate",severity:"critical",lane:"wt-search",text:"wt-search's ready gate fails on its current code: `go test -race -count=1 ./internal/...` failed.",evidence:{at:iso(140),tree:"9ac1f03e57d2b6a4",cmd:"go test -race -count=1 ./internal/...",count:1,gate:"ready"},action:{kind:"run",target:"ready",command:"cd ../wt-search && heavyq gate run ready"}},
+  {id:"loop|wt-billing-fix|4f2a1c09b6d8e371|npm test|3",kind:"loop",severity:"critical",lane:"wt-billing-fix",text:"wt-billing-fix ran `npm test` 3 times on the same code and it failed every time.",evidence:{at:iso(400),tree:"4f2a1c09b6d8e371",cmd:"npm test",count:3},action:{kind:"cancel",target:"3-01762011288000000000-50122-wt-billing-fix",command:"heavyq cancel 3-01762011288000000000-50122-wt-billing-fix"}},
+  {id:"starved|wt-payments-v2|2",kind:"starved",severity:"warning",lane:"wt-payments-v2",text:"wt-payments-v2 gave up 2 times in the last hour.",evidence:{at:iso(1260),count:2,cmd:"go test -race -count=1 ./internal/..."},action:{kind:"raise",target:"6-01762011595000000000-50801-wt-payments-v2",value:5,command:"heavyq reprio 6-01762011595000000000-50801-wt-payments-v2 5"}},
+  {id:"machine|local|outside_ram",kind:"machine",severity:"warning",machine:"local",text:"Processes outside the queue hold 18 GB of the 31 GB of RAM on local, led by claude (14 processes).",evidence:{detail:"outside the queue: 18 GB of 31 GB (57%)"}}],
  cpu:{available:true,interval_ms:500,lanes:[{name:"wt-search",procs:31,cpu_pct:412,rss_mb:2380},{name:"wt-docs",procs:6,cpu_pct:96,rss_mb:640}],
   outside:[{name:"claude",procs:14,cpu_pct:85,rss_mb:11240},{name:"node",procs:38,cpu_pct:44,rss_mb:3120},{name:"gopls",procs:5,cpu_pct:12,rss_mb:1480},{name:"chrome",procs:22,cpu_pct:9,rss_mb:1310}],
   outside_total:{name:"outside",procs:412,cpu_pct:160,rss_mb:17980}}};
@@ -453,8 +509,8 @@ const DEMO=(()=>{const now=Date.now(),iso=s=>new Date(now-s*1000).toISOString();
  return {snap,insights,history}})();
 function demoAct(path,body){const s=S.snap,m=path.match(/^machines\/([^/]+)\/(pause|resume)$/);
  if(m){const x=s.machines.find(y=>y.name===decodeURIComponent(m[1]));if(x)x.paused=m[2]==="pause"}
- const p=path.match(/^tickets\/([^/]+)\/prio$/);if(p){const t=s.waiting.find(y=>y.id===decodeURIComponent(p[1]));if(t)t.prio=body.prio}
- const c=path.match(/^tickets\/([^/]+)\/cancel$/);if(c){const id=decodeURIComponent(c[1]);setTimeout(()=>{const t=[...s.running,...s.waiting].find(y=>y.id===id);
+ const p=path.match(/^tickets\/([^/]+)\/prio$/);if(p){const id=decodeURIComponent(p[1]),t=s.waiting.find(y=>y.id===id);if(t)t.prio=body.prio;s.exceptions=s.exceptions.filter(e=>!(e.action&&e.action.target===id))}
+ const c=path.match(/^tickets\/([^/]+)\/cancel$/);if(c){const id=decodeURIComponent(c[1]);s.exceptions=s.exceptions.filter(e=>!(e.action&&e.action.target===id));setTimeout(()=>{const t=[...s.running,...s.waiting].find(y=>y.id===id);
   if(t)S.hist.push({end:new Date().toISOString(),machine:t.machine||"",lane:t.lane,prio:t.prio,wait_s:t.wait_s,run_s:t.run_s||0,exit:78,cmd:t.cmd,result:"cancelled"});
   s.running=s.running.filter(y=>y.id!==id);s.waiting=s.waiting.filter(y=>y.id!==id).map((y,i)=>({...y,position:i+1}));render()},1500)}
  render()}

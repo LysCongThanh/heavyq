@@ -32,6 +32,37 @@ keep other users, other machines and web pages out, not to separate privileges w
 
 Errors are `{"error":"..."}` with 400, 401, 403, 404, 409 or 421 (wrong `Host`).
 
+## The Tower: what needs you
+
+The top of the page is empty unless something needs a human: one calm line (`Nothing needs you. 4 lanes
+working, 2 unproven.`), with the story and the flow below it. Otherwise it shows one card per exception: a
+severity dot, one sentence, the evidence (when, lane or machine, tree, command, count) and at most one
+action. With `--control` the action is a button (cancel a job, raise a priority, resume a machine); without
+it, or for `run` actions, the card shows the command to copy. Every card has a dismiss button: the
+exception stays hidden in that browser for 10 minutes (`localStorage`, key `hq.snooze`), and comes back
+earlier if it gets worse (a loop with one more failure is a new exception). Unproven lanes are a count, not
+a card.
+
+Exceptions are facts heavyq measured, never what an agent claims. They are computed in Go
+(`internal/snapshot`) from the snapshot, the run ledger and each recently active lane's work tree, so
+`heavyq status --json` (`exceptions[]`), `heavyq why` (one `Needs you:` line each) and the page agree.
+
+| `kind` | When | Severity | Action |
+|---|---|---|---|
+| `red_gate` | the latest conclusive run of a gate command on the lane's current tree failed (`heavyq gate status` says the same), and it is not classed `flaky` or `under_load` | critical | `run`: `cd <worktree> && heavyq gate run <gate>` |
+| `loop` | the same command failed at least 2 times on the same tree in a lane within 30 minutes | critical | `cancel` the lane's job, if it has one |
+| `starved` | the head of the queue waited more than 2/3 of `force_after` and nothing would take it, or a lane gave up in the last hour | warning | `raise` the head's priority by one |
+| `machine` | a machine is unreachable or paused, or processes outside the queue hold more than 40% of the local RAM | warning | `resume` for a paused machine |
+
+Each exception is `{id, kind, severity, lane?, machine?, text, evidence{at, tree, cmd, count, gate,
+detail}, action{kind, target, value, command}?}`. `text` is one sentence; `evidence` fields that do not
+apply are absent; `action.command` is always the command to type.
+
+`gates[]` is what the red-gate check read: per lane that ran in the last hour, the main gate's `state`
+(`proven`, `unproven`, `failed`, or `skipped` with a `reason`: no `heavyq.toml`, no gate named `ready` among
+several, an unidentifiable tree, or the budget below ran out). Proofs are computed for at
+most 8 work trees per snapshot, within 1.5 s, and reused for 10 s.
+
 ## Snapshot (schema 1)
 
 The Go definition is the reference: [`internal/snapshot/snapshot_types.go`](../internal/snapshot/snapshot_types.go).
@@ -54,6 +85,7 @@ Fields may be added within schema 1; renaming or removing one bumps `schema`.
   joined is the sentence's `text`. Countdowns ("skips the RAM and load checks in 2m 10s") are as of
   `generated_at`. The page renders `story` when present and falls back to its own copy of the logic for older
   servers.
+- `gates[]` and `exceptions[]`: the Tower, described above.
 
 ## Control without the dashboard
 
