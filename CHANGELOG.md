@@ -79,6 +79,21 @@ versions follow [Semantic Versioning](https://semver.org/).
   own copy of the logic as a fallback for older servers and the demo data. The sentences are unchanged apart
   from two grammar fixes ("1 node process holds", and a lane that got in through the bypass is named once).
 
+### Fixed
+
+- **`heavyq.toml` keys are case-sensitive.** The TOML library matched keys to fields ignoring case, so
+  `[[GATE]]` or `Run = [...]` loaded silently, and `[[gaTe]]` next to `[[gate]]` filled the same list: one
+  of the two gates was dropped, and which one was random. Any key with an upper-case letter is now refused
+  as an unknown key, with its line. Found by the new fuzz tests.
+- **A ledger line over 1 MiB no longer stops `heavyq history`.** It is skipped like any corrupt line, and the
+  records after it still load (before, the read ended with an error at that line).
+
+### Tests
+
+- Go fuzz tests for the parsers that read untrusted input: the hook's shell-command parser and rewrite,
+  secret redaction, the anchor markdown parser and `SetChecked`, `heavyq.toml`, and the ledger reader. CI
+  runs each for 20 s on pull requests that touch its package and for 2 minutes on the weekly schedule.
+
 ## [0.3.0] - 2026-11-01
 
 ### Added

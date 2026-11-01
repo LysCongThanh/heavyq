@@ -45,6 +45,57 @@ jobs:
         with:
           version: v2.15.0 # also covers gofmt (see .golangci.yml)
 
+  # Go native fuzzing of the parsers that read untrusted input. A pull request fuzzes a package only when
+  # it touched it (or this workflow), for 20 s per target; the weekly schedule runs every target for 2 m.
+  # A crasher fails the job and is uploaded: commit it under testdata/fuzz as the regression test.
+  fuzz:
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {pkg: hook, targets: "FuzzParse FuzzDecideRewrite FuzzDecideStdin"}
+          - {pkg: redact, targets: "FuzzCommand"}
+          - {pkg: anchor, targets: "FuzzParse FuzzSetChecked"}
+          - {pkg: repoconfig, targets: "FuzzParse"}
+          - {pkg: history, targets: "FuzzReadLast"}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # the changed-files check diffs against the base branch
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable
+      - name: fuzz ${{ matrix.pkg }}
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          PKG: ${{ matrix.pkg }}
+          TARGETS: ${{ matrix.targets }}
+        run: |
+          fuzztime=2m
+          if [ "$EVENT" = pull_request ]; then
+            fuzztime=20s
+            if ! git diff --name-only "origin/${BASE_REF}...HEAD" | grep -Eq "^(internal/${PKG}/|\.github/workflows/ci\.yml$)"; then
+              echo "internal/${PKG} unchanged: skipping its fuzz targets"
+              exit 0
+            fi
+          fi
+          for target in $TARGETS; do
+            echo "::group::fuzz ${PKG} ${target} (${fuzztime})"
+            go test "./internal/${PKG}" -run '^$' -fuzz "^${target}\$" -fuzztime "$fuzztime" -fuzzminimizetime 10s
+            echo "::endgroup::"
+          done
+      - name: upload crashers
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: fuzz-${{ matrix.pkg }}
+          path: internal/${{ matrix.pkg }}/testdata/fuzz
+          if-no-files-found: ignore
+
   # Same goreleaser config as the tag build, minus publishing: cross-builds, archives, SBOMs.
   release-snapshot:
     runs-on: ubuntu-latest

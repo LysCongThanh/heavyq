@@ -146,6 +146,11 @@ func TestLoadUnknownKeysReportFileAndLine(t *testing.T) {
 		{"top level key", "version = 1\n[[gate]]\nname = \"a\"\nrun = [\"x\"]\n", `heavyq.toml:1: unknown key "version"`},
 		{"anchor key", "# c\n[anchor]\nfile = \"a.md\"\nfiles = \"b\"\n", `heavyq.toml:4: unknown key "anchor.files"`},
 		{"gates plural", "[[gates]]\nname = \"a\"\n", `heavyq.toml:1: unknown key "gates"`},
+		// The TOML library matches field names case-insensitively; a gate must not slip in or out that way.
+		{"upper case table", "[[GATE]]\nname = \"a\"\nrun = [\"x\"]\n", `heavyq.toml:1: unknown key "GATE"`},
+		{"upper case gate key", "[[gate]]\nname = \"a\"\nRun = [\"x\"]\n", `heavyq.toml:3: unknown key "gate.Run"`},
+		{"case twin of a gate table", "[[gaTe]]\nname = \"a\"\nrun = [\"x\"]\n[[gate]]\nname = \"a\"\nrun = [\"y\"]\n", `heavyq.toml:1: unknown key "gaTe"`},
+		{"upper case anchor", "[Anchor]\nfile = \"a.md\"\n", `heavyq.toml:1: unknown key "Anchor"`},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
