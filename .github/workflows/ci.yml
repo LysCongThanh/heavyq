@@ -59,6 +59,7 @@ jobs:
           - {pkg: redact, targets: "FuzzCommand"}
           - {pkg: anchor, targets: "FuzzParse FuzzSetChecked"}
           - {pkg: repoconfig, targets: "FuzzParse"}
+          - {pkg: config, targets: "FuzzParse"}
           - {pkg: history, targets: "FuzzReadLast"}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

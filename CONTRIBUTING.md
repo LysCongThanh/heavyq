@@ -35,6 +35,7 @@ The remote path is tested through a `sh -c` transport, which runs the same code 
 | `internal/gitutil` | git queries, including the tree identity of clean and dirty work trees |
 | `internal/proof` | pure matching of ledger records to gate commands on a tree: proven / failed / missing |
 | `internal/repoconfig` | per-repo `heavyq.toml`: named gates, validation (trusted like a Makefile) |
+| `internal/tomlkeys` | strict-key check shared by both config parsers: unknown or upper-case keys, with their line |
 
 ## House rules
 
@@ -57,8 +58,8 @@ The remote path is tested through a `sh -c` transport, which runs the same code 
 ## Fuzzing
 
 The parsers that read input heavyq does not control have Go fuzz tests (`Fuzz*` in `*_fuzz_test.go`): the
-hook's shell-command parser and rewrite, `internal/redact`, `internal/anchor`, `heavyq.toml`, and the ledger
-reader. CI fuzzes each for 20 s on pull requests that touch its package and for 2 minutes every week.
+hook's shell-command parser and rewrite, `internal/redact`, `internal/anchor`, `heavyq.toml`, the user config, and the
+ledger reader. CI fuzzes each for 20 s on pull requests that touch its package and for 2 minutes every week.
 
 ```bash
 go test ./internal/anchor -run '^$' -fuzz '^FuzzSetChecked$' -fuzztime 30s   # one target at a time
