@@ -3,6 +3,7 @@ package history
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -30,5 +31,39 @@ func TestReadMissing(t *testing.T) {
 	recs, err := ReadLast(filepath.Join(t.TempDir(), "none"), 10)
 	if err != nil || recs != nil {
 		t.Fatalf("missing file: %v %v", recs, err)
+	}
+}
+
+// A line over the reader's limit is corrupt like any other: it is skipped, no
+// error is returned, and the records on both sides of it still load.
+func TestReadLastSkipsOversizedLine(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "history.jsonl")
+	if err := Append(p, Record{End: time.Now(), Lane: "before", Cmd: "a"}); err != nil {
+		t.Fatal(err)
+	}
+	f, err := os.OpenFile(p, os.O_APPEND|os.O_WRONLY, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	huge := `{"lane":"huge","cmd":"` + strings.Repeat("x", maxLineBytes+10) + `"}` + "\n"
+	if _, err := f.WriteString(huge); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.WriteString(strings.Repeat("y", 3*maxLineBytes)); err != nil { // junk without a newline, then...
+		t.Fatal(err)
+	}
+	if _, err := f.WriteString("\n"); err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+	if err := Append(p, Record{End: time.Now(), Lane: "after", Cmd: "b"}); err != nil {
+		t.Fatal(err)
+	}
+	recs, err := ReadLast(p, 0)
+	if err != nil {
+		t.Fatalf("an oversized line must not be fatal: %v", err)
+	}
+	if len(recs) != 2 || recs[0].Lane != "before" || recs[1].Lane != "after" {
+		t.Fatalf("got %+v", recs)
 	}
 }

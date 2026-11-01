@@ -2,9 +2,11 @@ package history
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -80,21 +82,54 @@ func readFile(path string, n int) ([]Record, error) {
 	}
 	defer f.Close()
 	var out []Record
-	sc := bufio.NewScanner(f)
-	sc.Buffer(make([]byte, 64*1024), 1024*1024)
-	for sc.Scan() {
+	err = eachLine(f, func(line []byte) {
 		var r Record
-		if json.Unmarshal(sc.Bytes(), &r) == nil {
+		if json.Unmarshal(line, &r) == nil {
 			out = append(out, r)
 			if n > 0 && len(out) >= 2*n { // bound memory on a long file
 				out = append(out[:0], out[len(out)-n:]...)
 			}
 		}
-	}
-	if err := sc.Err(); err != nil {
+	})
+	if err != nil {
 		return lastN(out, n), fmt.Errorf("read %s: %w", path, err)
 	}
 	return lastN(out, n), nil
+}
+
+// maxLineBytes is the longest ledger line that is decoded. A real line is a
+// few hundred bytes (the command is truncated before it is stored).
+const maxLineBytes = 1024 * 1024
+
+// eachLine calls fn for every line of r (without its line ending). A line
+// longer than maxLineBytes is corrupt like any other: it is skipped and the
+// lines after it still load. Only a read error stops the walk.
+func eachLine(r io.Reader, fn func(line []byte)) error {
+	br := bufio.NewReaderSize(r, 64*1024)
+	var buf []byte
+	skipping := false
+	for {
+		chunk, err := br.ReadSlice('\n')
+		if !skipping {
+			buf = append(buf, chunk...)
+			if len(buf) > maxLineBytes {
+				buf, skipping = nil, true
+			}
+		}
+		if errors.Is(err, bufio.ErrBufferFull) {
+			continue // the line goes on in the next chunk
+		}
+		if !skipping && len(buf) > 0 {
+			fn(bytes.TrimRight(buf, "\r\n"))
+		}
+		buf, skipping = buf[:0], false
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return nil
+			}
+			return err
+		}
+	}
 }
 
 func lastN(recs []Record, n int) []Record {
