@@ -48,6 +48,22 @@ versions follow [Semantic Versioning](https://semver.org/).
   vet and test steps.
 - **`heavyq why`** ends with "The ready gate is proven / not proven on this tree" when the repository has a
   `heavyq.toml`.
+- **Zero-config default gate.** A repository with no `heavyq.toml` gets a gate called `ready`, detected at its
+  git root: `go.mod` gives `go vet ./...` and `go test ./...`; `package.json` gives `<pm> run <script>` for the
+  `typecheck`, `lint` and `test` scripts it defines (`<pm>` from the lockfile: `pnpm-lock.yaml`, `yarn.lock`,
+  `bun.lockb`/`bun.lock`, else npm; the `echo "no test specified"` stub of `npm init` does not count);
+  `pytest.ini`, `pyproject.toml` or a `[tool:pytest]` section in `setup.cfg` gives `pytest`; `Cargo.toml` gives
+  `cargo test`. Several ecosystems at the root add up, in that order. `gate status`, `gate run` and the `why`
+  line use it and call it `ready (detected)`; `gate status --json` adds `"detected": true`. Detection only reads
+  files (a bounded read, `package.json` parsed as data, script bodies never used) and never runs anything. An
+  explicit `heavyq.toml` always wins.
+- **`heavyq init [--agents-md] [--force] [--print]`** writes that detection down as a commented `heavyq.toml`
+  at the git root: what the file is, the trust model, how to add a gate. It never overwrites an existing file
+  (exit 1) unless `--force`; `--print` writes to stdout only. `--agents-md` adds a short section ("before
+  saying a task is done, run `heavyq gate run ready`; exit 1: fix and re-run; exit 75: queue busy, retry
+  later, never bypass heavyq") to `AGENTS.md` (created if missing) and to `CLAUDE.md` (only if it exists),
+  between `<!-- heavyq:begin -->` and `<!-- heavyq:end -->`. Running it again changes nothing, a stale section is
+  replaced in place, and a symlink that leaves the repository is never followed. Safe for an agent to run.
 - **`heavyq why [lane]`**: the story of the queue in plain words ("2 agents wait because every heavy slot
   on local is taken."). With a lane, its running and waiting jobs, the reason per candidate machine, and its
   last recorded run.

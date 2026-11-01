@@ -5,7 +5,69 @@ top level; in a linked worktree, that worktree's own copy). A **gate** is a name
 must all pass on the current code.
 
 `heavyq gate status` tells you whether the code checked out now is proven, and `heavyq gate run`
-proves it.
+proves it. Without a `heavyq.toml`, a default gate is [detected](#no-heavyqtoml-the-detected-gate).
+
+## No `heavyq.toml`: the detected gate
+
+A repository without `heavyq.toml` still has a gate. heavyq makes up one called `ready` from the files at the
+git root, in this order, and every ecosystem found adds its commands to it:
+
+| File at the git root | Commands added |
+|---|---|
+| `go.mod` | `go vet ./...`, `go test ./...` |
+| `package.json` | `<pm> run <script>` for each of `typecheck`, `lint`, `test` that it defines, in that order |
+| `pytest.ini`, `pyproject.toml`, or `setup.cfg` containing a `[tool:pytest]` section | `pytest` |
+| `Cargo.toml` | `cargo test` |
+
+`<pm>` comes from the lockfile next to `package.json`: `pnpm-lock.yaml` is `pnpm`, `yarn.lock` is `yarn`,
+`bun.lockb` or `bun.lock` is `bun` (checked in that order), anything else is `npm` (`npm run test`). A script
+counts only if its value is a non-blank string, and the `test` script that `npm init` writes
+(`echo "Error: no test specified" && exit 1`) does not count, because it can never pass.
+
+Detection never runs anything. It reads at most a few files, each bounded to 1 MiB (a bigger one is ignored),
+parses `package.json` as JSON data, and uses only the *names* of the scripts: no text from a file reaches a
+command line, so a repository cannot choose what the detected gate runs beyond "its own `lint` script".
+A file that is missing, malformed or not a regular file adds nothing. The detected gate has the default `prio`
+(3), is not `light` and runs `local`.
+
+It is used by `gate status`, `gate run` and the `why` sentence, which call it `ready (detected)`, and
+`gate status --json` adds `"detected": true` (the key is absent for a gate from a file). A `heavyq.toml`
+always wins: if the file exists, even empty or invalid, nothing is detected. When there is no file and nothing
+to detect, the commands exit 2 and say so. The detected gate is run only by an explicit `gate run`, like any
+other.
+
+```
+$ heavyq gate status
+gate ready (detected): NOT PROVEN on tree 30275da9949f
+  STATE    WHEN                 LANE              RUN  COMMAND
+  missing  -                    -                   -  go vet ./...
+  missing  -                    -                   -  go test ./...
+  0 failed, 2 missing. Prove it with: heavyq gate run ready
+```
+
+## `heavyq init [--agents-md] [--force] [--print]`
+
+Writes the detection down as `heavyq.toml` at the git root (from any subdirectory), so it can be reviewed,
+edited and committed. The file is commented: what it is, the trust model below, and how to add a gate. With
+nothing to detect, it carries a commented-out example instead of a gate, and `init` says so.
+
+- It never overwrites: if `heavyq.toml` exists (a symlink counts), `init` leaves it alone and exits **1**.
+  `--force` replaces it (a symlink is replaced, never written through). `--print` writes the file to stdout
+  and nothing to disk, and does not care whether one exists.
+- `--agents-md` also puts a short section into `AGENTS.md` (created if missing) and `CLAUDE.md` (only if it
+  already exists), between `<!-- heavyq:begin -->` and `<!-- heavyq:end -->`: before saying a task is done,
+  run `heavyq gate run ready`; exit 1 means fix and re-run; exit 75 means the queue is busy, retry later and
+  never bypass heavyq. Text outside the markers is never touched. A file without markers gets the section
+  appended; one with a well-formed pair gets it replaced in place, so running `init --agents-md` again changes
+  nothing. Unpaired, repeated or reversed markers, a file over 1 MiB, or a symlink that points outside the
+  repository are refused (exit 1). It is applied even when `heavyq.toml` already exists, so a hand-written
+  `heavyq.toml` can get the section without `--force`.
+- `--print` cannot be combined with `--agents-md`. Outside a git work tree, or with unknown flags or
+  arguments, `init` exits 2.
+
+`init` is safe for an agent to run: it reads files to detect, writes only `heavyq.toml`, `AGENTS.md` and
+`CLAUDE.md` at the git root, and runs nothing. The section names the gate `ready`, the name the detected gate
+and the generated file use.
 
 ## Trust model
 
@@ -56,8 +118,8 @@ Every error names the file. Unknown keys also name the line when it can be found
 /work/app/heavyq.toml: [[gate]] #3: duplicate gate name "ready"
 ```
 
-A directory that is not in a git work tree, or a repository without `heavyq.toml`, simply has no gates. That
-is not an error.
+A directory that is not in a git work tree, or a repository without `heavyq.toml` and with nothing to detect,
+simply has no gates. That is not an error for `heavyq why`; `gate status` and `gate run` exit 2 and say so.
 
 ## What "proven" means
 
@@ -90,7 +152,8 @@ same tree is `failed`. A gate is proven when every command is. Everything else f
 ## `heavyq gate status [name] [--json]`
 
 `name` defaults to `ready`, else to the only gate in the file. Exit code: **0** every command proven,
-**1** not proven, **2** usage error (no `heavyq.toml`, no such gate, an invalid file, not in a git work tree).
+**1** not proven, **2** usage error (neither `heavyq.toml` nor a detectable gate, no such gate, an invalid
+file, not in a git work tree).
 
 ```
 gate ready: NOT PROVEN on tree 30275da9949f+1c9be0e2 (uncommitted edits)
@@ -124,6 +187,7 @@ object (additive changes only):
 | Field | Meaning |
 |---|---|
 | `gate`, `proven` | the gate and whether every command is proven |
+| `detected` | `true` only when the gate is the default heavyq detected because there is no `heavyq.toml`; absent otherwise |
 | `tree`, `commit`, `dirty` | the code asked about; `tree` is `""` when it cannot be identified (`commit` is omitted before the first commit) |
 | `reason` | set when nothing can be proven at all (unknown tree); omitted otherwise |
 | `commands[].cmd` | the command string from `heavyq.toml` (secrets redacted) |

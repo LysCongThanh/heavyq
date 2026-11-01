@@ -22,10 +22,11 @@ const (
 	maxFileBytes = 1 << 20
 )
 
-// Repo is a loaded and validated heavyq.toml.
+// Repo is a loaded and validated heavyq.toml, or, when the repository has
+// none, the default gate Detect found (Path is then empty).
 type Repo struct {
 	Root   string // git top level the file was found in
-	Path   string // Root/heavyq.toml
+	Path   string // Root/heavyq.toml; "" for a detected gate
 	Gates  []Gate // file order
 	Anchor Anchor
 }
@@ -37,6 +38,11 @@ type Gate struct {
 	Prio   int      // 1 runs first; DefaultPrio when unset
 	Light  bool     // may use the light slots
 	Remote string   // "local" | "auto" | <remote name>; DefaultRemote when unset
+	// Detected marks the default gate Detect made up from files at the git
+	// root because the repository has no heavyq.toml; Sources names those
+	// files. Both are zero for a gate read from a file.
+	Detected bool
+	Sources  []string
 }
 
 // Anchor is the reserved [anchor] section. It is parsed and validated so
@@ -54,6 +60,15 @@ func (r *Repo) Gate(name string) (Gate, bool) {
 		}
 	}
 	return Gate{}, false
+}
+
+// Where names the source of r's gates in messages: the file, or the
+// detection at the repository root.
+func (r *Repo) Where() string {
+	if r.Path != "" {
+		return r.Path
+	}
+	return "detected defaults at " + r.Root
 }
 
 // rawFile mirrors the TOML layout before validation. Prio is a pointer so

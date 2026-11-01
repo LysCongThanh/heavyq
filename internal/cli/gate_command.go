@@ -26,7 +26,8 @@ const gateUsage = `usage:
   heavyq [--config FILE] gate status [name] [--json]
   heavyq [--config FILE] gate run [name] [--parallel] [--keep-going] [--lane NAME]
 
-name defaults to "ready", else to the only gate in heavyq.toml.
+name defaults to "ready", else to the only gate in heavyq.toml. Without a heavyq.toml, the gate "ready"
+is detected from go.mod, package.json, pytest config or Cargo.toml ("ready (detected)"); heavyq init writes it down.
 status exits 0 when every command is proven on this exact code, 1 when not, 2 on a usage error.
 `
 
@@ -78,15 +79,27 @@ type gateTarget struct {
 	gate repoconfig.Gate
 }
 
-// loadGate finds heavyq.toml from the current directory and picks the gate.
-// The message is printed for the caller; ok false means exit ExitUsage.
+// label is the gate's name as people see it: "ready (detected)" for the
+// default gate heavyq made up because there is no heavyq.toml.
+func (t *gateTarget) label() string { return gateLabel(t.gate) }
+
+func gateLabel(g repoconfig.Gate) string {
+	if g.Detected {
+		return g.Name + " (detected)"
+	}
+	return g.Name
+}
+
+// loadGate finds heavyq.toml from the current directory and picks the gate;
+// without a heavyq.toml it is the gate detected at the git root. The message
+// is printed for the caller; ok false means exit ExitUsage.
 func loadGate(name string, stderr io.Writer) (*gateTarget, bool) {
 	wd, err := os.Getwd()
 	if err != nil {
 		fmt.Fprintln(stderr, "heavyq:", err)
 		return nil, false
 	}
-	repo, err := repoconfig.Load(wd)
+	repo, err := repoconfig.LoadOrDetect(wd)
 	if err != nil {
 		fmt.Fprintln(stderr, "heavyq:", err)
 		return nil, false
@@ -95,7 +108,8 @@ func loadGate(name string, stderr io.Writer) (*gateTarget, bool) {
 		if top, err := gitutil.TopLevel(wd); err != nil {
 			fmt.Fprintf(stderr, "heavyq: %s is not inside a git work tree, so there is no %s\n", wd, repoconfig.FileName)
 		} else {
-			fmt.Fprintf(stderr, "heavyq: no %s in %s (it defines the gates)\n", repoconfig.FileName, top)
+			fmt.Fprintf(stderr, "heavyq: no %s in %s (it defines the gates), and no go.mod, package.json, pytest config or Cargo.toml to detect a default gate from; `heavyq init` writes a starting file\n",
+				repoconfig.FileName, top)
 		}
 		return nil, false
 	}
@@ -116,12 +130,12 @@ func pickGate(repo *repoconfig.Repo, name string, stderr io.Writer) (repoconfig.
 	list := strings.Join(names, ", ")
 	switch {
 	case len(names) == 0:
-		fmt.Fprintf(stderr, "heavyq: %s defines no gates\n", repo.Path)
+		fmt.Fprintf(stderr, "heavyq: %s defines no gates\n", repo.Where())
 	case name != "":
 		if g, ok := repo.Gate(name); ok {
 			return g, true
 		}
-		fmt.Fprintf(stderr, "heavyq: no gate %q in %s (gates: %s)\n", name, repo.Path, list)
+		fmt.Fprintf(stderr, "heavyq: no gate %q in %s (gates: %s)\n", name, repo.Where(), list)
 	default:
 		if g, ok := repo.Gate(defaultGate); ok {
 			return g, true
@@ -129,7 +143,7 @@ func pickGate(repo *repoconfig.Repo, name string, stderr io.Writer) (repoconfig.
 		if len(repo.Gates) == 1 {
 			return repo.Gates[0], true
 		}
-		fmt.Fprintf(stderr, "heavyq: %s has no gate %q; name one of: %s\n", repo.Path, defaultGate, list)
+		fmt.Fprintf(stderr, "heavyq: %s has no gate %q; name one of: %s\n", repo.Where(), defaultGate, list)
 	}
 	return repoconfig.Gate{}, false
 }

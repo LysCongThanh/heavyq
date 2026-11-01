@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/LysCongThanh/heavyq/internal/config"
@@ -37,6 +38,10 @@ func gateRunCommand(cfg *config.Config, args []string, stdout, stderr io.Writer)
 	if !ok {
 		return ExitUsage
 	}
+	if t.gate.Detected {
+		fmt.Fprintf(stderr, "heavyq: no %s: running the default gate detected from %s (`heavyq init` writes it down)\n",
+			repoconfig.FileName, strings.Join(t.gate.Sources, ", "))
+	}
 	// Commands run from the repository root, whatever directory we were
 	// started in: that is what a gate command means, and what proof matches.
 	if wd, err := os.Getwd(); err == nil {
@@ -67,7 +72,7 @@ func gateRunCommand(cfg *config.Config, args []string, stdout, stderr io.Writer)
 		}
 	}
 	after := evaluateGate(t, stderr)
-	printGate(stdout, after)
+	printGateLabeled(stdout, after, t.label())
 	if after.Proven {
 		return 0
 	}

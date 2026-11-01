@@ -87,8 +87,9 @@ heavyq status      # what runs, what waits, and why (opens with a short story in
 heavyq why         # just that story: "2 agents wait because every heavy slot on local is taken."
 heavyq why api     # one lane: its running and waiting jobs, the reason per machine, its last run
 heavyq history     # recent runs, with the commit each one ran on (-v: tree, session, item, gate)
-heavyq gate status # is this exact code proven? (the gates in heavyq.toml; exit 0 yes, 1 no)
+heavyq gate status # is this exact code proven? (heavyq.toml gates, or a detected default; exit 0 yes, 1 no)
 heavyq gate run    # run what is not proven yet, through the queue, cached
+heavyq init --agents-md      # write heavyq.toml from what heavyq detects, tell agents to run the gate
 heavyq hook install claude   # let Claude Code agents use the queue without being told
 ```
 
@@ -310,6 +311,23 @@ for the API.
 A repository can say what "proven" means for it in a `heavyq.toml` at its repository root: named **gates**,
 each a list of shell commands.
 
+**Zero-config.** With no `heavyq.toml`, heavyq detects a gate called `ready` at the git root, so
+`heavyq gate status` and `heavyq gate run` work in a fresh clone:
+
+| Found at the git root | Commands |
+|---|---|
+| `go.mod` | `go vet ./...`, `go test ./...` |
+| `package.json` | `<pm> run typecheck`, `<pm> run lint`, `<pm> run test`: only the scripts it defines. `<pm>` is `pnpm`, `yarn` or `bun` by the lockfile (`pnpm-lock.yaml`, `yarn.lock`, `bun.lockb`/`bun.lock`), else `npm` |
+| `pytest.ini`, `pyproject.toml`, or `setup.cfg` with `[tool:pytest]` | `pytest` |
+| `Cargo.toml` | `cargo test` |
+
+Several ecosystems add up, in the order of the table. Detection only reads files and never runs anything; the
+gate shows as `ready (detected)` (and `"detected": true` in `--json`). A `heavyq.toml` always wins.
+**`heavyq init`** writes the detection down as a commented `heavyq.toml` (it refuses to overwrite one unless
+`--force`; `--print` just prints it), and `heavyq init --agents-md` also adds a short section to `AGENTS.md`
+(and `CLAUDE.md` if present) telling agents to run `heavyq gate run ready` before saying a task is done. It is
+idempotent and safe for an agent to run.
+
 ```toml
 [[gate]]
 name = "ready"
@@ -329,7 +347,7 @@ prio = 3          # 1-9, default 3
 - **`heavyq gate status [name] [--json]`** answers "has this exact code passed?" from the run ledger, in about
   20 ms and without running anything. For each command it says `proven`, `failed` or `missing` on the code
   checked out now (the tree id of `HEAD` plus any uncommitted edits), with when, in which lane and how long.
-  Exit 0 when every command is proven, 1 when not, 2 on a usage error (no `heavyq.toml`, unknown gate).
+  Exit 0 when every command is proven, 1 when not, 2 on a usage error (no `heavyq.toml` and nothing to detect, unknown gate).
   `--json` is documented in [docs/gates.md](docs/gates.md).
 - **`heavyq gate run [name] [--parallel] [--keep-going] [--lane NAME]`** runs the commands that are not proven
   yet, one by one through the queue, exactly like `heavyq <prio> --cache --gate <name> -- sh -c '<command>'`
@@ -339,7 +357,8 @@ prio = 3          # 1-9, default 3
   ends.
 - The gate is the same one CI runs: this repository's own [`heavyq.toml`](heavyq.toml) defines `ready` (gofmt,
   `go vet`, `go test -race`), and CI runs `heavyq gate run ready` with the binary it just built.
-- When a `heavyq.toml` exists, `heavyq why` ends with a sentence on whether its `ready` gate is proven here.
+- `heavyq why` ends with a sentence on whether the `ready` gate (from `heavyq.toml`, else the detected one) is
+  proven here.
 
 ## Comparison
 
