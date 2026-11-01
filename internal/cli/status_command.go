@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -49,6 +50,20 @@ func statusCommand(cfg *config.Config, args []string, w io.Writer, stderr io.Wri
 		all = append(all, r.Name)
 	}
 	probes.refresh(cfg, all) // before reading the queue: probes may be slow
+	// The story needs the same CPU sample as the lane breakdown below, so
+	// both run at once: `status` stays one sample interval slow, not two.
+	story := startStory(cfg, probes)
+	var text bytes.Buffer
+	if rc := printStatusText(&text, cfg, q, probes, stderr); rc != 0 {
+		return rc
+	}
+	printStory(w, stderr, <-story)
+	_, _ = w.Write(text.Bytes())
+	return 0
+}
+
+// printStatusText writes the RUNNING, WAITING and MACHINES sections.
+func printStatusText(w io.Writer, cfg *config.Config, q *queue.Dir, probes *probeCache, stderr io.Writer) int {
 	q.Prune(procinfo.Default.Alive)
 	snap, err := q.List()
 	if err != nil {

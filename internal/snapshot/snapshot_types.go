@@ -22,6 +22,10 @@ type Snapshot struct {
 	Waiting     []Waiting `json:"waiting"`   // turn order
 	Coalesced   []Group   `json:"coalesced"` // identical runs sharing one result
 	CPU         CPU       `json:"cpu"`
+	// Story is the state of the queue as sentences (why agents wait, what
+	// holds the RAM, when the bypass applies), computed by Story at
+	// GeneratedAt. Added within schema 1: older readers ignore it.
+	Story []Sentence `json:"story"`
 }
 
 // Config is the part of the configuration a viewer needs to interpret values.

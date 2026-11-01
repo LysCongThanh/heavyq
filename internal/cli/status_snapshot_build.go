@@ -62,6 +62,7 @@ func buildSnapshot(cfg *config.Config, probes *probeCache, cpuInterval time.Dura
 	}
 	s.Waiting = waitingSnapshots(cfg, qs, probes, s.GeneratedAt)
 	s.Coalesced = coalescedSnapshot()
+	s.Story = snapshot.Story(s, nil, s.GeneratedAt)
 	return s, nil
 }
 

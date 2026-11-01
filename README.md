@@ -80,7 +80,9 @@ heavyq 4 --max-wait 10m -- cargo test             # exit 75 if not started withi
 
 heavyq 4 --cache -- npm test                      # same clean commit already tested? reuse that result
 
-heavyq status      # what runs, what waits, and why
+heavyq status      # what runs, what waits, and why (opens with a short story in plain words)
+heavyq why         # just that story: "2 agents wait because every heavy slot on local is taken."
+heavyq why api     # one lane: its running and waiting jobs, the reason per machine, its last run
 heavyq history     # recent runs
 heavyq hook install claude   # let Claude Code agents use the queue without being told
 ```
@@ -237,7 +239,7 @@ installed. Everything lives under `work_dir` (default `~/.heavyq`).
 ```bash
 heavyq dash              # read-only; prints http://127.0.0.1:PORT/#token=...
 heavyq dash --control    # the page can also cancel jobs, change priorities, pause machines
-heavyq status --json     # the same state, machine-readable (schema 1)
+heavyq status --json     # the same state, machine-readable (schema 1, with the story as sentences)
 ```
 
 The dashboard answers, in this order: is the machine OK, what runs and what it costs, **who waits and
