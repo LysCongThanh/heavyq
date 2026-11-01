@@ -27,8 +27,8 @@ The remote path is tested through a `sh -c` transport, which runs the same code 
 | `internal/schedule` | pure rules: who may claim which machine, the resource gate, outside-repo path detection |
 | `internal/queue` | tickets as files, ordering, claim, prune |
 | `internal/slots` | `flock(2)` slot files (compatible with `flock <file> cmd`) |
-| `internal/procinfo` | process identity and per-lane CPU attribution from `/proc` |
-| `internal/metrics` | RAM / load / cores, placement score |
+| `internal/procinfo` | process identity and per-lane CPU attribution from `/proc` (Linux) or `ps` (macOS) |
+| `internal/metrics` | RAM / load / cores from `/proc` or `sysctl` + `vm_stat` (macOS), placement score |
 | `internal/remote` | transport, probe, `git push` of exact commits, the embedded remote job script |
 | `internal/config` | TOML config, defaults, validation |
 | `internal/history` | the run ledger: JSONL records (commit, tree, session, ...), ULIDs, monthly rotation |

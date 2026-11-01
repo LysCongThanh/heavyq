@@ -7,6 +7,14 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **macOS parity: RAM/load gate, CPU attribution, process-tree cancel** (no cgo). Local metrics come from
+  `sysctl -n hw.memsize hw.ncpu vm.loadavg` and `vm_stat` (available = free + inactive + purgeable +
+  speculative pages, capped at installed RAM), so `heavyq status --json` has `metrics_known: true` on a Mac.
+  Processes come from `ps -axo pid=,ppid=,rss=,time=,comm=` (CPU time parsed from `[[dd-]hh:]mm:ss[.cc]`,
+  executable paths with spaces kept whole), sampled twice for CPU% per lane and for the outside-the-queue
+  groups. A cancel walks the `ps` ppid map and reaches every grandchild still attached to its parent;
+  orphans re-parented to `launchd` can be missed (macOS has no subreaper). Linux keeps `/proc`, unchanged.
+  If a command fails, the metrics stay unknown and the gate only enforces slots. CI gains a `macos` job.
 - **Stances: thinking modes as files** (`internal/stance`, `heavyq stance ls|show <name> [--json]`). A stance
   is a short markdown document describing a way of thinking, with TOML frontmatter between `+++` lines
   (`name`, `description`, `enter` triggers, `exit` conditions, `cooldown_minutes`, `inject_tokens`; unknown

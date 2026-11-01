@@ -84,7 +84,7 @@ func buildView(cfg *config.Config, name string, s queue.Snapshot, probes *probeC
 	m, _ := cfg.Machine(name)
 	v := machineView{state: schedule.MachineState{Cfg: m}, busy: map[string]bool{}}
 	if m.IsLocal() {
-		v.state.Metrics = metrics.Local(procinfo.Default.Root)
+		v.state.Metrics = metrics.Host(procinfo.Default.Root)
 		v.state.Reachable = true
 	} else if res, ok := probes.get(name); ok {
 		v.state.Metrics, v.state.Reachable = res.Metrics, true

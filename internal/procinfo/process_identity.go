@@ -1,29 +1,38 @@
-// Package procinfo reads process identity and CPU usage from /proc.
+// Package procinfo reads process identity and CPU usage.
 //
-// The /proc root is injectable (ProcFS.Root) so parsing edge cases can be
-// tested against a fake tree; production always uses "/proc". On systems
-// without /proc (macOS) identity falls back to `ps -o lstart=` and CPU
-// attribution reports itself unavailable.
+// On Linux the source is /proc. The /proc root is injectable (ProcFS.Root)
+// so parsing edge cases can be tested against a fake tree; production always
+// uses "/proc". On macOS there is no /proc and heavyq avoids cgo, so the
+// source is `ps` (ProcFS.UsePS, see ps_process_source.go): the same
+// snapshot shape feeds Breakdown, Attribute and Descendants unchanged.
 package procinfo
 
 import (
 	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
 )
 
-// ProcFS is a handle on a /proc-like directory.
-type ProcFS struct{ Root string }
+// ProcFS is a handle on a process source: a /proc-like directory, or `ps`
+// when UsePS is set.
+type ProcFS struct {
+	Root  string
+	UsePS bool // read processes from ps(1) instead of Root (macOS)
+}
 
-// Default is the real /proc.
-var Default = ProcFS{Root: "/proc"}
+// Default is the real process source of this platform: /proc, or ps on macOS.
+var Default = ProcFS{Root: "/proc", UsePS: runtime.GOOS == "darwin"}
 
-// Available reports whether the /proc tree exists.
+// Available reports whether the process source works: the /proc tree
+// exists, or (UsePS) ps answers.
 func (p ProcFS) Available() bool {
+	if p.UsePS {
+		return psWorks()
+	}
 	_, err := os.Stat(filepath.Join(p.Root, "self", "stat"))
 	if err == nil {
 		return true
@@ -65,6 +74,9 @@ func (p ProcFS) StartTime(pid int) (string, error) {
 	if pid <= 0 {
 		return "", errors.New("invalid pid")
 	}
+	if p.UsePS {
+		return psStartTime(pid)
+	}
 	f, err := p.statFields(pid)
 	if err == nil {
 		return f[19], nil // field 22: starttime in clock ticks since boot
@@ -72,12 +84,7 @@ func (p ProcFS) StartTime(pid int) (string, error) {
 	if p.Available() {
 		return "", err // /proc exists, process does not
 	}
-	out, perr := exec.Command("ps", "-o", "lstart=", "-p", strconv.Itoa(pid)).Output()
-	token := strings.Join(strings.Fields(string(out)), "_")
-	if perr != nil || token == "" {
-		return "", errors.New("process not found")
-	}
-	return token, nil
+	return psStartTime(pid)
 }
 
 // Alive reports whether pid is running and is still the process that had
@@ -95,6 +102,9 @@ func (p ProcFS) Alive(pid int, start string) bool {
 
 // Running reports whether pid exists and is not a zombie.
 func (p ProcFS) Running(pid int) bool {
+	if p.UsePS {
+		return psRunning(pid)
+	}
 	f, err := p.statFields(pid)
 	if err != nil {
 		return syscall.Kill(pid, 0) == nil && !p.Available()

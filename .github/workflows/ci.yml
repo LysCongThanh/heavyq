@@ -32,6 +32,22 @@ jobs:
       - name: gate ready (heavyq gate run ready)
         run: ./heavyq gate run ready
 
+  # macOS parity (no /proc there): local RAM/load from sysctl and vm_stat, processes from ps. Runs the tests
+  # that need neither Linux-only features (subreaper, util-linux, /proc fixtures) nor the full e2e suite: the
+  # metrics and ps parsers, process breakdown/descendants against real processes, and the status/cancel runs.
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable
+      - run: go build ./... && go vet ./...
+      - name: macOS subset
+        run: go test -race -count=1 ./internal/metrics/... ./internal/procinfo/... ./internal/cli/... -run 'Metrics|Breakdown|Descendants|Cancel|Status|PS|Parse|Host|StartTime|Local'
+
   lint:
     runs-on: ubuntu-latest
     steps:

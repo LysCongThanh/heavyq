@@ -5,7 +5,7 @@ Humans: [CONTRIBUTING.md](CONTRIBUTING.md) has the same rules with more context.
 
 ## Project in one paragraph
 
-heavyq is a single Go binary (Linux first, macOS partial) that queues heavy shell commands by priority,
+heavyq is a single Go binary (Linux first, macOS supported without cgo) that queues heavy shell commands by priority,
 gates them on RAM/load, can offload them to other machines over SSH by exact commit, caches results by git
 tree, and ships a Claude Code `PreToolUse` hook plus a loopback web dashboard. No daemon: the queue is a
 directory of ticket files and `flock(2)` slot files. Package map: see CONTRIBUTING.md, "Where things live".

@@ -16,21 +16,29 @@ type GroupUsage struct {
 // Breakdown samples all processes twice, interval apart. Each process is
 // charged to the label of its nearest ancestor in roots (pid -> label);
 // processes without one are grouped by command name in outside. Kernel
-// threads are ignored. Both lists are sorted by resident memory, largest
+// threads are ignored (macOS: kernel_task, pid 0). Both lists are sorted by resident memory, largest
 // first.
 func (p ProcFS) Breakdown(roots map[int]string, interval time.Duration) (byRoot, outside []GroupUsage) {
-	a := p.snapshot()
-	time.Sleep(interval)
-	b := p.snapshot()
-	return breakdown(a, b, roots, interval)
+	a, b, span := p.sampleTwice(interval)
+	if p.UsePS {
+		return breakdownSkipping(a, b, roots, span, isKernelTask)
+	}
+	return breakdown(a, b, roots, span)
 }
 
+// breakdown is the /proc flavour: pid 2 and its children are kernel threads.
 func breakdown(a, b map[int]procSample, roots map[int]string, interval time.Duration) (byRoot, outside []GroupUsage) {
+	return breakdownSkipping(a, b, roots, interval, isLinuxKernelThread)
+}
+
+func isLinuxKernelThread(pid int, s procSample) bool { return pid == 2 || s.ppid == 2 }
+
+func breakdownSkipping(a, b map[int]procSample, roots map[int]string, interval time.Duration, skip func(int, procSample) bool) (byRoot, outside []GroupUsage) {
 	const none = "\x00"
 	inRoot, out := map[string]*GroupUsage{}, map[string]*GroupUsage{}
 	secs := interval.Seconds()
 	for pid, s1 := range b {
-		if pid == 2 || s1.ppid == 2 { // kthreadd and kernel threads
+		if skip(pid, s1) { // kernel threads
 			continue
 		}
 		var pct float64
