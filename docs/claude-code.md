@@ -39,12 +39,12 @@ out, so it was tested with Claude Code 2.1.316 in `-p` mode:
   that rewrote `echo hello` into `python3 -c ... && echo ...` was refused: "This Bash command contains
   multiple operations. The following part requires approval: python3 -c ...".
 
-So permission rules see `heavyq 4 --lane api --max-wait 300s -- npm test`, not `npm test`. A rule such as
-`Bash(npm test:*)` no longer matches it. You have two options:
+So permission rules see `heavyq 4 --lane api --max-wait 300s --session <session_id> -- npm test`, not
+`npm test`. A rule such as `Bash(npm test:*)` no longer matches it. You have two options:
 
-1. Approve the wrapped command at the prompt, or allow exact prefixes such as
-   `Bash(heavyq 4 --lane api --max-wait 300s -- npm test *)`. The lane is the work tree's name, so each
-   tree's prefix is stable.
+1. Approve the wrapped command at the prompt. The `--session <session_id>` that the hook adds (so history
+   knows which session ran what) is different in every Claude Code session, so an allow rule for an exact
+   prefix can't pin it down.
 2. Set `hook.permission = "allow"`. heavyq then returns `"allow"` for the commands it rewrites. These are
    only commands that matched a `[[hook.rule]]` or a built-in rule. This auto-approves them, including
    `npm test`, which runs whatever `package.json` says. Turn it on only if you would allow those commands

@@ -29,7 +29,8 @@ The remote path is tested through a `sh -c` transport, which runs the same code 
 | `internal/metrics` | RAM / load / cores, placement score |
 | `internal/remote` | transport, probe, `git push` of exact commits, the embedded remote job script |
 | `internal/config` | TOML config, defaults, validation |
-| `internal/history` | JSONL run log |
+| `internal/history` | the run ledger: JSONL records (commit, tree, session, ...), ULIDs, monthly rotation |
+| `internal/gitutil` | git queries, including the tree identity of clean and dirty work trees |
 
 ## House rules
 
