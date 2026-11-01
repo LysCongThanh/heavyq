@@ -81,6 +81,34 @@ versions follow [Semantic Versioning](https://semver.org/).
   last recorded run.
 - **`snapshot.story`** in `status --json` and the dashboard stream: the same sentences, as plain `text` plus
   `parts` with emphasis. Additive within schema 1. `heavyq status` now opens with them under `STORY`.
+- **Agent mode: terse output, a result digest, next-step lines** ([docs/agent-mode.md](docs/agent-mode.md)).
+  It turns on when the environment says a coding agent is calling (`CLAUDECODE`, `AI_AGENT`, `GEMINI_CLI`,
+  `COPILOT_CLI`, and best-effort `CODEX_SANDBOX`, `CODEX_CI`, `CODEX_THREAD_ID`, `CURSOR_AGENT`), or with
+  `HEAVYQ_OUTPUT=agent` / `HEAVYQ_AGENT=1`; `HEAVYQ_OUTPUT=human` / `HEAVYQ_AGENT=0` force it off. Nothing
+  changes for people. In agent mode:
+  - a run prints at most three lines of its own: `heavyq: queued #N of M ...` (only after 2 s of waiting,
+    then a heartbeat every 5 minutes), `heavyq: running <cmd> (lane, slot, tree)` (the first line of the
+    output, for agents that keep only the head and tail of a failing command's output), and the digest;
+  - the **digest** ends the output (stderr, under 4 KB, no ANSI): `heavyq: PASS|FAIL|REUSED|NOT RUN|CANCELLED|INTERRUPTED
+    <cmd> · tree <short> · <time>`; on a failure up to 12 failure-looking lines taken from the last 64 KiB of
+    the command's output (the stream itself is not changed); for a cache replay "already passed on this exact
+    tree at <time> (lane X); do not re-run"; and, for every verdict but a pass, exactly one `next:` line
+    (75: `retry later; don't bypass heavyq`, 78: `cancelled by operator; ask before re-running`, remote down,
+    an unproven gate: `heavyq gate run <name>`);
+  - the full output of a run that did not succeed is saved (first 4 MiB, mode 0600) in `logs/` beside the
+    ledger and its path is in the digest; the newest 30 are kept, none older than 7 days;
+  - `heavyq why` is cut to 600 bytes, `gate status` / `gate run` end with `next:`, and usage errors say
+    `next: fix the arguments`.
+- **`--digest`** prints the result digest for a person too (the command's stdout and stderr then go through
+  pipes, so a tool that colours only on a terminal stops colouring). `HEAVYQ_OUTPUT=json` ends with the
+  digest as one JSON line.
+- **`heavyq help agents`**: a usage card of at most 900 bytes (about 200 tokens). `heavyq help <unknown>`
+  now exits 2 instead of printing the usage.
+- Golden tests enforce the budgets: a 2-minute wait is one queued line (three with the running line and the
+  digest), a digest under 4 KB with 6 MB of failing output, `why` at most 600 bytes, the card at most 900.
+- **`internal/agentmode`**: detection, the output capture (bounded tail and log file), failure-line
+  extraction, the digest and the card. The end-to-end rig removes the agent variables from the child
+  environment, so the suite behaves the same when it runs under a coding agent.
 
 ### Changed
 

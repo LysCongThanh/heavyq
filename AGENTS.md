@@ -34,6 +34,9 @@ this exact code is proven). CI runs the same gate.
 - **The hook fails open**: on any doubt `heavyq hook claude-pretooluse` exits 0 with no output. New command
   shapes need table tests in `internal/hook/claude_pretooluse_test.go`.
 - **Exit codes are API**: 2, 75, 76, 77, 78, 255 keep their meaning.
+- **Agent output is a budget** (`docs/agent-mode.md`): a run prints at most queued, running and a digest; the
+  digest stays under 4 KB, `why` under 600 bytes, `heavyq help agents` under 900. Never print ANSI in agent
+  mode. E2E tests run the binary without `CLAUDECODE` and friends unless they test agent mode.
 - **Dashboard security model** (`docs/dashboard.md`): loopback only, token, `Host`/`Origin` checks, CSP
   `default-src 'none'`. Do not loosen any of these. Keep the page free of external resources.
 - **Redaction**: anything that shows command lines goes through `internal/redact`.

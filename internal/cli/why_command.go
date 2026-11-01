@@ -6,6 +6,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/LysCongThanh/heavyq/internal/agentmode"
 	"github.com/LysCongThanh/heavyq/internal/config"
 	"github.com/LysCongThanh/heavyq/internal/history"
 	"github.com/LysCongThanh/heavyq/internal/queue"
@@ -55,6 +56,9 @@ func whyCommand(cfg *config.Config, args []string, w, stderr io.Writer) int {
 		if l := gateWhyLine(recs, stderr); l != "" {
 			lines = append(lines, l)
 		}
+	}
+	if outputMode(stderr).Terse() { // agent mode: the answer fits in ~150 tokens
+		lines = agentmode.CapLines(lines, agentmode.WhyMaxBytes, "... (heavyq status shows the rest)")
 	}
 	for _, l := range lines {
 		fmt.Fprintln(w, l)

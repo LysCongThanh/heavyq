@@ -85,7 +85,7 @@ func (r *run) cachePhase(lane string) (rc int, done bool) {
 			if waited {
 				r.verbosef("the identical run ended without a reusable result; running it ourselves")
 			}
-			if cs.rec, err = cs.store.NewRecorder(os.Stdout, os.Stderr); err != nil {
+			if cs.rec, err = cs.store.NewRecorder(r.out.stdout, r.out.stderr); err != nil {
 				cs.note = "not recorded: " + err.Error()
 			}
 			return 0, false
@@ -99,10 +99,12 @@ func (r *run) cachePhase(lane string) (rc int, done bool) {
 			}
 		}
 		if r.opts.MaxWait > 0 && time.Since(r.t0) >= r.opts.MaxWait {
-			fmt.Fprintf(r.stderr, "heavyq: the identical run did not finish within %s (--max-wait)\n", fmtDur(r.opts.MaxWait))
+			r.giveUp("the identical run did not finish within %s (--max-wait)", fmtDur(r.opts.MaxWait))
+			r.digestNotRun(ExitMaxWait)
 			return ExitMaxWait, true
 		}
 		if s := r.pollOrSignal(followerPoll); s != nil {
+			r.digestNotRun(signalExit(s))
 			return signalExit(s), true
 		}
 	}
@@ -111,7 +113,7 @@ func (r *run) cachePhase(lane string) (rc int, done bool) {
 // replayCached prints a stored result. ok is false when the entry vanished
 // before its output could be opened (treated as a miss).
 func (r *run) replayCached(m *cache.Meta, coalesced bool, lane string) (int, bool) {
-	opened, err := r.cache.store.Replay(m, os.Stdout, os.Stderr)
+	opened, err := r.cache.store.Replay(m, r.out.stdout, r.out.stderr)
 	if !opened {
 		return 0, false
 	}
@@ -121,9 +123,9 @@ func (r *run) replayCached(m *cache.Meta, coalesced bool, lane string) (int, boo
 	kind, when := "hit", m.Created.Local().Format("2006-01-02 15:04:05")
 	if coalesced {
 		kind = "coalesced"
-		fmt.Fprintf(r.stderr, "heavyq: reused the result of an identical run (lane %s) from %s (%s)\n", m.Lane, when, m.Machine)
+		r.note("reused the result of an identical run (lane %s) from %s (%s)", m.Lane, when, m.Machine)
 	} else {
-		fmt.Fprintf(r.stderr, "heavyq: cached result from %s (%s)\n", when, m.Machine)
+		r.note("cached result from %s (%s)", when, m.Machine)
 	}
 	r.cache.status = kind
 	rec := history.Record{End: time.Now(), Machine: m.Machine, Lane: lane, Prio: r.opts.Prio, Light: r.opts.Light,
@@ -133,6 +135,7 @@ func (r *run) replayCached(m *cache.Meta, coalesced bool, lane string) (int, boo
 	if err := history.Append(history.DefaultPath(), rec); err != nil {
 		fmt.Fprintln(r.stderr, "heavyq: warning: history not written:", err)
 	}
+	r.digestReused(m)
 	return m.Exit, true
 }
 
@@ -200,7 +203,7 @@ func (r *run) cmdStreams() (io.Writer, io.Writer) {
 	if r.cache != nil && r.cache.rec != nil {
 		return r.cache.rec.Stdout(), r.cache.rec.Stderr()
 	}
-	return os.Stdout, os.Stderr
+	return r.out.stdout, r.out.stderr
 }
 
 func (r *run) verbosef(format string, a ...any) {

@@ -41,6 +41,7 @@ usage:
   heavyq [--config FILE] cache ls|stats|clear
   heavyq [--config FILE] hook claude-pretooluse | install claude | uninstall claude
   heavyq stance ls | show <name> [--json]
+  heavyq help [agents]
   heavyq version
 
 run flags:
@@ -60,7 +61,12 @@ run flags:
   --item ID            which work item it belongs to (default: $HEAVYQ_ITEM)
   --gate NAME          which gate it is part of
                        (ids: 1-80 characters from A-Za-z0-9._:-)
+  --digest             end with a result digest (always on for agents)
   -v, --verbose        explain cache decisions
+
+agent mode (on when CLAUDECODE, GEMINI_CLI, ... is set; HEAVYQ_OUTPUT=agent|human|json
+overrides, HEAVYQ_AGENT=0|1 too): at most a queued line, a running line and a digest
+(PASS|FAIL|REUSED|NOT RUN, failure lines, one "next:" line). See "heavyq help agents".
 
 gate: ` + "`gate status`" + ` says whether this exact code passed every command of a gate from heavyq.toml
 (exit 0 proven, 1 not, 2 usage); ` + "`gate run`" + ` runs the unproven ones through the queue with --cache.
@@ -85,9 +91,11 @@ func Main(args []string, stdout, stderr io.Writer) int {
 		return ExitUsage
 	}
 	switch args[0] {
-	case "-h", "--help", "help":
+	case "-h", "--help":
 		fmt.Fprint(stdout, usage)
 		return 0
+	case "help":
+		return helpCommand(args[1:], stdout, stderr)
 	case "version", "--version":
 		fmt.Fprintln(stdout, "heavyq", version())
 		return 0

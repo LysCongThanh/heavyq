@@ -10,6 +10,7 @@ Typical use: `heavyq <prio> [--lane NAME] [--light] [--cache] [--max-wait DUR] -
 - [Claude Code hook](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/claude-code.md): how the PreToolUse hook rewrites commands and what it relies on
 - [Gates (heavyq.toml)](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/gates.md): per-repo gate format, the zero-config detected gate and `heavyq init`, `gate status` (`--json` schema, exit codes) and `gate run`, what counts as proven, trust model
 - [Stances](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/stances.md): thinking modes as files: TOML-frontmatter format, repo > user > built-in precedence, the five built-ins, compact renderer, `heavyq stance ls|show`
+- [Agent mode](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/agent-mode.md): when it turns on, the result digest (`PASS`/`FAIL`/`REUSED`, failure lines, `next:`), JSON form, logs, and the tested output budgets; `heavyq help agents` prints a 200-token usage card
 - [Dashboard, JSON snapshot and control API](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/dashboard.md): security model, `/api/v1` endpoints, `status --json` schema
 - [Example config](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/examples/config.toml): annotated TOML
 

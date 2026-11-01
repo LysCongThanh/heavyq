@@ -51,6 +51,10 @@ heavyq 3 --lane api -- npm test
   outside the repo. Otherwise it stays local.
 - **Agents don't need to know.** A Claude Code `PreToolUse` hook rewrites `npm test`, `go test ./...` and
   friends into a queued heavyq run before they execute. `heavyq hook install claude` sets it up.
+- **Agent mode: few tokens, a clear verdict.** When the caller is a coding agent (`CLAUDECODE=1` and friends),
+  heavyq prints at most a queued line, a running line and a digest: `PASS`/`FAIL`/`REUSED`, up to 12
+  failure lines, the path of the full log, and one `next:` line saying what to do. See
+  [Agent mode](#agent-mode-terse-output-and-a-result-digest).
 - **The same gate runs once per commit.** With `--cache`, identical commands on the same clean tree share
   one run: whoever comes second waits for the first and gets its output and exit code. Finished results are
   replayed until they expire.
@@ -82,6 +86,7 @@ heavyq 4 --max-wait 10m -- cargo test             # exit 75 if not started withi
 
 heavyq 4 --cache -- npm test                      # same clean commit already tested? reuse that result
 heavyq 4 --session "$ID" --item T-12 -- npm test  # tag the run in history: who ran it, for which work item
+heavyq 4 --digest -- npm test                     # end with the result digest an agent gets (always on in agent mode)
 
 heavyq status      # what runs, what waits, and why (opens with a short story in plain words)
 heavyq why         # just that story: "2 agents wait because every heavy slot on local is taken."
@@ -91,6 +96,7 @@ heavyq gate status # is this exact code proven? (heavyq.toml gates, or a detecte
 heavyq gate run    # run what is not proven yet, through the queue, cached
 heavyq init --agents-md      # write heavyq.toml from what heavyq detects, tell agents to run the gate
 heavyq hook install claude   # let Claude Code agents use the queue without being told
+heavyq help agents           # the 200-token usage card for a coding agent
 ```
 
 With no config file you get 2 heavy slots, 1 light slot, the resource gate on, and local runs only.
@@ -158,6 +164,37 @@ go test ./... 2>&1 | tail -30
 `heavyq <prio> --lane <worktree> --max-wait 9m -- <command>`"), or block unwrapped commands with
 [`examples/claude-code/require-heavyq.sh`](examples/claude-code/require-heavyq.sh), which makes the agent
 rerun them itself.
+
+## Agent mode: terse output and a result digest
+
+Agents call heavyq hundreds of times a day and read every byte of the answer. When an agent environment is
+detected (`CLAUDECODE=1`, `AI_AGENT`, `GEMINI_CLI=1`, `COPILOT_CLI=1`, ...) or `HEAVYQ_OUTPUT=agent` is set
+(`HEAVYQ_OUTPUT=human` or `HEAVYQ_AGENT=0` force it off), heavyq changes what *it* says. The command's own
+output is untouched.
+
+```
+heavyq: queued #3 of 4 on local (p3, lane wt-api); ahead: wt-a(p2) wt-b(p3)    (only after 2 s of waiting)
+heavyq: running go test ./... (p3, lane wt-api, local/heavy-1, tree 3f2a9c1d7b0e, waited 2m5s)
+...the command's output...
+heavyq: FAIL go test ./... · exit 1 · tree 3f2a9c1d7b0e · 12s
+  --- FAIL: TestRun (0.01s)
+  run_test.go:42: got 1, want 2
+log: ~/.local/state/heavyq/logs/20261102T010203.123456Z-4242-wt-api.log (full output, 212 KiB)
+next: fix the failure above, then re-run this command
+```
+
+- **At most three lines of chatter**: queued (only if it waits 2 s or more), running, and the digest. No
+  ANSI, no "waiting..." every 30 s (a heartbeat every 5 minutes at most).
+- **The digest ends the output**: `PASS`, `FAIL`, `REUSED` (an identical run on this exact tree was
+  replayed: *do not re-run*), `NOT RUN`, `CANCELLED` or `INTERRUPTED`, under 4 KB however much the command
+  printed. A failure quotes up to 12 failure-looking lines and names the file with the full output. Every
+  verdict but a pass ends with exactly one `next:` line: on 75 `retry later; don't bypass heavyq`, on 78
+  `cancelled by operator; ask before re-running`, for an unproven gate `heavyq gate run <name>`.
+- **`heavyq help agents`** is the usage card (under 900 bytes), `heavyq why` is cut to 600 bytes, and
+  `HEAVYQ_OUTPUT=json` ends with the digest as one JSON line. `--digest` gives a person the digest too.
+
+Detection table, digest and JSON format, log retention and the tested budgets:
+[docs/agent-mode.md](docs/agent-mode.md).
 
 ## History as a ledger (commit, tree, session)
 
@@ -430,7 +467,8 @@ Every key is optional. [`examples/config.toml`](examples/config.toml) has every 
 
 Environment: `HEAVYQ_LANE` (default lane), `HEAVYQ_REMOTE` (default `--remote`), `HEAVYQ_AUTO=0` (never
 auto-place), `HEAVYQ_DIR` (queue dir; default `$XDG_RUNTIME_DIR/heavyq`, else `/tmp/heavyq-<uid>`),
-`HEAVYQ_SESSION` / `HEAVYQ_ITEM` (default `--session` / `--item`), `HEAVYQ_HISTORY` (one history file;
+`HEAVYQ_SESSION` / `HEAVYQ_ITEM` (default `--session` / `--item`), `HEAVYQ_OUTPUT` / `HEAVYQ_AGENT` (output
+mode), `HEAVYQ_HISTORY` (one history file;
 default: monthly files in `$XDG_STATE_HOME/heavyq`), `HEAVYQ_CONFIG`, `XDG_CACHE_HOME` (result
 cache), `CLAUDE_CONFIG_DIR` (`--scope user` target). Commands run locally get `HEAVYQ_MACHINE`, `HEAVYQ_SLOT`,
 `HEAVYQ_LANE` and `HEAVYQ_ACTIVE=1` (the hook never rewrites while it is set).

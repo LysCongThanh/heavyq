@@ -31,6 +31,8 @@ type runOptions struct {
 	Session string
 	Item    string
 	Gate    string
+	// Digest prints the result digest for a person too (agent mode always does).
+	Digest  bool
 	Verbose bool
 	Argv    []string
 }
@@ -66,7 +68,7 @@ func parseRunArgs(args []string, cfg *config.Config) (runOptions, error) {
 		}
 		var v string
 		switch name {
-		case "--light", "--needs-ram", "--cache", "-v", "--verbose":
+		case "--light", "--needs-ram", "--cache", "--digest", "-v", "--verbose":
 			if hasVal {
 				return o, fmt.Errorf("%s takes no value", name)
 			}
@@ -78,6 +80,8 @@ func parseRunArgs(args []string, cfg *config.Config) (runOptions, error) {
 				o.NeedsRAM = true
 			case "--cache":
 				o.Cache = true
+			case "--digest":
+				o.Digest = true
 			default:
 				o.Verbose = true
 			}
