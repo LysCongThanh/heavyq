@@ -1,81 +1,30 @@
-// Package history appends one JSON line per finished run and reads them back.
 package history
 
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"time"
 )
 
-// Record is one finished (or interrupted) run.
-type Record struct {
-	End      time.Time `json:"end"`
-	Machine  string    `json:"machine"`
-	Lane     string    `json:"lane"`
-	Prio     int       `json:"prio"`
-	Light    bool      `json:"light,omitempty"`
-	WaitSecs float64   `json:"wait_s"`
-	RunSecs  float64   `json:"run_s"`
-	Exit     int       `json:"exit"`
-	Cmd      string    `json:"cmd"`
-	// Cache is "hit", "coalesced" (reused an identical in-flight run),
-	// "miss" (ran and was considered for storing) or "skip" (--cache given
-	// but not cacheable); "" without --cache.
-	Cache     string `json:"cache,omitempty"`
-	CacheNote string `json:"cache_note,omitempty"`
-	// Result is "" for a command that ran to its end, else OutcomeGaveUp
-	// (left the queue without running), OutcomeCancelled (stopped on request)
-	// or OutcomeInterrupted (a signal stopped heavyq). Older lines have none.
-	Result string `json:"result,omitempty"`
-	// Forced: admitted by the anti-starvation bypass of the resource gate.
-	Forced bool `json:"forced,omitempty"`
-	// CPUSecs and MaxRSSMB are measured for local runs (user+system time of
-	// the command and its waited-for children, largest resident set).
-	CPUSecs  float64 `json:"cpu_s,omitempty"`
-	MaxRSSMB int     `json:"max_rss_mb,omitempty"`
-}
-
-// Outcomes of a record.
-const (
-	OutcomeRan         = "ran"
-	OutcomeGaveUp      = "gave_up"
-	OutcomeCancelled   = "cancelled"
-	OutcomeInterrupted = "interrupted"
-)
-
-// Outcome classifies r: ran, gave_up, cancelled or interrupted (signal).
-func (r Record) Outcome() string {
-	if r.Result != "" {
-		return r.Result
-	}
-	return OutcomeRan
-}
-
-// DefaultPath is $HEAVYQ_HISTORY, else $XDG_STATE_HOME/heavyq/history.jsonl,
-// else ~/.local/state/heavyq/history.jsonl.
-func DefaultPath() string {
-	if p := os.Getenv("HEAVYQ_HISTORY"); p != "" {
-		return p
-	}
-	base := os.Getenv("XDG_STATE_HOME")
-	if base == "" {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return ""
-		}
-		base = filepath.Join(home, ".local", "state")
-	}
-	return filepath.Join(base, "heavyq", "history.jsonl")
-}
-
-// Append writes r to path. A single small O_APPEND write is atomic enough for
-// concurrent writers on local filesystems.
+// Append writes r to path as one line, stamping the current schema and a new
+// id when r has none. It is a single small O_APPEND write, which is atomic
+// enough for concurrent writers on local filesystems.
 func Append(path string, r Record) error {
 	if path == "" {
 		return nil
+	}
+	r.V = SchemaVersion
+	if r.ID == "" {
+		t := r.End
+		if t.IsZero() {
+			t = time.Now()
+		}
+		r.ID = NewID(t)
 	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return err
@@ -95,11 +44,35 @@ func Append(path string, r Record) error {
 	return f.Close()
 }
 
-// ReadLast returns up to n most recent records (oldest first). Corrupt lines
-// are skipped.
+// ReadLast returns up to n most recent records (oldest first; n <= 0 means
+// all). For a rotated path (see files) it spans the files, newest last.
+// Corrupt lines are skipped. Lines of every schema version load.
 func ReadLast(path string, n int) ([]Record, error) {
+	paths, err := files(path)
+	if err != nil {
+		return nil, err
+	}
+	var out []Record
+	for i := len(paths) - 1; i >= 0; i-- {
+		recs, err := readFile(paths[i], n)
+		if len(recs) > 0 {
+			out = append(append(make([]Record, 0, len(recs)+len(out)), recs...), out...)
+		}
+		if err != nil {
+			return lastN(out, n), err
+		}
+		if n > 0 && len(out) >= n {
+			break // older files cannot contribute to the last n
+		}
+	}
+	return lastN(out, n), nil
+}
+
+// readFile returns up to the last n records of one file (all when n <= 0).
+// A missing file is empty.
+func readFile(path string, n int) ([]Record, error) {
 	f, err := os.Open(path)
-	if os.IsNotExist(err) {
+	if errors.Is(err, fs.ErrNotExist) {
 		return nil, nil
 	}
 	if err != nil {
@@ -113,13 +86,20 @@ func ReadLast(path string, n int) ([]Record, error) {
 		var r Record
 		if json.Unmarshal(sc.Bytes(), &r) == nil {
 			out = append(out, r)
-			if n > 0 && len(out) > n {
-				out = out[1:]
+			if n > 0 && len(out) >= 2*n { // bound memory on a long file
+				out = append(out[:0], out[len(out)-n:]...)
 			}
 		}
 	}
 	if err := sc.Err(); err != nil {
-		return out, fmt.Errorf("read %s: %w", path, err)
+		return lastN(out, n), fmt.Errorf("read %s: %w", path, err)
 	}
-	return out, nil
+	return lastN(out, n), nil
+}
+
+func lastN(recs []Record, n int) []Record {
+	if n > 0 && len(recs) > n {
+		return recs[len(recs)-n:]
+	}
+	return recs
 }
