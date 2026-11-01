@@ -7,6 +7,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/LysCongThanh/heavyq/internal/config"
 	"github.com/LysCongThanh/heavyq/internal/proof"
 	"github.com/LysCongThanh/heavyq/internal/redact"
 )
@@ -14,7 +15,7 @@ import (
 // gateStatusCommand implements `heavyq gate status [name] [--json]`: is this
 // exact code proven? Exit 0 yes, 1 no, 2 usage error, or neither a heavyq.toml
 // nor a gate detected from the repository's files.
-func gateStatusCommand(args []string, stdout, stderr io.Writer) int {
+func gateStatusCommand(cfg *config.Config, args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("gate status", flag.ContinueOnError)
 	asJSON := fs.Bool("json", false, "machine-readable output (schema in docs/gates.md)")
 	name, ok := parseGateArgs(fs, args, stderr)
@@ -25,7 +26,7 @@ func gateStatusCommand(args []string, stdout, stderr io.Writer) int {
 	if !ok {
 		return ExitUsage
 	}
-	g := evaluateGate(t, stderr)
+	g := evaluateGate(cfg, t, stderr)
 	if *asJSON {
 		enc := json.NewEncoder(stdout)
 		enc.SetIndent("", "  ")

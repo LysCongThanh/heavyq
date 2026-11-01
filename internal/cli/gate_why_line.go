@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/LysCongThanh/heavyq/internal/config"
 	"github.com/LysCongThanh/heavyq/internal/history"
 	"github.com/LysCongThanh/heavyq/internal/proof"
 	"github.com/LysCongThanh/heavyq/internal/repoconfig"
@@ -16,7 +17,7 @@ import (
 // It is "" when there is neither, no unambiguous gate (see pickGate), or the
 // file is invalid (said on stderr).
 // recs is the ledger, oldest first.
-func gateWhyLine(recs []history.Record, stderr io.Writer) string {
+func gateWhyLine(cfg *config.Config, recs []history.Record, stderr io.Writer) string {
 	wd, err := os.Getwd()
 	if err != nil {
 		return ""
@@ -33,7 +34,7 @@ func gateWhyLine(recs []history.Record, stderr io.Writer) string {
 	if !ok {
 		return ""
 	}
-	st := proof.Evaluate(g.Name, g.Run, subjectOf(repo.Root), recs)
+	st := proof.Evaluate(g.Name, g.Run, subjectOf(cfg, repo.Root), recs)
 	label := gateLabel(g)
 	switch {
 	case st.Proven:

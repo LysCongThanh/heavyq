@@ -8,13 +8,17 @@ import (
 	"github.com/LysCongThanh/heavyq/internal/history"
 )
 
-// loops: the same command failed at least twice on the same tree in a lane
-// within LoopWindow. The agent is retrying code that cannot pass.
+// loops: the same run failed at least twice on the same tree in a lane
+// within LoopWindow. The agent is retrying code that cannot pass. "The same
+// run" is the run_id when the record has one (so the same command under
+// another FEATURE_X is not a retry); older records fall back to the command
+// string.
 func loops(s Snapshot, recs []history.Record, now time.Time) []Exception {
-	type key struct{ lane, tree, cmd string }
+	type key struct{ lane, tree, id string }
 	type tally struct {
-		n  int
-		at time.Time
+		n   int
+		at  time.Time
+		cmd string
 	}
 	counts := map[key]*tally{}
 	var order []key
@@ -23,10 +27,14 @@ func loops(s Snapshot, recs []history.Record, now time.Time) []Exception {
 			r.Cache == "hit" || r.Cache == "coalesced" || now.Sub(r.End) > LoopWindow || r.End.After(now) {
 			continue
 		}
-		k := key{r.Lane, r.Tree, r.Cmd}
+		id := "cmd:" + r.Cmd
+		if r.RunID != "" {
+			id = "run:" + r.RunID
+		}
+		k := key{r.Lane, r.Tree, id}
 		t := counts[k]
 		if t == nil {
-			t = &tally{}
+			t = &tally{cmd: r.Cmd}
 			counts[k] = t
 			order = append(order, k)
 		}
@@ -42,10 +50,10 @@ func loops(s Snapshot, recs []history.Record, now time.Time) []Exception {
 			continue
 		}
 		out = append(out, Exception{
-			ID: strings.Join([]string{KindLoop, k.lane, k.tree, k.cmd, fmt.Sprint(t.n)}, "|"), Kind: KindLoop, Severity: SeverityCritical,
+			ID: strings.Join([]string{KindLoop, k.lane, k.tree, k.id, fmt.Sprint(t.n)}, "|"), Kind: KindLoop, Severity: SeverityCritical,
 			Lane:     k.lane,
-			Text:     fmt.Sprintf("%s ran %s %d times on the same code and it failed every time.", k.lane, quote(k.cmd), t.n),
-			Evidence: Evidence{At: t.at, Tree: k.tree, Cmd: k.cmd, Count: t.n},
+			Text:     fmt.Sprintf("%s ran %s %d times on the same code and it failed every time.", k.lane, quote(t.cmd), t.n),
+			Evidence: Evidence{At: t.at, Tree: k.tree, Cmd: t.cmd, Count: t.n},
 			Action:   cancelAction(s, k.lane),
 		})
 	}

@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/LysCongThanh/heavyq/internal/config"
 	"github.com/LysCongThanh/heavyq/internal/gitutil"
 	"github.com/LysCongThanh/heavyq/internal/history"
 	"github.com/LysCongThanh/heavyq/internal/proof"
@@ -69,7 +70,7 @@ func TestFlakyAndUnderLoadFailuresNeverRaiseRedGate(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			g := worktreeGate(repo, c.recs)
+			g := worktreeGate(&config.Config{}, repo, c.recs)
 			if g.State != c.state {
 				t.Fatalf("state = %s, want %s (%+v)", g.State, c.state, g)
 			}

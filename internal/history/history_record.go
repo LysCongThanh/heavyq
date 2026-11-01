@@ -28,6 +28,11 @@ type Record struct {
 	// CmdHash is the sha256 of the exact argv, taken before the redaction and
 	// the cut that Cmd went through (see CmdHash). "" on older lines.
 	CmdHash string `json:"cmd_hash,omitempty"`
+	// RunID is the identity of the run (internal/runident): tree, exact argv,
+	// subdir, allowlisted env values and base ref commit, hashed. Cache, proof,
+	// flaky and loop detection compare it. "" on older lines, and on runs whose
+	// tree is unknown.
+	RunID string `json:"run_id,omitempty"`
 	// Cache is "hit", "coalesced" (reused an identical in-flight run),
 	// "miss" (ran and was considered for storing) or "skip" (--cache given
 	// but not cacheable); "" without --cache.

@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/LysCongThanh/heavyq/internal/config"
 	"github.com/LysCongThanh/heavyq/internal/history"
 	"github.com/LysCongThanh/heavyq/internal/proof"
 	"github.com/LysCongThanh/heavyq/internal/redact"
@@ -35,13 +36,13 @@ const (
 // fillExceptions sets s.Gates and s.Exceptions from the ledger and the
 // work trees lanes ran in lately. A ledger that cannot be read proves
 // nothing (fail closed), so the exceptions then come from live state only.
-func fillExceptions(s *snapshot.Snapshot, now time.Time) {
+func fillExceptions(cfg *config.Config, s *snapshot.Snapshot, now time.Time) {
 	recs, err := history.ReadLast(history.DefaultPath(), exceptionLedgerRecords)
 	if err != nil {
 		recs = nil
 		s.Gates = []snapshot.LaneGate{{State: snapshot.GateSkipped, Reason: "ledger unreadable: " + err.Error()}}
 	} else {
-		s.Gates = laneGates(recs, now)
+		s.Gates = laneGates(cfg, recs, now)
 	}
 	s.Exceptions = snapshot.ComputeExceptions(*s, recs, now)
 }
@@ -70,7 +71,7 @@ func activeTrees(recs []history.Record, now time.Time) []activeTree {
 
 // laneGates is the proof state of the main gate in each recently active work
 // tree. At most maxGateWorktrees are looked at, within gateProofBudget.
-func laneGates(recs []history.Record, now time.Time) []snapshot.LaneGate {
+func laneGates(cfg *config.Config, recs []history.Record, now time.Time) []snapshot.LaneGate {
 	out := []snapshot.LaneGate{}
 	start := time.Now()
 	for i, t := range activeTrees(recs, now) {
@@ -84,7 +85,7 @@ func laneGates(recs []history.Record, now time.Time) []snapshot.LaneGate {
 		case time.Since(start) > gateProofBudget:
 			g = snapshot.LaneGate{State: snapshot.GateSkipped, Reason: "not checked: the proof budget of this snapshot ran out"}
 		default:
-			g = cachedWorktreeGate(t.worktree, recs)
+			g = cachedWorktreeGate(cfg, t.worktree, recs)
 		}
 		g.Lane, g.Worktree = t.lane, t.worktree
 		out = append(out, g)
@@ -102,13 +103,13 @@ type cachedGate struct {
 	at time.Time
 }
 
-func cachedWorktreeGate(worktree string, recs []history.Record) snapshot.LaneGate {
+func cachedWorktreeGate(cfg *config.Config, worktree string, recs []history.Record) snapshot.LaneGate {
 	gateCache.Lock()
 	defer gateCache.Unlock()
 	if c, ok := gateCache.m[worktree]; ok && time.Since(c.at) < gateProofTTL {
 		return c.g
 	}
-	g := worktreeGate(worktree, recs)
+	g := worktreeGate(cfg, worktree, recs)
 	gateCache.m[worktree] = cachedGate{g, time.Now()}
 	return g
 }
@@ -116,7 +117,7 @@ func cachedWorktreeGate(worktree string, recs []history.Record) snapshot.LaneGat
 // worktreeGate evaluates the main gate of the repository around worktree on
 // the code checked out there now. Without a heavyq.toml, or without an
 // unambiguous gate, it says so instead of guessing.
-func worktreeGate(worktree string, recs []history.Record) snapshot.LaneGate {
+func worktreeGate(cfg *config.Config, worktree string, recs []history.Record) snapshot.LaneGate {
 	skip := func(why string) snapshot.LaneGate {
 		return snapshot.LaneGate{State: snapshot.GateSkipped, Reason: why}
 	}
@@ -131,7 +132,7 @@ func worktreeGate(worktree string, recs []history.Record) snapshot.LaneGate {
 	if !ok {
 		return skip("no gate to check: name one \"" + defaultGate + "\" in heavyq.toml")
 	}
-	subj := subjectOf(repo.Root)
+	subj := subjectOf(cfg, repo.Root)
 	st := proof.Evaluate(gate.Name, gate.Run, subj, recs)
 	out := snapshot.LaneGate{Gate: gate.Name, Tree: st.Tree, State: snapshot.GateUnproven}
 	for _, c := range st.Commands {
@@ -169,7 +170,7 @@ func failureClass(c proof.Command) string {
 // failureCount is how many conclusive runs of the gate command cmd failed on
 // the code subj identifies. recs is the ledger.
 func failureCount(recs []history.Record, subj proof.Subject, cmd string) int {
-	matches, n := proof.MatcherFor(cmd), 0
+	matches, n := proof.MatcherFor(cmd, subj), 0
 	for _, r := range recs {
 		if r.Tree == subj.Tree && r.Repo == subj.Repo && matches(r) && r.Subdir == "" && r.Result == "" && r.Exit != 0 {
 			n++

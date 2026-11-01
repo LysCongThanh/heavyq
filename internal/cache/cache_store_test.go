@@ -42,6 +42,15 @@ func TestKeyDependsOnArgvSubdirEnvAndVersion(t *testing.T) {
 	if k, _ := Key(base); k != k0 {
 		t.Fatal("key must be deterministic")
 	}
+	// A base ref that does not resolve is no base ref at all to the command.
+	unresolved := base
+	unresolved.BaseRef = "origin/main"
+	if k, _ := Key(unresolved); k != k0 {
+		t.Error("an unresolvable --base-ref must not change the key")
+	}
+	if out, err := exec.Command("git", "-C", repo, "update-ref", "refs/remotes/origin/main", "HEAD").CombinedOutput(); err != nil {
+		t.Fatalf("update-ref: %v %s", err, out)
+	}
 	variants := []func(*KeyInput){
 		func(k *KeyInput) { k.Argv = []string{"npm", "test", "--x"} },
 		func(k *KeyInput) { k.Argv = []string{"npm test"} },

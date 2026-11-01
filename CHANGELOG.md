@@ -147,6 +147,19 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- **`gate run --parallel` runs each command as its own child process.** heavyq starts itself once per
+  command (`heavyq <prio> --cache --gate ... -- sh -c '<command>'`, same `--config`) instead of running the
+  commands in goroutines of one process. Every ticket now has a pid of its own, so `heavyq cancel <pid>` and
+  `reprio <pid>` hit exactly one command; each command has its own signal handling and no shared stdin. The
+  output of each child is streamed line by line with a `[cmd N]` prefix (N is the command's number in the
+  gate, as in `[N/total]`; stdout stays on stdout, stderr on stderr). A SIGINT, SIGTERM or SIGHUP sent to
+  `gate run` is relayed to every child, and exit codes are aggregated as before (an operator cancel is 78, a
+  signal 128+n, anything else is judged by the ledger). Sequential `gate run` is unchanged.
+- `heavyq cancel|reprio <pid>` refuses a pid that has more than one ticket (it names their ids) instead of
+  picking one; a ticket id always works.
+- **Cache key schema 2.** The key is now derived from the run id (below) plus the heavyq version. Results
+  cached by earlier versions miss once and are rebuilt. A `--base-ref` that does not resolve now counts as no
+  base ref (it used to be a different key).
 - **Monthly history files.** Without `HEAVYQ_HISTORY`, runs are appended to
   `$XDG_STATE_HOME/heavyq/history-YYYY-MM.jsonl` (UTC). `heavyq history`, `heavyq cache stats` and the
   dashboard read across the months, newest last, and still include the `history.jsonl` written by older
@@ -172,6 +185,18 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **A run in another environment could prove a gate it never ran (#46).** "The same run" had two
+  definitions: the cache keyed on tree, argv, env allowlist and base ref, while proof matched the redacted
+  command string. So `FEATURE_X=1 heavyq gate run` made `heavyq gate status` call the gate proven for a shell
+  without `FEATURE_X`. There is now one definition, the **run id** (`internal/runident`): the sha256 of the
+  tree id, the exact argv, the subdirectory, the values of the `cache.env` variables (set, empty and unset
+  differ) and the `--base-ref` commit. Local or remote is not part of it. Every ledger line carries it as
+  `run_id` (`cmd_hash` stays and is a component of it). Proof matches on `run_id` when the record and the gate
+  have one, and flaky detection (a pass and a failure of the same run) and the Tower's loop detection use it
+  too, so the same command under another environment is not a retry or a flake. A record without `run_id`
+  (written by an older heavyq) is matched by `cmd_hash`, or by the command string on the oldest lines, only
+  when `cache.env` is empty; with an allowlist such a record cannot say which values it ran with, so it does
+  not prove and `gate status` says to run it again. See [docs/gates.md](docs/gates.md).
 - **The user config (`~/.config/heavyq/config.toml`) keys are case-sensitive too.** Same cause as for
   `heavyq.toml`: the TOML library matched keys ignoring case, so `[LOCAL]` or `Heavy_Slots = 3` loaded
   silently, and `[LOCAL]` next to `[local]` merged into one table, with an undefined winner. Any key with an

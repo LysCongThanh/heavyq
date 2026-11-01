@@ -12,6 +12,7 @@ import (
 	"github.com/LysCongThanh/heavyq/internal/history"
 	"github.com/LysCongThanh/heavyq/internal/proof"
 	"github.com/LysCongThanh/heavyq/internal/repoconfig"
+	"github.com/LysCongThanh/heavyq/internal/runident"
 )
 
 // defaultGate is the gate used when none is named and heavyq.toml has it.
@@ -39,7 +40,7 @@ func gateCommand(cfg *config.Config, args []string, stdout, stderr io.Writer) in
 	}
 	switch args[0] {
 	case "status":
-		return gateStatusCommand(args[1:], stdout, stderr)
+		return gateStatusCommand(cfg, args[1:], stdout, stderr)
 	case "run":
 		return gateRunCommand(cfg, args[1:], stdout, stderr)
 	}
@@ -150,9 +151,23 @@ func pickGate(repo *repoconfig.Repo, name string, stderr io.Writer) (repoconfig.
 
 // subjectOf identifies the code in root. A tree that cannot be identified is
 // reported with the reason instead of an error: it simply proves nothing.
-func subjectOf(root string) proof.Subject {
+//
+// It also says how to compute the run_id of a gate command on this code: the
+// same inputs `heavyq gate run` gives the run (the tree, the repository root as
+// directory, the cache.env allowlist read from this process's environment, the
+// configured base ref), so a ledger record only proves the command when it ran
+// under the same environment.
+func subjectOf(cfg *config.Config, root string) proof.Subject {
 	co, err := gitutil.Identify(root)
-	s := proof.Subject{Repo: co.Repo, Tree: co.Tree, Commit: co.Commit, Dirty: co.Dirty}
+	s := proof.Subject{Repo: co.Repo, Tree: co.Tree, Commit: co.Commit, Dirty: co.Dirty,
+		EnvFree: len(cfg.Cache.Env) == 0}
+	if co.Tree != "" {
+		baseSHA := runident.BaseSHA(root, cfg.Queue.BaseRef)
+		s.RunID = func(argv []string) string {
+			return runident.ID(runident.Input{Tree: co.Tree, Argv: argv, EnvNames: cfg.Cache.Env,
+				Getenv: os.LookupEnv, BaseSHA: baseSHA})
+		}
+	}
 	switch {
 	case s.Tree != "":
 	case err != nil:
@@ -167,7 +182,7 @@ func subjectOf(root string) proof.Subject {
 
 // evaluateGate is the proof state of t's gate on the code in its repository
 // right now, read from the ledger.
-func evaluateGate(t *gateTarget, stderr io.Writer) proof.Gate {
+func evaluateGate(cfg *config.Config, t *gateTarget, stderr io.Writer) proof.Gate {
 	recs, err := history.ReadLast(history.DefaultPath(), ledgerWindow)
 	if err != nil {
 		// Fail closed: an unreadable ledger might hide a later failure, so
@@ -175,5 +190,5 @@ func evaluateGate(t *gateTarget, stderr io.Writer) proof.Gate {
 		fmt.Fprintln(stderr, "heavyq: ledger unreadable, so nothing can be proven:", err)
 		recs = nil
 	}
-	return proof.Evaluate(t.gate.Name, t.gate.Run, subjectOf(t.repo.Root), recs)
+	return proof.Evaluate(t.gate.Name, t.gate.Run, subjectOf(cfg, t.repo.Root), recs)
 }

@@ -130,13 +130,46 @@ is a run of the command when all of these hold:
 - same repository (all work trees of a clone share one id), and the same **tree id**: `HEAD`'s tree when the
   work tree is clean, `<HEAD tree>+<digest of the edits>` when it is dirty. Any edit changes the id and
   undoing it restores the old one, so a revert is proven again at once;
-- it ran the exact command heavyq runs for the gate, `sh -c '<command>'`, from the repository root. Records
-  written since `cmd_hash` carry the sha256 of that exact argv (taken before any redaction or cut) and are
-  matched on it, however long the command is. Older records only have the redacted command string, which the
-  ledger cut at 200 bytes, and are matched on that string;
+- it is a run of the same command in the same environment, see **Run identity** below: the exact
+  `sh -c '<command>'` from the repository root, with the same values of the `cache.env` variables and the
+  same base ref;
 - it ran to its end: runs that gave up, were cancelled or were interrupted are inconclusive and neither prove
   nor fail anything. Exit 0 passes; any other exit code is a failure. A `--cache` hit or a run that reused an
   identical in-flight run counts, because the ledger only gives those the tree they proved.
+
+### Run identity
+
+Every ledger record carries a `run_id`, the single definition of "the same run" that the result cache, proof,
+flaky detection and the Tower's loop detection share (`internal/runident`). It is the sha256 of:
+
+| Component | Notes |
+|---|---|
+| tree id | `HEAD`'s tree, or `<tree>+<digest of the edits>` when dirty |
+| exact argv | NUL-joined, before redaction and truncation (this is `cmd_hash`) |
+| subdirectory | relative to the repository root; gate commands run from the root |
+| `cache.env` | for each listed variable its value, or "unset" (set-but-empty differs from unset) |
+| base ref | the commit of `--base-ref` / `queue.base_ref`; a ref that does not resolve counts as none |
+| `--with` siblings | name and pinned commit, when used |
+
+Where the run executed (local or a remote) is not part of it, nor is the lane, the priority or the heavyq
+version (the cache key adds the version on top).
+
+Matching rules for a gate command, in order:
+
+1. The record has a `run_id` and so does the gate command: they match if and only if the ids are equal.
+   `gate status` computes the gate's id from the tree it identified, the repository root, the `cache.env`
+   allowlist read from **its own environment**, and `queue.base_ref`: the same inputs `gate run` gives the
+   run. So `FEATURE_X=1 heavyq gate run` proves the gate only for a shell where `FEATURE_X=1`, and
+   `heavyq gate status` without it says `missing` (`ran on this tree with a different environment
+   (cache.env) or base ref: run it again`).
+2. Otherwise (a record from an older heavyq without `run_id`): it matches by `cmd_hash`, or on the oldest
+   lines by the redacted command string, **only when `cache.env` is empty**, because then no variable can make
+   two runs of one argv differ. With a non-empty allowlist such a record never matches (fail closed): it
+   cannot say which values it ran with. `gate status` reports `missing` with the reason, and one `gate run`
+   records a `run_id`.
+
+A failure under another environment is not a failure of this one: it does not fail the command and does not
+make it flaky. A record whose tree is unknown has no `run_id` and never proves anything.
 
 Each command is classified by those runs. The first row that applies wins:
 
@@ -171,6 +204,7 @@ A gate is proven when every command is. Everything else fails closed:
 - If the tree cannot be identified (not a repository, no commit yet, a submodule or nested repository with
   changes of its own, more untracked content than heavyq can digest) nothing is provable. `gate status` says
   why and exits 1, and `gate run` refuses to start.
+- An older record without `run_id` does not prove a command when `cache.env` is set (see Run identity).
 - A command longer than 200 bytes whose only runs are older records (no `cmd_hash`) is `missing`: the ledger
   only kept a cut-off form of it, and two different long commands could look alike. Run it again (`gate run`)
   and its hash is recorded.
@@ -255,7 +289,11 @@ ledger with `gate = <name>`. The lane is `--lane`, else `$HEAVYQ_LANE`, else the
 - Commands already proven on this tree are not run: heavyq prints `proven: <command>` and moves on.
 - It stops at the first failing command (the rest are listed as `not run`), unless `--keep-going`.
   `--parallel` starts all unproven commands at once (the queue's slots still limit how many run) and
-  implies `--keep-going`; their output interleaves.
+  implies `--keep-going`. Each command runs as its own child `heavyq` process (the same invocation as above,
+  with the same `--config`), so every ticket has its own pid: `heavyq cancel <pid>` stops exactly one command.
+  Their output is streamed line by line with a `[cmd N]` prefix (N is the command's number in the gate, as in
+  `[N/total]`). The children get no stdin; a SIGINT, SIGTERM or SIGHUP sent to `gate run` is relayed to all of
+  them. Without `--parallel` the commands run one at a time inside the `gate run` process.
 - Dirty trees are never cached, so on uncommitted edits every unproven command really runs. The dirty tree is
   proven all the same, and stays proven until the next edit.
 - It ends by printing the status table. **Exit 0** only if the ledger now proves the whole gate on the code
@@ -273,6 +311,7 @@ ledger with `gate = <name>`. The lane is `--lane`, else `$HEAVYQ_LANE`, else the
 
 | Field | Meaning |
 |---|---|
+| `run_id` | sha256 (hex) of the run identity: tree id, `cmd_hash`, subdir, `cache.env` values, base ref commit (see Run identity). Absent on older lines and when the tree is unknown |
 | `cmd_hash` | sha256 (hex) of the exact argv the run executed, joined with NUL, computed before redaction and truncation. `cmd` stays the redacted, 200-byte display form. The hash is of the unredacted command, so it could confirm a guess at a secret inside one: the ledger file is 0600, keep it private |
 | `load1`, `free_mb`, `cores` | the machine when the run was admitted: 1-minute load, available RAM, cores. For a local run it is the sample the resource gate judged, for a remote run the probe placement used. Absent when the machine cannot be measured, so `cores` > 0 marks a reading (a missing `load1` or `free_mb` beside it is a real 0) |
 | `max_load`, `job_mb` | the limits applied to that reading: load at or above `max_load` (`max_load_ratio` x cores), or free RAM below `job_mb` (`light_mb` for `--light`), is "over its limits" |

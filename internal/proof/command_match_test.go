@@ -9,7 +9,7 @@ import (
 
 func TestMatchesByHashWhenTheRecordHasOne(t *testing.T) {
 	cmd := "go vet ./..."
-	subj := Subject{Repo: repoA, Tree: treeA}
+	subj := Subject{EnvFree: true, Repo: repoA, Tree: treeA}
 	cases := []struct {
 		name string
 		r    history.Record
@@ -41,7 +41,7 @@ func TestLongCommandIsProvableByHash(t *testing.T) {
 	if len(r.Cmd) != 200 {
 		t.Fatalf("the ledger form must be cut, got %d bytes", len(r.Cmd))
 	}
-	subj := Subject{Repo: repoA, Tree: treeA}
+	subj := Subject{EnvFree: true, Repo: repoA, Tree: treeA}
 	g := Evaluate("ready", []string{long, other}, subj, []history.Record{r})
 	if g.Commands[0].State != Proven || g.Commands[1].State != Missing || g.Proven {
 		t.Fatalf("%+v", g.Commands)
@@ -62,7 +62,7 @@ func TestLongCommandIsProvableByHash(t *testing.T) {
 func TestLongCommandCanBeFlaky(t *testing.T) {
 	long := "echo " + strings.Repeat("y", 400)
 	runs := []history.Record{run(long, nil), run(long, exit(1))}
-	c := Evaluate("ready", []string{long}, Subject{Repo: repoA, Tree: treeA}, runs).Commands[0]
+	c := Evaluate("ready", []string{long}, Subject{EnvFree: true, Repo: repoA, Tree: treeA}, runs).Commands[0]
 	if c.Class != ClassFlaky {
 		t.Fatalf("%+v", c)
 	}
@@ -80,11 +80,11 @@ func TestSecretCommandMatchesByHashNotByRedactedText(t *testing.T) {
 	if r.Cmd != other.Cmd {
 		t.Skipf("redaction no longer makes these look alike (%q vs %q)", r.Cmd, other.Cmd)
 	}
-	g := Evaluate("ready", []string{cmd}, Subject{Repo: repoA, Tree: treeA}, []history.Record{other})
+	g := Evaluate("ready", []string{cmd}, Subject{EnvFree: true, Repo: repoA, Tree: treeA}, []history.Record{other})
 	if g.Proven {
 		t.Fatal("a run of the command with another secret must not prove this one")
 	}
-	if !Evaluate("ready", []string{cmd}, Subject{Repo: repoA, Tree: treeA}, []history.Record{r}).Proven {
+	if !Evaluate("ready", []string{cmd}, Subject{EnvFree: true, Repo: repoA, Tree: treeA}, []history.Record{r}).Proven {
 		t.Fatal("the run of the same command proves it")
 	}
 }

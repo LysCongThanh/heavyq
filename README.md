@@ -209,7 +209,8 @@ Each run appends one JSON line. These fields say what it ran on and who asked:
 | `tree` | the exact files. **Clean:** `HEAD`'s tree id, the same one the cache keys on. **Dirty:** `<HEAD tree>+<digest>`, where the digest covers `git diff HEAD --binary` (staged or not) and the names and contents of untracked files that aren't ignored. The same edits give the same id, any edit changes it, and reverting restores the clean id (also when the edits cancel out, like staged then reverted). **Absent:** the tree is unknown and never counts as proof (see below). |
 | `dirty` | uncommitted or untracked files at the start (absent = false). Remote runs ship a commit, so they are never dirty. |
 | `session`, `item`, `gate` | `--session`, `--item`, `--gate` (below) |
-| `cmd_hash` | sha256 of the exact argv, taken before `cmd` is redacted and cut to 200 bytes; proofs match on it, so long gate commands can be proven |
+| `cmd_hash` | sha256 of the exact argv, taken before `cmd` is redacted and cut to 200 bytes; so long gate commands can be proven |
+| `run_id` | sha256 of the run identity: tree, exact argv, subdir, `cache.env` values and base ref commit. Cache, proof, flaky and loop detection compare it, so a run under another environment never proves a gate it did not run (see [docs/gates.md](docs/gates.md)) |
 | `load1`, `free_mb`, `cores`, `max_load`, `job_mb` | the machine when the run was admitted (local sample, or the probe a remote placement used) and the limits the resource gate applied; with `forced`, they tell a failure under load from a real one (see [docs/gates.md](docs/gates.md)) |
 
 - **Tags.** `--session ID`, `--item ID`, `--gate NAME`; `HEAVYQ_SESSION` and `HEAVYQ_ITEM` supply the first
@@ -237,8 +238,9 @@ Each run appends one JSON line. These fields say what it ran on and who asked:
 heavyq 4 --cache -- npm test
 ```
 
-- **Key.** sha256 of the HEAD tree, the exact argv, the cwd relative to the repo root, the values of the
-  variables listed in `cache.env`, the `--base-ref` commit (if any) and the heavyq version. A new commit
+- **Key.** sha256 of the run id (the HEAD tree, the exact argv, the cwd relative to the repo root, the values
+  of the variables listed in `cache.env` and the `--base-ref` commit, if any; the same id the ledger records
+  as `run_id`) and the heavyq version. A new commit
   with the same tree (an empty commit, a rebase that changes nothing) still hits.
 - **Only clean trees.** If anything tracked is modified, or any untracked file isn't ignored, the run
   goes ahead normally and nothing is cached. `-v` says why, and history records `skip` with the
@@ -396,7 +398,8 @@ prio = 3          # 1-9, default 3
   with the gate's `prio`, `light` and `remote`. Proven commands are skipped at once ("proven"); a tree
   that was proven before, even by another agent in another worktree, costs nothing. It stops at the first
   failure unless `--keep-going`. Exit 0 only when the whole gate is proven on the code checked out when it
-  ends.
+  ends. With `--parallel` each command is a child `heavyq` process with its own ticket pid (so `heavyq cancel
+  <pid>` stops one), and its output is prefixed `[cmd N]`.
 - The gate is the same one CI runs: this repository's own [`heavyq.toml`](heavyq.toml) defines `ready` (gofmt,
   `go vet`, `go test -race`), and CI runs `heavyq gate run ready` with the binary it just built.
 - `heavyq why` ends with a sentence on whether the `ready` gate (from `heavyq.toml`, else the detected one) is
