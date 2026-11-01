@@ -20,8 +20,9 @@ golangci-lint run                 # v2; config in .golangci.yml
 gofmt -l .                        # must print nothing
 ```
 
-If heavyq itself is installed, run the gate through it like any other agent would:
-`heavyq 4 --lane "$(basename "$PWD")" -- go test -race -count=1 ./...`.
+If heavyq itself is installed, run the gate through it like any other agent would: `heavyq gate run ready`
+(`heavyq.toml`: gofmt, vet, race tests; proven commands are skipped, and `heavyq gate status` says whether
+this exact code is proven). CI runs the same gate.
 
 ## Hard rules
 

@@ -9,6 +9,7 @@ Contributions that keep it that way are the easiest to merge.
 git clone https://github.com/LysCongThanh/heavyq && cd heavyq
 go test -race ./...        # unit + end-to-end tests (real processes, real flock, an sh -c "remote")
 go vet ./... && gofmt -l .
+heavyq gate run ready      # the gate CI runs (gofmt, vet, race tests), if heavyq is installed
 golangci-lint run          # v2, config in .golangci.yml (CI pins the version)
 ```
 
@@ -31,6 +32,7 @@ The remote path is tested through a `sh -c` transport, which runs the same code 
 | `internal/config` | TOML config, defaults, validation |
 | `internal/history` | the run ledger: JSONL records (commit, tree, session, ...), ULIDs, monthly rotation |
 | `internal/gitutil` | git queries, including the tree identity of clean and dirty work trees |
+| `internal/proof` | pure matching of ledger records to gate commands on a tree: proven / failed / missing |
 | `internal/repoconfig` | per-repo `heavyq.toml`: named gates, validation (trusted like a Makefile) |
 
 ## House rules

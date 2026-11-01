@@ -25,9 +25,12 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: stable
-      - run: go vet ./...
-      - name: test (race, includes end-to-end runs with real processes and an sh -c "remote")
-        run: go test -race -count=1 ./...
+      - run: go build -o heavyq .
+      # heavyq proves itself: the gate in heavyq.toml (gofmt, go vet and `go test -race`, which includes the
+      # end-to-end runs with real processes and an sh -c "remote"), run through the binary just built.
+      # A failing command fails the job, and its output is shown as usual.
+      - name: gate ready (heavyq gate run ready)
+        run: ./heavyq gate run ready
 
   lint:
     runs-on: ubuntu-latest
