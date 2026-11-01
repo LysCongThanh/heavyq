@@ -38,3 +38,9 @@ func (w wanted) matches(r history.Record) bool {
 	}
 	return w.textOK && r.Cmd == w.text
 }
+
+// MatcherFor returns the test that says whether a ledger record is a run of
+// the gate command cmd, by the same rule proofs use (cmd_hash when the record
+// has one, else the command string). It does not look at tree, repository or
+// outcome.
+func MatcherFor(cmd string) func(history.Record) bool { return wantCommand(cmd).matches }

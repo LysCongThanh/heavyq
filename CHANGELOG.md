@@ -75,7 +75,8 @@ versions follow [Semantic Versioning](https://semver.org/).
   than its job budget ("rerun once before debugging"), else **`failed`**. A failure under load does not make
   a command flaky and never breaks a repetition, so a clean rerun proves it. `--json` gains `commands[].class`, `passes` and `fails`, and
   `reason` now also carries the evidence. `heavyq why` shows the counts in its gate sentence
-  ("1 failed (1 flaky), 0 missing"). Lines without the new fields load as before and are never called under
+  ("1 failed (1 flaky), 0 missing"). Flaky and under-load failures never raise the Tower's `red_gate`
+  exception. Lines without the new fields load as before and are never called under
   load.
 - **`cmd_hash` in the ledger (#38).** Each line carries the sha256 of the exact argv the run executed, taken
   before the command is redacted and cut to 200 bytes. Proofs match on it when the record has one, so a gate
