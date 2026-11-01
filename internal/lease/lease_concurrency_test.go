@@ -2,6 +2,7 @@ package lease
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -13,9 +14,12 @@ import (
 )
 
 // Helper-process pattern: the test binary re-executes itself. A helper
-// claims once on "go", prints "<item>" or "NONE", then stays alive (so its
-// lease is never stale) until the parent closes its stdin.
-const helperEnv = "HEAVYQ_LEASE_TEST_HELPER"
+// claims once on "go", prints "<item>" or "NONE", then stays alive until the
+// parent closes its stdin (or exits at once when helperExitEnv is set).
+const (
+	helperEnv     = "HEAVYQ_LEASE_TEST_HELPER"
+	helperExitEnv = "HEAVYQ_LEASE_TEST_HELPER_EXIT" // helper exits right after claiming
+)
 
 func TestMain(m *testing.M) {
 	if dir := os.Getenv(helperEnv); dir != "" {
@@ -48,6 +52,9 @@ func runHelper(dir string, args []string) int {
 		fmt.Println("NONE")
 	default:
 		fmt.Println(l.Item)
+	}
+	if os.Getenv(helperExitEnv) != "" {
+		return 0 // CLI-style: claim, print, exit at once
 	}
 	_, _ = io.Copy(io.Discard, in) // stay alive until the parent is done
 	return 0
@@ -168,5 +175,36 @@ func checkDistinct(t *testing.T, got []string, errs []error, nItems int) {
 	}
 	if len(claimed) != want {
 		t.Fatalf("claimed %d items %v, want %d", len(claimed), claimed, want)
+	}
+}
+
+// A CLI-style claim: the claiming process exits immediately, as `heavyq item
+// claim` does. The lease must stay valid until its TTL, not turn stale with
+// the pid.
+func TestClaimFromShortLivedProcessStaysValid(t *testing.T) {
+	common := t.TempDir()
+	s, err := Open(common)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command(os.Args[0], "cli-lane", "job")
+	cmd.Env = append(os.Environ(), helperEnv+"="+common, helperExitEnv+"=1")
+	cmd.Stdin = strings.NewReader("go\n")
+	out, err := cmd.Output() // returns once the helper has exited
+	if err != nil || strings.TrimSpace(string(out)) != "job" {
+		t.Fatalf("helper: %q %v", out, err)
+	}
+	ls, err := s.List()
+	if err != nil || len(ls) != 1 || ls[0].Stale || ls[0].Pid != 0 {
+		t.Fatalf("list = %+v %v", ls, err)
+	}
+	_, err = s.Claim("job", owner(t, "other", "s"))
+	var held *HeldError
+	if !errors.As(err, &held) || held.Holder.Lane != "cli-lane" {
+		t.Fatalf("claim by other = %v", err)
+	}
+	// The same session, from a new short-lived process, renews it.
+	if _, err := s.Claim("job", owner(t, "cli-lane", "sess-cli-lane")); err != nil {
+		t.Fatalf("same-session renew: %v", err)
 	}
 }

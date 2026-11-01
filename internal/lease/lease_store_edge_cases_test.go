@@ -13,6 +13,7 @@ func TestOwnerValidation(t *testing.T) {
 		{},
 		{Lane: "l", Pid: 1},
 		{Lane: "l", Start: "x"},
+		{Lane: "l", Pid: -1, Start: "x"},
 		{Lane: "l\nx", Pid: 1, Start: "x"},
 		{Lane: string(make([]byte, 300)), Pid: 1, Start: "x"},
 	}

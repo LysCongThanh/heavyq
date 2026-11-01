@@ -12,8 +12,8 @@ import (
 //
 //   - no lease, or a corrupt one: granted ("claim").
 //   - held by the same owner (same lane and session): renewed, with pid and
-//     start refreshed from owner ("renew"); Acquired is kept.
-//   - held by another owner whose lease is expired or whose process is dead:
+//     start refreshed when owner has a pid ("renew"); Acquired is kept.
+//   - held by another owner whose lease is expired or whose explicit pid is dead:
 //     reclaimed ("reclaim").
 //   - held by another live, unexpired owner: *HeldError (errors.Is ErrHeld).
 //
@@ -81,6 +81,9 @@ func (s *Store) claimLocked(item string, owner Owner) (Lease, error) {
 		return Lease{}, err
 	case cur.Owner().Same(owner):
 		l.Acquired = cur.Acquired
+		if owner.Pid == 0 { // no new evidence: keep what the lease has
+			l.Pid, l.Start = cur.Pid, cur.Start
+		}
 		ev.Op = opRenew
 	default:
 		reason := s.staleReason(cur, now)
@@ -120,7 +123,10 @@ func (s *Store) Renew(item string, owner Owner) (Lease, error) {
 			return &HeldError{Holder: cur}
 		}
 		now := s.now().UTC()
-		cur.Pid, cur.Start, cur.Renewed, cur.Expires = owner.Pid, owner.Start, now, now.Add(s.TTL)
+		if owner.Pid > 0 {
+			cur.Pid, cur.Start = owner.Pid, owner.Start
+		}
+		cur.Renewed, cur.Expires = now, now.Add(s.TTL)
 		if err := s.write(cur); err != nil {
 			return err
 		}
@@ -167,7 +173,7 @@ func (s *Store) Release(item string, owner Owner, force bool) error {
 }
 
 // List returns every lease sorted by item, with Stale set for leases that are
-// expired or whose owner process is gone. It takes no lock (files are replaced
+// expired or whose explicit owner pid is gone. It takes no lock (files are replaced
 // atomically). Unreadable or corrupt files are skipped; Claim overwrites them.
 func (s *Store) List() ([]Lease, error) {
 	ents, err := os.ReadDir(s.dir)

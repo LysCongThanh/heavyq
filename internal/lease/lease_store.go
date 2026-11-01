@@ -12,8 +12,9 @@
 // Lease files are replaced atomically (temp file + rename), so readers such
 // as List need no lock and never see half-written files.
 //
-// A lease is stale when it has expired (TTL, default 30 min, renewable) or
-// when its owner process is gone (pid + start token, immune to pid reuse).
+// A lease is stale when it has expired (TTL, default 30 min, renewable) or,
+// only if the owner gave an explicit pid, when that process is gone (pid +
+// start token, immune to pid reuse).
 // Claim and ClaimNext reclaim stale leases and log a reclaim event.
 // See docs/leases.md for the owner model and caveats.
 package lease
@@ -108,7 +109,7 @@ func (s *Store) read(item string) (Lease, error) {
 		return Lease{}, fmt.Errorf("read lease %s: %w", item, err)
 	}
 	var l Lease
-	if err := json.Unmarshal(b, &l); err != nil || l.Item != item || l.Pid <= 0 || l.Lane == "" {
+	if err := json.Unmarshal(b, &l); err != nil || l.Item != item || l.Pid < 0 || l.Lane == "" {
 		return Lease{}, fmt.Errorf("%w: %s", errCorrupt, item)
 	}
 	return l, nil
@@ -143,12 +144,13 @@ func (s *Store) write(l Lease) error {
 	return nil
 }
 
-// staleReason returns "expired", "dead" or "" (live) for l.
+// staleReason returns "expired", "dead" or "" (live) for l. TTL is the
+// liveness rule; the pid check applies only when the lease records a pid.
 func (s *Store) staleReason(l Lease, now time.Time) string {
 	switch {
-	case !now.Before(l.Expires):
+	case now.After(l.Expires):
 		return "expired"
-	case !s.alive(l.Pid, l.Start):
+	case l.Pid > 0 && !s.alive(l.Pid, l.Start):
 		return "dead"
 	}
 	return ""

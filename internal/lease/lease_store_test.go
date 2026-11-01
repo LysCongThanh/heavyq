@@ -10,7 +10,10 @@ import (
 
 func TestClaimRenewRelease(t *testing.T) {
 	s := newStore(t)
-	a := owner(t, "laneA", "s1")
+	a, err := CurrentProcess("laneA", "s1")
+	if err != nil {
+		t.Fatal(err)
+	}
 	l, err := s.Claim("task-1", a)
 	if err != nil {
 		t.Fatal(err)
@@ -183,5 +186,58 @@ func TestClaimNextOrderAndExhaustion(t *testing.T) {
 	}
 	if _, ok, err := s.ClaimNext(nil, late); err != nil || ok {
 		t.Fatalf("empty: ok=%v err=%v", ok, err)
+	}
+}
+
+// Liveness is the TTL: a pid-less owner (the CLI default) is never declared
+// dead, whatever the process table says.
+func TestNoPidOwnerIsTTLOnly(t *testing.T) {
+	s := newStore(t)
+	s.alive = func(int, string) bool { return false }
+	clock := time.Now()
+	s.now = func() time.Time { return clock }
+	a, b := owner(t, "laneA", "s1"), owner(t, "laneB", "s2")
+	if a.Pid != 0 || a.Start != "" {
+		t.Fatalf("NewOwner(...,0) must carry no pid: %+v", a)
+	}
+	l, err := s.Claim("x", a)
+	if err != nil || l.Pid != 0 {
+		t.Fatalf("claim: %+v %v", l, err)
+	}
+	if _, err := s.Claim("x", b); !errors.Is(err, ErrHeld) {
+		t.Fatalf("claim by other = %v", err)
+	}
+	if ls, _ := s.List(); len(ls) != 1 || ls[0].Stale {
+		t.Fatalf("list = %+v", ls)
+	}
+	clock = clock.Add(DefaultTTL) // exactly at Expires: still live (stale when now > Expires)
+	if _, err := s.Claim("x", b); !errors.Is(err, ErrHeld) {
+		t.Fatalf("at Expires: %v", err)
+	}
+	clock = clock.Add(time.Nanosecond)
+	if _, err := s.Claim("x", b); err != nil {
+		t.Fatalf("after Expires: %v", err)
+	}
+}
+
+// A pid-less renewal keeps the pid evidence an earlier wrapper recorded.
+func TestPidlessRenewKeepsPidEvidence(t *testing.T) {
+	s := newStore(t)
+	wrapper, err := CurrentProcess("laneA", "s1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Claim("x", wrapper); err != nil {
+		t.Fatal(err)
+	}
+	cli := owner(t, "laneA", "s1")
+	for _, renew := range []func() (Lease, error){
+		func() (Lease, error) { return s.Renew("x", cli) },
+		func() (Lease, error) { return s.Claim("x", cli) },
+	} {
+		l, err := renew()
+		if err != nil || l.Pid != wrapper.Pid || l.Start != wrapper.Start {
+			t.Fatalf("pid evidence lost: %+v %v", l, err)
+		}
 	}
 }
