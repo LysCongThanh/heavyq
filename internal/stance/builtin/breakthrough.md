@@ -1,24 +1,24 @@
 +++
 name = "breakthrough"
 description = "Stuck on one approach: rethink from the problem, weigh a radical option, decide on evidence."
+next = "write your from-scratch answer before reading the current design"
 cooldown_minutes = 60
-inject_tokens = 300
 
 [enter]
 same_failure_class_across_trees = 3
 churn_reverts = 2
 keywords = ["breakthrough", "think differently", "from scratch"]
 
-[enter.stall]
-minutes = 40
-runs = 8
-without_proof = true
-
 [exit]
 decision_record = true
 timebox_minutes = 30
 +++
 You are probably polishing the current approach. Step outside it.
+<!-- core -->
+- Answer "from scratch, what is best?" before looking at the current approach.
+- List 3+ options: status quo, an incremental fix, one radical.
+- Tell REAL constraints from INERTIA; research outside the repo is mandatory.
+<!-- /core -->
 
 ## Order matters
 - Before reading the existing design, write down your answer to: "Starting from scratch, what is the best solution to this problem?"

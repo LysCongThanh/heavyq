@@ -34,6 +34,9 @@ func (s *Stance) finish(stem string, injectSet bool, body string) error {
 	if n := utf8.RuneCountInString(s.Description); n > maxDescriptionRunes || strings.ContainsAny(s.Description, "\r\n") {
 		return fmt.Errorf("description must be one line of at most %d characters", maxDescriptionRunes)
 	}
+	if n := utf8.RuneCountInString(s.Next); n > maxNextRunes || strings.ContainsAny(s.Next, "\r\n") {
+		return fmt.Errorf("next must be one line of at most %d characters", maxNextRunes)
+	}
 	if !injectSet {
 		s.InjectTokens = DefaultInjectTokens
 	}
@@ -51,6 +54,9 @@ func (s *Stance) finish(stem string, injectSet bool, body string) error {
 		return fmt.Errorf("body is %d bytes, the limit is %d", len(body), MaxBodyBytes)
 	case strings.ContainsRune(body, 0):
 		return errors.New("body contains a NUL byte")
+	}
+	if _, err := coreLines(body); err != nil {
+		return err
 	}
 	s.Body = body
 	return nil

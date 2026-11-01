@@ -1,6 +1,6 @@
-heavyq stance: dot-pha — why now: 45 phút, 11 lần chạy, chưa có bằng chứng
-## Trước khi đọc mã
+[heavyq · stance dot-pha] why now: cùng một lỗi trên 3 cây mã khác nhau: TestDangNhap
+next: viết câu trả lời từ đầu trước khi đọc thiết kế hiện tại
 - Trả lời trước: "nếu làm lại từ đầu, giải pháp tốt nhất là gì?"
-- Liệt kê ít nhất ba phương án, gồm hiện trạng và một phương án đột phá.
-- Phân loại mỗi ràng buộc: THẬT (bất biến, giới hạn cứng) hay QUÁN TÍNH (chỉ vì "xưa nay vẫn làm thế").
-full text: heavyq stance show dot-pha
+- Liệt kê ít nhất ba phương án, gồm một phương án đột phá.
+- Phá bỏ các ràng buộc quán tính.
+full: heavyq stance show dot-pha

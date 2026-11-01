@@ -1,43 +1,48 @@
 package stance
 
 import (
-	"sort"
+	"fmt"
 	"strings"
 	"unicode"
 	"unicode/utf8"
 )
 
-const ellipsis = "…"
+const (
+	ellipsis       = "…"
+	coreOpen       = "<!-- core -->"
+	coreClose      = "<!-- /core -->"
+	maxInjectLines = 3
+)
 
-// Render produces the compact injection text for s: a fixed header naming
-// the stance and why it applies now, the most important lines of the body,
-// and a pointer to the full text. The result never exceeds
-// s.InjectTokens x BytesPerToken bytes (DefaultInjectTokens when unset, at
-// most MaxInjectTokens) and is always valid UTF-8.
+// Render produces the compact injection text for s, facts first:
 //
-// Line choice: list items first, then headings, then prose lines; within a
-// tier, document order; a line that does not fit is skipped, never cut. The
-// chosen lines are emitted in document order. When not even one line fits
-// (one long paragraph), the first line is cut at a character boundary with
-// an ellipsis. why is evidence, not trusted text: it is flattened to one
-// line and limited to a third of the budget.
+//	[heavyq · stance <name>] why now: <evidence>
+//	next: <one command or check>          (only when the stance has one)
+//	<at most 3 short core lines>
+//	full: heavyq stance show <name>
+//
+// The result never exceeds s.InjectTokens x BytesPerToken bytes
+// (DefaultInjectTokens when unset, at most MaxInjectTokens) and is always
+// valid UTF-8. Core lines come from the body's <!-- core --> ... <!-- /core -->
+// blocks; without one, from its first list items, else its first prose lines.
+// A line that does not fit is skipped, never cut, unless nothing fits at all
+// (one long paragraph): then the first line is cut with an ellipsis.
+// why is evidence, not trusted text: it is flattened to one line and limited
+// to a third of the budget; next gets a quarter.
 func Render(s Stance, why string) string {
 	budget := renderBudget(s.InjectTokens)
-	footer := "full text: heavyq stance show " + s.Name
-	prefix := "heavyq stance: " + s.Name
+	footer := "full: heavyq stance show " + s.Name
+	prefix := "[heavyq · stance " + s.Name + "] why now:"
+	head := []string{prefix}
 	if why = oneLine(why); why != "" {
-		prefix += " — why now: "
-		why = cutRunes(why, min(budget/3, budget-len(prefix)-len(footer)-1))
+		head[0] = prefix + " " + cutRunes(why, min(budget/3, budget-len(prefix)-len(footer)-1))
 	}
-	header := strings.TrimRight(prefix+why, " ")
-
-	room := budget - len(header) - len(footer) - 2 // the two newlines
-	lines := pickLines(s.Body, room)
-
-	parts := []string{header}
-	parts = append(parts, lines...)
-	parts = append(parts, footer)
-	out := strings.Join(parts, "\n")
+	if next := oneLine(s.Next); next != "" {
+		head = append(head, "next: "+cutRunes(next, min(budget/4, budget-len(head[0])-len(footer)-8)))
+	}
+	room := budget - len(strings.Join(head, "\n")) - len(footer) - 2
+	parts := append(head, pickCore(s.Body, room)...)
+	out := strings.Join(append(parts, footer), "\n")
 	if len(out) > budget { // only reachable with absurd names; stay safe
 		out = cutRunes(out, budget)
 	}
@@ -51,60 +56,81 @@ func renderBudget(tokens int) int {
 	return min(tokens, MaxInjectTokens) * BytesPerToken
 }
 
-// pickLines chooses body lines that fit in room bytes (each costs its length
-// plus a newline), in document order.
-func pickLines(body string, room int) []string {
-	type cand struct {
-		idx, tier int
-		text      string
+// pickCore chooses up to maxInjectLines body lines that fit in room bytes
+// (each costs its length plus a newline), in document order.
+func pickCore(body string, room int) []string {
+	cands, _ := coreLines(body) // validated at parse time
+	if len(cands) == 0 {
+		cands = firstItems(body)
 	}
-	var cands []cand
-	for i, raw := range strings.Split(body, "\n") {
-		text := strings.TrimRightFunc(raw, unicode.IsSpace)
-		if strings.TrimSpace(text) == "" || strings.HasPrefix(strings.TrimSpace(text), "```") {
-			continue
+	var out []string
+	for _, l := range cands {
+		if len(out) == maxInjectLines {
+			break
 		}
-		cands = append(cands, cand{i, lineTier(text), text})
-	}
-	byTier := make([]cand, len(cands))
-	copy(byTier, cands)
-	sort.SliceStable(byTier, func(i, j int) bool { return byTier[i].tier < byTier[j].tier })
-
-	var chosen []cand
-	for _, c := range byTier {
-		if cost := len(c.text) + 1; cost <= room {
-			chosen = append(chosen, c)
+		if cost := len(l) + 1; cost <= room {
+			out = append(out, l)
 			room -= cost
 		}
 	}
-	if len(chosen) == 0 {
-		if len(cands) > 0 && room > len(ellipsis)+1 {
-			return []string{cutRunes(strings.TrimSpace(cands[0].text), room-1)}
-		}
-		return nil
-	}
-	sort.Slice(chosen, func(i, j int) bool { return chosen[i].idx < chosen[j].idx })
-	out := make([]string, len(chosen))
-	for i, c := range chosen {
-		out[i] = c.text
+	if len(out) == 0 && len(cands) > 0 && room > len(ellipsis)+1 {
+		out = []string{cutRunes(cands[0], room-1)}
 	}
 	return out
 }
 
-// lineTier ranks a body line: 0 list item, 1 heading, 2 prose.
-func lineTier(line string) int {
-	t := strings.TrimSpace(line)
-	switch {
-	case strings.HasPrefix(t, "- "), strings.HasPrefix(t, "* "), strings.HasPrefix(t, "+ "), numberedItem(t):
-		return 0
-	case strings.HasPrefix(t, "#"):
-		return 1
+// coreLines returns the non-blank lines inside <!-- core --> blocks, trimmed,
+// and an error for markers that are nested, stray or unclosed.
+func coreLines(body string) ([]string, error) {
+	var out []string
+	open := 0
+	for i, raw := range strings.Split(body, "\n") {
+		line := strings.TrimSpace(raw)
+		switch {
+		case line == coreOpen:
+			if open != 0 {
+				return nil, fmt.Errorf("body line %d: %s inside another core block", i+1, coreOpen)
+			}
+			open = i + 1
+		case line == coreClose:
+			if open == 0 {
+				return nil, fmt.Errorf("body line %d: %s without %s", i+1, coreClose, coreOpen)
+			}
+			open = 0
+		case open != 0 && line != "":
+			out = append(out, line)
+		}
 	}
-	return 2
+	if open != 0 {
+		return nil, fmt.Errorf("body line %d: %s is never closed", open, coreOpen)
+	}
+	return out, nil
 }
 
-// numberedItem reports whether t starts like "3. " or "3) ".
-func numberedItem(t string) bool {
+// firstItems is the fallback when a body has no core block: its list items,
+// or, with none, its prose lines (headings, comments and code fences skipped).
+func firstItems(body string) []string {
+	var items, prose []string
+	for _, raw := range strings.Split(body, "\n") {
+		t := strings.TrimSpace(raw)
+		switch {
+		case t == "", strings.HasPrefix(t, "#"), strings.HasPrefix(t, "```"), strings.HasPrefix(t, "<!--"):
+		case isListItem(t):
+			items = append(items, t)
+		default:
+			prose = append(prose, t)
+		}
+	}
+	if len(items) > 0 {
+		return items
+	}
+	return prose
+}
+
+func isListItem(t string) bool {
+	if strings.HasPrefix(t, "- ") || strings.HasPrefix(t, "* ") || strings.HasPrefix(t, "+ ") {
+		return true
+	}
 	i := 0
 	for i < len(t) && t[i] >= '0' && t[i] <= '9' {
 		i++

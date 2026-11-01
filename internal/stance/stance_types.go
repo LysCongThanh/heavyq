@@ -21,12 +21,13 @@ const (
 	MaxBodyBytes        = 32 << 10
 	maxFrontmatterBytes = 8 << 10
 	maxDescriptionRunes = 160
+	maxNextRunes        = 160
 	maxKeywords         = 20
 	maxKeywordRunes     = 80
 
-	DefaultInjectTokens = 250
-	MinInjectTokens     = 50
-	MaxInjectTokens     = 600
+	DefaultInjectTokens = 150
+	MinInjectTokens     = 80
+	MaxInjectTokens     = 400
 	// BytesPerToken is the (deliberately rough) conversion the injection
 	// budget uses: inject_tokens x 4 bytes.
 	BytesPerToken = 4
@@ -35,8 +36,11 @@ const (
 // Stance is one thinking mode. The first group of fields is the frontmatter
 // (TOML keys); Body, Source and Path are filled by the loader.
 type Stance struct {
-	Name            string `toml:"name" json:"name"`
-	Description     string `toml:"description" json:"description"`
+	Name        string `toml:"name" json:"name"`
+	Description string `toml:"description" json:"description"`
+	// Next is the one command or check the injection leads with after the
+	// evidence ("next: ..."). Optional: without it the line is omitted.
+	Next            string `toml:"next" json:"next,omitempty"`
 	Enter           Enter  `toml:"enter" json:"enter"`
 	Exit            Exit   `toml:"exit" json:"exit"`
 	CooldownMinutes int    `toml:"cooldown_minutes" json:"cooldown_minutes"`
@@ -59,7 +63,9 @@ type Enter struct {
 }
 
 // Stall is "claimed for Minutes with at least Runs runs, and (when
-// WithoutProof) no proof".
+// WithoutProof) no proof". Time-only evidence is not a reason to interrupt an
+// agent, so the key stays parseable for status lines and dashboards but no
+// built-in stance uses it to enter, and triggers must not act on it alone.
 type Stall struct {
 	Minutes      int  `toml:"minutes" json:"minutes"`
 	Runs         int  `toml:"runs" json:"runs"`

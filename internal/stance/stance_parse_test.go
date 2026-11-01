@@ -8,6 +8,7 @@ import (
 const validFile = `+++
 name = "demo"
 description = "A demo stance."
+next = "run: heavyq gate status"
 cooldown_minutes = 45
 inject_tokens = 120
 
@@ -36,7 +37,7 @@ func TestStanceParseValid(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if s.Name != "demo" || s.Description != "A demo stance." || s.CooldownMinutes != 45 || s.InjectTokens != 120 {
+	if s.Name != "demo" || s.Description != "A demo stance." || s.Next != "run: heavyq gate status" || s.CooldownMinutes != 45 || s.InjectTokens != 120 {
 		t.Fatalf("scalars: %+v", s)
 	}
 	if st := s.Enter.Stall; st == nil || st.Minutes != 40 || st.Runs != 8 || !st.WithoutProof {
@@ -93,6 +94,11 @@ func TestStanceParseErrors(t *testing.T) {
 		{"name mismatch", "+++\nname = \"other\"\n+++\nb\n", `name "other" must equal the file name "demo.md"`},
 		{"bad name", "+++\nname = \"Demo X\"\n+++\nb\n", "must match"},
 		{"inject too big", "+++\ninject_tokens = 601\n+++\nb\n", "inject_tokens 601 out of range"},
+		{"inject below minimum", "+++\ninject_tokens = 79\n+++\nb\n", "inject_tokens 79 out of range 80-400"},
+		{"multiline next", "+++\nnext = \"\"\"a\nb\"\"\"\n+++\nb\n", "next must be one line"},
+		{"unclosed core", "+++\n+++\nx\n<!-- core -->\n- a\n", "body line 2: <!-- core --> is never closed"},
+		{"stray core close", "+++\n+++\nx\n<!-- /core -->\n", "body line 2: <!-- /core --> without <!-- core -->"},
+		{"nested core", "+++\n+++\n<!-- core -->\n<!-- core -->\n", "inside another core block"},
 		{"inject too small", "+++\ninject_tokens = 0\n+++\nb\n", "inject_tokens 0 out of range"},
 		{"negative cooldown", "+++\ncooldown_minutes = -1\n+++\nb\n", "cooldown_minutes -1 out of range"},
 		{"empty stall", "+++\n[enter.stall]\nwithout_proof = true\n+++\nb\n", "enter.stall needs minutes or runs"},

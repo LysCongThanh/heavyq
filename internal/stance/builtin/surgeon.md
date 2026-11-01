@@ -1,6 +1,7 @@
 +++
 name = "surgeon"
 description = "The diff is growing beyond the task: cut it back to the minimal change."
+next = "git diff --stat, then revert what this task does not need"
 cooldown_minutes = 30
 
 [enter]
@@ -10,6 +11,11 @@ keywords = ["minimal change", "scope creep"]
 timebox_minutes = 20
 +++
 The change has grown past what the task needs. Shrink it.
+<!-- core -->
+- Tie every touched file to the task in one sentence, or revert it.
+- Undo drive-by renames, reformatting and cleanups.
+- Genuinely large fix? Ask to re-scope the item instead of smuggling it in.
+<!-- /core -->
 
 ## Cut back
 - List every file you touched and tie each one to the task in one sentence. If you cannot, revert it.

@@ -1,6 +1,7 @@
 +++
 name = "converge"
 description = "Exploring for too long: pick one option, make the smallest provable change, run the gate."
+next = "pick one option, then prove it with heavyq gate run"
 cooldown_minutes = 30
 
 [enter]
@@ -10,6 +11,11 @@ keywords = ["converge", "pick one", "stop exploring"]
 timebox_minutes = 15
 +++
 Exploration has run its course. Time to commit to something and learn from reality.
+<!-- core -->
+- Pick one option and write why in one sentence.
+- Make the smallest change that could prove the item done.
+- Park every other idea; no new research or branches.
+<!-- /core -->
 
 ## Do now
 - Pick one option. Write the reason in a single sentence; do not keep the others open "just in case".

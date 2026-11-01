@@ -29,24 +29,24 @@ A stance is a UTF-8 markdown file, `<name>.md`, with **TOML frontmatter** betwee
 +++
 name = "breakthrough"             # optional; must equal the file name without .md
 description = "One line for `stance ls`."
+next = "write your from-scratch answer before reading the current design"
 cooldown_minutes = 60
-inject_tokens = 250               # default 250, 50-600
+inject_tokens = 150               # default 150, 80-400
 
 [enter]                           # evidence that should switch a lane into the stance
 same_failure_class_across_trees = 3
 churn_reverts = 2
 keywords = ["breakthrough", "think differently", "đột phá"]
 
-[enter.stall]
-minutes = 40
-runs = 8
-without_proof = true
-
 [exit]
 decision_record = true
 timebox_minutes = 30
 +++
 The stance text, in markdown. Any language.
+<!-- core -->
+- The (at most three) lines that are injected. Short.
+<!-- /core -->
+More text for `heavyq stance show`.
 ```
 
 Why TOML and not YAML: heavyq already depends on `BurntSushi/toml` (no new dependency), TOML is strictly
@@ -57,14 +57,15 @@ with a line number instead of a setting that is silently ignored.
 |---|---|
 | `name` | `[a-z0-9][a-z0-9_-]{0,39}`; defaults to the file name; a different value is an error |
 | `description` | one line, at most 160 characters |
-| `enter.stall` | `minutes` and `runs` (at least one above 0) and `without_proof`: claimed that long with that many runs and no proof |
+| `next` | the one command or check the injection leads with, one line, at most 160 characters; optional |
+| `enter.stall` | `minutes` and `runs` (at least one above 0) and `without_proof`. **Status line and dashboard only**: elapsed time alone is not evidence, so no built-in enters on it and triggers must not act on it alone. The key stays parseable |
 | `enter.same_failure_class_across_trees` | the same failure class on this many different trees |
 | `enter.churn_reverts` | reverts or rewrites of the same files without proof |
 | `enter.keywords` | at most 20 phrases (one line, 80 characters each) that mean "the user asks for this stance" |
 | `exit.decision_record` | the stance ends when a decision record exists |
 | `exit.timebox_minutes` | or after this many minutes |
 | `cooldown_minutes` | do not re-enter within this time |
-| `inject_tokens` | budget of the compact form, see below |
+| `inject_tokens` | budget of the compact form, see below; default 150, 80-400 |
 
 Limits: the body is at most 32 KiB and must not be empty, the frontmatter at most 8 KiB. Over the limit is
 an error, never a silent truncation. Unknown keys, wrong types and out-of-range numbers are errors of the
@@ -86,8 +87,10 @@ of the same name.
 
 ## Built-in stances
 
-All five are short English texts (each body at most 1.5 KiB). Today they carry keyword triggers; evidence
-triggers for them come with the trigger rules.
+All five are short English texts (each body at most 1.5 KiB), each with a `next` line and a core block.
+`breakthrough` enters on deterministic evidence (the same failure class on 3 different trees, churn without
+proof) or a keyword; the others carry keywords for now, their evidence triggers come with the trigger rules.
+None enters on elapsed time alone.
 
 | Stance | For |
 |---|---|
@@ -99,19 +102,26 @@ triggers for them come with the trigger rules.
 
 ## Compact form
 
-`stance.Render(s, why)` produces the text that will be injected: at most `inject_tokens` x 4 bytes (a rough
-4 bytes per token), always valid UTF-8.
+`stance.Render(s, why)` produces the text that will be injected, **facts first**: the evidence, one thing to
+do, a few core lines, and a pointer to the rest. At most `inject_tokens` x 4 bytes (a rough 4 bytes per
+token), always valid UTF-8.
 
 ```
-heavyq stance: breakthrough — why now: 45 min, 11 runs, no proof on login-api
-<the most important body lines>
-full text: heavyq stance show breakthrough
+[heavyq · stance breakthrough] why now: same failure class on 3 trees: TestLogin timeout
+next: write your from-scratch answer before reading the current design
+- Answer "from scratch, what is best?" before looking at the current approach.
+- List 3+ options: status quo, an incremental fix, one radical.
+- Tell REAL constraints from INERTIA; research outside the repo is mandatory.
+full: heavyq stance show breakthrough
 ```
 
-- The evidence in `why` is flattened to one line and limited to a third of the budget.
-- Body lines are chosen by importance: list items first, then headings, then prose; the chosen lines keep
-  their order. A line that does not fit is skipped, never cut. If not even one line fits (a single long
-  paragraph), the first line is cut with an ellipsis. Write stances so their list items carry the core.
+- `next:` appears only when the stance sets `next`. The evidence in `why` is flattened to one line and limited
+  to a third of the budget, `next` to a quarter.
+- Core lines: at most 3. They come from `<!-- core -->` ... `<!-- /core -->` blocks in the body (blank lines
+  skipped; unclosed, nested or stray markers are a parse error). Without a block, the body's first list items
+  are used, else its first prose lines. Headings and the markers themselves are never injected.
+- A line that does not fit the budget is skipped, never cut. If not even one fits (a single long paragraph),
+  the first line is cut with an ellipsis.
 
 ## Roadmap
 

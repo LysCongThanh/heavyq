@@ -108,11 +108,12 @@ func TestStanceJSON(t *testing.T) {
 	rc, out, _ = h.split("stance", "show", "--json", "breakthrough") // flag before the name
 	var one struct {
 		Name, Source, Body string
+		Next               string
 		Enter              struct {
-			Stall struct{ Minutes, Runs int }
+			SameFailure int `json:"same_failure_class_across_trees"`
 		}
 	}
-	if err := json.Unmarshal([]byte(out), &one); rc != 0 || err != nil || one.Name != "breakthrough" || one.Enter.Stall.Minutes != 40 || !strings.Contains(one.Body, "from scratch") {
+	if err := json.Unmarshal([]byte(out), &one); rc != 0 || err != nil || one.Name != "breakthrough" || one.Enter.SameFailure != 3 || one.Next == "" || !strings.Contains(one.Body, "from scratch") {
 		t.Fatalf("show --json rc=%d err=%v:\n%s", rc, err, out)
 	}
 }
