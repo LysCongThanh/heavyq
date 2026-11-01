@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/LysCongThanh/heavyq/internal/agentmode"
 	"github.com/LysCongThanh/heavyq/internal/queue"
 )
 
@@ -59,7 +60,11 @@ func newRig(t *testing.T, config string) *rig {
 	}
 	var env []string
 	for _, e := range os.Environ() {
-		if !strings.HasPrefix(e, "HEAVYQ_") && !strings.HasPrefix(e, "XDG_CACHE_HOME=") && !strings.HasPrefix(e, "CLAUDE_CONFIG_DIR=") {
+		name, _, _ := strings.Cut(e, "=")
+		// The suite may itself run under a coding agent (CLAUDECODE=1, ...): the
+		// child must not inherit agent mode unless a test asks for it.
+		if !strings.HasPrefix(e, "HEAVYQ_") && !strings.HasPrefix(e, "XDG_CACHE_HOME=") && !strings.HasPrefix(e, "CLAUDE_CONFIG_DIR=") &&
+			!agentmode.IsAgentVar(name) {
 			env = append(env, e)
 		}
 	}

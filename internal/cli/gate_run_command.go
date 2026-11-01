@@ -54,6 +54,9 @@ func gateRunCommand(cfg *config.Config, args []string, stdout, stderr io.Writer)
 	before := evaluateGate(t, stderr)
 	if before.Tree == "" {
 		fmt.Fprintf(stderr, "heavyq: gate %s cannot be proven: %s\n", t.gate.Name, before.Reason)
+		if outputMode(stderr).Terse() {
+			fmt.Fprintln(stderr, gateNext(before))
+		}
 		return 1
 	}
 	g := t.gate
@@ -72,9 +75,17 @@ func gateRunCommand(cfg *config.Config, args []string, stdout, stderr io.Writer)
 		}
 	}
 	after := evaluateGate(t, stderr)
-	printGateLabeled(stdout, after, t.label())
+	terse := outputMode(stderr).Terse()
+	if terse {
+		printGateTable(stdout, after, t.label()) // the closing "next:" line comes last, below
+	} else {
+		printGateLabeled(stdout, after, t.label())
+	}
 	if after.Proven {
 		return 0
+	}
+	if terse { // the last line of the output, whichever explanation below is printed
+		defer fmt.Fprintln(stderr, gateNext(after))
 	}
 	if after.Tree != before.Tree {
 		fmt.Fprintf(stderr, "heavyq: the work tree changed while the gate ran (%s, now %s); results belong to the earlier code. Run the gate again.\n",

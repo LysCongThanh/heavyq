@@ -19,12 +19,8 @@ import (
 // execute runs the command on the claimed machine and records history.
 func (r *run) execute(c *claim) int {
 	waited := time.Since(r.t0)
-	if r.pl.defaultMode && c.machine != config.LocalName {
-		fmt.Fprintf(r.stderr, "heavyq: placed on %s by score (clean repo, commit %.12s; force local with --remote local)\n", c.machine, r.pl.sha)
-	}
-	fmt.Fprintf(r.stderr, "heavyq: our turn after %s (prio %d, lane %s, %s/%s): %s\n",
-		fmtDur(waited), r.me.Prio, r.me.Lane, c.machine, c.slot, r.me.Cmd)
 	co := r.checkoutFor(c.machine) // the code the command is about to see
+	r.announceAdmitted(c, waited, co)
 	runStart := time.Now()
 	var rc int
 	if c.machine == config.LocalName {
@@ -55,6 +51,7 @@ func (r *run) execute(c *claim) int {
 	if err := history.Append(history.DefaultPath(), rec); err != nil {
 		fmt.Fprintln(r.stderr, "heavyq: warning: history not written:", err)
 	}
+	r.digestRan(rc, c.machine, co, time.Since(runStart), waited)
 	return rc
 }
 
@@ -78,7 +75,7 @@ func (r *run) runLocal(c *claim) int {
 	cmd := exec.Command(r.opts.Argv[0], r.opts.Argv[1:]...)
 	cmd.Dir = r.localDir()
 	cmd.Stdin = os.Stdin
-	cmd.Stdout, cmd.Stderr = r.cmdStreams()
+	cmd.Stdout, cmd.Stderr = r.cmdStreams() // the real streams, or tees of them for the digest
 	// With --cache the streams are pipes: don't wait forever on a daemon that
 	// inherited them after the command itself exited.
 	cmd.WaitDelay = 10 * time.Second
@@ -174,7 +171,7 @@ func (r *run) supervise(forward func(os.Signal), wait func() int) int {
 			return rc
 		case <-tick.C:
 			if sigCode == 0 && controlBox().CancelRequested(r.me.Name) {
-				fmt.Fprintln(r.stderr, "heavyq: cancelled by an operator; stopping the command")
+				r.note("cancelled by an operator; stopping the command")
 				sigCode, r.cancelled = ExitCancelled, true
 				r.tree.signal(syscall.SIGTERM)
 				forward(syscall.SIGTERM)

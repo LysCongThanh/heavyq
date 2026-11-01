@@ -34,7 +34,7 @@ func gateStatusCommand(args []string, stdout, stderr io.Writer) int {
 			return 1
 		}
 	} else {
-		printGateLabeled(stdout, g, t.label())
+		printGateFor(stdout, g, t.label(), outputMode(stderr).Terse())
 	}
 	if g.Proven {
 		return 0
@@ -63,13 +63,24 @@ func redactedGate(g proof.Gate) proof.Gate {
 	return out
 }
 
-// printGate renders g as a table, one line per command.
+// printGate renders g as a table, one line per command, and for a gate that
+// is not proven how to prove it.
 func printGate(w io.Writer, g proof.Gate) { printGateLabeled(w, g, g.Gate) }
 
 // printGateLabeled is printGate with label as the gate's name in the heading
 // ("ready (detected)" for a detected gate). Commands to type still use the
 // plain name.
 func printGateLabeled(w io.Writer, g proof.Gate, label string) {
+	counts := printGateTable(w, g, label)
+	if !g.Proven {
+		fmt.Fprintf(w, "  %d failed, %d missing. Prove it with: heavyq gate run %s\n",
+			counts[proof.Failed], counts[proof.Missing], g.Gate)
+	}
+}
+
+// printGateTable renders g as a table, one line per command, and returns the
+// number of commands in each state. label names the gate in the heading.
+func printGateTable(w io.Writer, g proof.Gate, label string) map[proof.State]int {
 	g = redactedGate(g)
 	verdict := "NOT PROVEN"
 	if g.Proven {
@@ -100,10 +111,7 @@ func printGateLabeled(w io.Writer, g proof.Gate, label string) {
 		}
 		fmt.Fprintln(w, line)
 	}
-	if !g.Proven {
-		fmt.Fprintf(w, "  %d failed, %d missing. Prove it with: heavyq gate run %s\n",
-			counts[proof.Failed], counts[proof.Missing], g.Gate)
-	}
+	return counts
 }
 
 // clip shortens s to at most n bytes (on a character boundary), marking the cut.

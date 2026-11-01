@@ -20,11 +20,10 @@ const (
 // waitForTurn loops until the ticket claims a slot (returns it) or must give
 // up (returns nil and the exit code).
 func (r *run) waitForTurn() (*claim, int) {
-	var headSince, downSince, lastMsg, lastDownWarn time.Time
-	lastPos := ""
+	var headSince, downSince, lastDownWarn time.Time
 	for {
 		if controlBox().CancelRequested(r.me.Name) {
-			fmt.Fprintln(r.stderr, "heavyq: cancelled by an operator while waiting")
+			r.giveUp("cancelled by an operator while waiting")
 			r.cancelled = true
 			return nil, ExitCancelled
 		}
@@ -32,30 +31,27 @@ func (r *run) waitForTurn() (*claim, int) {
 		if len(r.pl.siblings) > 0 || !r.pl.refIsHead {
 			r.pl.refreshLocal()
 			if r.pl.target == config.LocalName && r.pl.localWhy != "" {
-				fmt.Fprintf(r.stderr, "heavyq: code changed while waiting (%s); giving up\n", r.pl.localWhy)
+				r.giveUp("code changed while waiting (%s); giving up", r.pl.localWhy)
 				return nil, ExitUsage
 			}
 			r.me.Candidates = r.pl.machines(r.cfg)
 		}
 		c, pos, total, ahead, err := r.round(&headSince)
 		if err != nil {
-			fmt.Fprintln(r.stderr, "heavyq:", err)
+			r.giveUp("%v", err)
 			return nil, ExitUsage
 		}
 		if c != nil {
 			return c, 0
 		}
 		now := time.Now()
-		if cur := fmt.Sprintf("%d/%d", pos, total); cur != lastPos || now.Sub(lastMsg) >= progressEvery {
-			fmt.Fprintf(r.stderr, "heavyq: waiting %s (prio %d, lane %s, %s) for %s%s\n",
-				cur, r.me.Prio, r.me.Lane, r.pl.target, fmtDur(now.Sub(r.t0)), describeAhead(ahead))
-			lastPos, lastMsg = cur, now
-		}
+		r.out.nar.observe(now, waitView{pos: pos, total: total, target: r.pl.target, prio: r.me.Prio,
+			lane: r.me.Lane, ahead: ahead})
 		if rc := r.checkRemoteDown(&downSince, &lastDownWarn); rc != 0 {
 			return nil, rc
 		}
 		if r.opts.MaxWait > 0 && now.Sub(r.t0) >= r.opts.MaxWait {
-			fmt.Fprintf(r.stderr, "heavyq: not our turn after %s (--max-wait)\n", fmtDur(r.opts.MaxWait))
+			r.giveUp("not our turn after %s (--max-wait)", fmtDur(r.opts.MaxWait))
 			return nil, ExitMaxWait
 		}
 		if s := r.pollOrSignal(r.cfg.Queue.Poll.Duration); s != nil {
@@ -157,10 +153,10 @@ func (r *run) checkRemoteDown(since, lastWarn *time.Time) int {
 	}
 	down := now.Sub(*since)
 	if down >= r.cfg.Queue.RemoteDownMax.Duration {
-		fmt.Fprintf(r.stderr, "heavyq: %s unreachable for %s; giving up\n", strings.Join(rem, ", "), fmtDur(down))
+		r.giveUp("%s unreachable for %s; giving up", strings.Join(rem, ", "), fmtDur(down))
 		return ExitRemoteDown
 	}
-	if now.Sub(*lastWarn) >= downWarnEvery {
+	if !r.out.mode.Terse() && now.Sub(*lastWarn) >= downWarnEvery { // an agent hears it in the digest
 		fmt.Fprintf(r.stderr, "heavyq: %s unreachable (%s); exit %d after %s\n", strings.Join(rem, ", "),
 			fmtDur(down), ExitRemoteDown, fmtDur(r.cfg.Queue.RemoteDownMax.Duration))
 		*lastWarn = now

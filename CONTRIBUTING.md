@@ -22,6 +22,7 @@ The remote path is tested through a `sh -c` transport, which runs the same code 
 |---|---|
 | `internal/cli` | flags, the wait loop, execution, `status`, `history`, `cache`, `hook` commands |
 | `internal/hook` | Claude Code `PreToolUse` hook: safe shell-form parser, wrap rules, settings install/uninstall |
+| `internal/agentmode` | agent mode: detection (`AgentEnv` table), bounded output capture and log, failure lines, the result digest, the `help agents` card |
 | `internal/cache` | `--cache`: key by git tree, output recorder/replay, result store (TTL, size cap), in-flight coalescing |
 | `internal/schedule` | pure rules: who may claim which machine, the resource gate, outside-repo path detection |
 | `internal/queue` | tickets as files, ordering, claim, prune |
@@ -41,6 +42,9 @@ The remote path is tested through a `sh -c` transport, which runs the same code 
 - **Small files.** Keep each file under ~200 lines, with `snake_case` names that say what's inside.
 - **Test with real things.** Spawn real processes, take real locks, push to real (temporary) git repos.
   Fake `/proc` only where a real process can't produce the case (see `procinfo_test.go`).
+- **Agent output is a budget.** Anything a run prints in agent mode costs an agent context: keep the digest
+  under 4 KB, `why` under 600 bytes, the `help agents` card under 900. The tests in `docs/agent-mode.md` enforce it.
+  The e2e rig strips `CLAUDECODE` and friends from the child environment; a test of agent mode adds one back.
 - **`go test -race` must stay clean.** Use the `lockedBuf` / `syncBuffer` helpers when a test reads
   output that a process is still writing.
 - **Fail closed.** If a value is unsafe or unknown (a config value, a remote name, a path), refuse it and

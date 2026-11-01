@@ -37,23 +37,23 @@ type run struct {
 	// usage of the local command once it exited (zero for remote runs).
 	cpuSecs  float64
 	maxRSSMB int
+	// out words the run's own output and keeps what the command printed (agent mode, --digest).
+	out runOutput
 }
 
 func runCommand(cfg *config.Config, args []string, stderr io.Writer) int {
+	mode := outputMode(stderr)
 	o, err := parseRunArgs(args, cfg)
 	if err != nil {
-		fmt.Fprintln(stderr, "heavyq:", err)
-		return ExitUsage
+		return usageFail(stderr, mode, err)
 	}
 	pl, err := preparePlacement(cfg, &o, stderr)
 	if err != nil {
-		fmt.Fprintln(stderr, "heavyq:", err)
-		return ExitUsage
+		return usageFail(stderr, mode, err)
 	}
 	q, err := queue.Open(QueueDir())
 	if err != nil {
-		fmt.Fprintln(stderr, "heavyq:", err)
-		return ExitUsage
+		return usageFail(stderr, mode, err)
 	}
 	if o.Session == "" { // explicit flag and $HEAVYQ_SESSION win over the hook's file
 		o.Session = q.ReadSession(o.Lane, time.Now(), history.ValidTag)
@@ -66,6 +66,8 @@ func runCommand(cfg *config.Config, args []string, stderr io.Writer) int {
 	r := &run{cfg: cfg, opts: o, pl: pl, q: q, stderr: stderr, t0: time.Now(), start: start,
 		probes: newProbeCache(cfg.Queue.ProbeTimeout.Duration),
 		sigs:   make(chan os.Signal, 4)}
+	r.out = newRunOutput(mode, o.Digest, stderr, r.t0, o.Lane)
+	defer r.out.discardLog()
 	signal.Notify(r.sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 	defer signal.Stop(r.sigs)
 	defer r.cacheRelease()
@@ -81,8 +83,7 @@ func runCommand(cfg *config.Config, args []string, stderr io.Writer) int {
 		Target: pl.target, Candidates: pl.candidates, Since: r.t0, Cmd: queue.TruncateCmd(o.Argv),
 	}
 	if err := q.Add(r.me); err != nil {
-		fmt.Fprintln(stderr, "heavyq:", err)
-		return ExitUsage
+		return usageFail(stderr, mode, err)
 	}
 	defer q.Remove(r.me)
 	defer func() { controlBox().Forget(r.me.Name) }()
@@ -90,6 +91,7 @@ func runCommand(cfg *config.Config, args []string, stderr io.Writer) int {
 	c, rc := r.waitForTurn()
 	if c == nil {
 		r.recordNoRun(rc)
+		r.digestNotRun(rc)
 		return rc
 	}
 	defer c.lock.Release()
