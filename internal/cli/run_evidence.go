@@ -52,8 +52,11 @@ func (r *run) settled(before gitutil.Checkout) gitutil.Checkout {
 	return before
 }
 
-// tag stamps who ran it and on which code onto a ledger record.
+// tag stamps who ran it, what exactly it ran (the argv hash, taken before the
+// display form of the command is redacted and cut) and on which code onto a
+// ledger record.
 func (r *run) tag(rec *history.Record, co gitutil.Checkout) {
+	rec.CmdHash = history.CmdHash(r.opts.Argv)
 	rec.Session, rec.Item, rec.Gate = r.opts.Session, r.opts.Item, r.opts.Gate
 	rec.Repo, rec.Worktree, rec.Subdir = co.Repo, co.Worktree, co.Subdir
 	rec.Commit, rec.Tree, rec.Dirty = co.Commit, co.Tree, co.Dirty

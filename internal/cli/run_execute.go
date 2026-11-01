@@ -37,6 +37,7 @@ func (r *run) execute(c *claim) int {
 		WaitSecs: waited.Seconds(), RunSecs: runSecs, Exit: rc, Cmd: r.me.Cmd, Forced: c.forced,
 		CPUSecs: r.cpuSecs, MaxRSSMB: r.maxRSSMB}
 	r.tag(&rec, co)
+	c.stampAdmission(&rec)
 	switch {
 	case r.cancelled:
 		rec.Result = history.OutcomeCancelled

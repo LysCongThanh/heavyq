@@ -61,14 +61,16 @@ func gateRunCommand(cfg *config.Config, args []string, stdout, stderr io.Writer)
 	}
 	g := t.gate
 	var todo []int
+	fresh := map[int]bool{} // flaky commands: a re-run must really run, not replay a cached pass
 	for i, c := range before.Commands {
 		if c.State == proof.Proven {
 			fmt.Fprintf(stderr, "heavyq: gate %s [%d/%d] proven: %s\n", g.Name, i+1, len(g.Run), redact.Command(c.Cmd))
 		} else {
 			todo = append(todo, i)
+			fresh[i] = c.Class == proof.ClassFlaky
 		}
 	}
-	rcs := runGateCommands(cfg, g, *lane, todo, *parallel, *keepGoing, stderr)
+	rcs := runGateCommands(cfg, g, *lane, todo, fresh, *parallel, *keepGoing, stderr)
 	for _, i := range todo {
 		if rc, ran := rcs[i]; ran && stoppedFromOutside(rc) {
 			return rc // stopped from outside: not a failure of the gate
@@ -113,11 +115,11 @@ func allPassed(rcs map[int]int) bool {
 // runGateCommands runs the commands at the indexes in todo and returns their
 // exit codes by index. Sequentially it stops at the first failure unless
 // keepGoing; in parallel all of them run.
-func runGateCommands(cfg *config.Config, g repoconfig.Gate, lane string, todo []int, parallel, keepGoing bool, stderr io.Writer) map[int]int {
+func runGateCommands(cfg *config.Config, g repoconfig.Gate, lane string, todo []int, fresh map[int]bool, parallel, keepGoing bool, stderr io.Writer) map[int]int {
 	rcs := make(map[int]int, len(todo))
 	one := func(i int) int {
 		fmt.Fprintf(stderr, "heavyq: gate %s [%d/%d] running: %s\n", g.Name, i+1, len(g.Run), redact.Command(g.Run[i]))
-		rc := runCommand(cfg, gateRunArgs(g, g.Run[i], lane), stderr)
+		rc := runCommand(cfg, gateRunArgs(g, g.Run[i], lane, fresh[i]), stderr)
 		if rc != 0 {
 			fmt.Fprintf(stderr, "heavyq: gate %s [%d/%d] FAILED (exit %d): %s\n", g.Name, i+1, len(g.Run), rc, redact.Command(g.Run[i]))
 		}
@@ -154,9 +156,13 @@ func runGateCommands(cfg *config.Config, g repoconfig.Gate, lane string, todo []
 
 // gateRunArgs is the argument list of `heavyq <prio> ...` for one gate
 // command. The command is the exact argv proof.Argv names, so what runs is
-// what the ledger is later matched against.
-func gateRunArgs(g repoconfig.Gate, cmd, lane string) []string {
-	args := []string{strconv.Itoa(g.Prio), "--cache", "--gate", g.Name, "--remote", g.Remote}
+// what the ledger is later matched against. fresh leaves out --cache, for the
+// re-run that confirms a flaky command.
+func gateRunArgs(g repoconfig.Gate, cmd, lane string, fresh bool) []string {
+	args := []string{strconv.Itoa(g.Prio), "--gate", g.Name, "--remote", g.Remote}
+	if !fresh {
+		args = append(args, "--cache")
+	}
 	if lane != "" {
 		args = append(args, "--lane", lane)
 	}

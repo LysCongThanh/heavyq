@@ -9,7 +9,6 @@ import (
 
 	"github.com/LysCongThanh/heavyq/internal/history"
 	"github.com/LysCongThanh/heavyq/internal/proof"
-	"github.com/LysCongThanh/heavyq/internal/queue"
 	"github.com/LysCongThanh/heavyq/internal/redact"
 	"github.com/LysCongThanh/heavyq/internal/repoconfig"
 	"github.com/LysCongThanh/heavyq/internal/snapshot"
@@ -154,17 +153,25 @@ func worktreeGate(worktree string, recs []history.Record) snapshot.LaneGate {
 }
 
 // failureClass says whether a failed gate command is noise (snapshot.ClassFlaky
-// or snapshot.ClassUnderLoad) rather than a real failure. The proof state
-// carries no classification yet, so every failure counts as real; the flaky
-// classifier plugs in here by returning its class for c.
-func failureClass(proof.Command) string { return "" }
+// or snapshot.ClassUnderLoad) rather than a real failure, from the class the
+// proof assigned it. A plain failure, or one the proof cannot classify, is
+// "" and counts as real.
+func failureClass(c proof.Command) string {
+	switch c.Class {
+	case proof.ClassFlaky:
+		return snapshot.ClassFlaky
+	case proof.ClassUnderLoad:
+		return snapshot.ClassUnderLoad
+	}
+	return ""
+}
 
 // failureCount is how many conclusive runs of the gate command cmd failed on
 // the code subj identifies. recs is the ledger.
 func failureCount(recs []history.Record, subj proof.Subject, cmd string) int {
-	want, n := queue.TruncateCmd(proof.Argv(cmd)), 0
+	matches, n := proof.MatcherFor(cmd), 0
 	for _, r := range recs {
-		if r.Tree == subj.Tree && r.Repo == subj.Repo && r.Cmd == want && r.Subdir == "" && r.Result == "" && r.Exit != 0 {
+		if r.Tree == subj.Tree && r.Repo == subj.Repo && matches(r) && r.Subdir == "" && r.Result == "" && r.Exit != 0 {
 			n++
 		}
 	}

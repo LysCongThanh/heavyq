@@ -55,7 +55,12 @@ func TestEvaluateStates(t *testing.T) {
 			[]State{Proven, Failed, Proven}, false},
 		{"latest wins: fail after pass", []history.Record{rec("fmt", at(1)), rec("fmt", func(r *history.Record) { r.Exit = 3 }), rec("vet", nil), rec("test", nil)},
 			[]State{Failed, Proven, Proven}, false},
-		{"latest wins: pass after fail", []history.Record{rec("fmt", func(r *history.Record) { r.Exit = 3 }), rec("fmt", nil), rec("vet", nil), rec("test", nil)},
+		{"a single pass after a failure is flaky, not proven yet", []history.Record{rec("fmt", func(r *history.Record) { r.Exit = 3 }), rec("fmt", nil), rec("vet", nil), rec("test", nil)},
+			[]State{Failed, Proven, Proven}, false},
+		{"two passes after a failure prove it", []history.Record{rec("fmt", func(r *history.Record) { r.Exit = 3 }), rec("fmt", nil), rec("fmt", nil), rec("vet", nil), rec("test", nil)},
+			[]State{Proven, Proven, Proven}, true},
+		{"a pass after a failure under load is proven", []history.Record{
+			rec("fmt", func(r *history.Record) { r.Exit, r.Forced = 3, true }), rec("fmt", nil), rec("vet", nil), rec("test", nil)},
 			[]State{Proven, Proven, Proven}, true},
 		{"cache hit and coalesced count", []history.Record{
 			rec("fmt", func(r *history.Record) { r.Cache = "hit" }),
@@ -138,13 +143,13 @@ func TestEmptyGateIsNotProven(t *testing.T) {
 	}
 }
 
-func TestLongCommandsAreNeverMatched(t *testing.T) {
+func TestLongCommandsWithoutAHashAreNeverMatched(t *testing.T) {
 	long := "echo " + strings.Repeat("x", 300)
-	form, ok := ledgerForm(long)
-	if ok {
-		t.Fatalf("a %d-byte command must be unmatchable, ledger form %q", len(long), form)
+	w := wantCommand(long)
+	if w.textOK {
+		t.Fatalf("a %d-byte command must be unmatchable by text, ledger form %q", len(long), w.text)
 	}
-	r := rec("", func(r *history.Record) { r.Cmd = form })
+	r := rec("", func(r *history.Record) { r.Cmd = w.text })
 	g := Evaluate("ready", []string{long}, Subject{Repo: repoA, Tree: treeA}, []history.Record{r})
 	if g.Proven || g.Commands[0].State != Missing || !strings.Contains(g.Commands[0].Reason, "ledger") {
 		t.Fatalf("%+v", g)
@@ -153,9 +158,10 @@ func TestLongCommandsAreNeverMatched(t *testing.T) {
 
 func TestSecretsInACommandStillMatch(t *testing.T) {
 	cmd := "API_TOKEN=abc123 make check"
-	form, ok := ledgerForm(cmd)
-	if !ok || strings.Contains(form, "abc123") {
-		t.Fatalf("ledger form %q ok=%v", form, ok)
+	w := wantCommand(cmd)
+	form := w.text
+	if !w.textOK || strings.Contains(form, "abc123") {
+		t.Fatalf("ledger form %q ok=%v", form, w.textOK)
 	}
 	g := Evaluate("ready", []string{cmd}, Subject{Repo: repoA, Tree: treeA}, []history.Record{rec("", func(r *history.Record) { r.Cmd = form })})
 	if !g.Proven {

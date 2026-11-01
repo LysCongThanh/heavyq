@@ -209,6 +209,8 @@ Each run appends one JSON line. These fields say what it ran on and who asked:
 | `tree` | the exact files. **Clean:** `HEAD`'s tree id, the same one the cache keys on. **Dirty:** `<HEAD tree>+<digest>`, where the digest covers `git diff HEAD --binary` (staged or not) and the names and contents of untracked files that aren't ignored. The same edits give the same id, any edit changes it, and reverting restores the clean id (also when the edits cancel out, like staged then reverted). **Absent:** the tree is unknown and never counts as proof (see below). |
 | `dirty` | uncommitted or untracked files at the start (absent = false). Remote runs ship a commit, so they are never dirty. |
 | `session`, `item`, `gate` | `--session`, `--item`, `--gate` (below) |
+| `cmd_hash` | sha256 of the exact argv, taken before `cmd` is redacted and cut to 200 bytes; proofs match on it, so long gate commands can be proven |
+| `load1`, `free_mb`, `cores`, `max_load`, `job_mb` | the machine when the run was admitted (local sample, or the probe a remote placement used) and the limits the resource gate applied; with `forced`, they tell a failure under load from a real one (see [docs/gates.md](docs/gates.md)) |
 
 - **Tags.** `--session ID`, `--item ID`, `--gate NAME`; `HEAVYQ_SESSION` and `HEAVYQ_ITEM` supply the first
   two when the flags are absent, and for `session` the Claude Code hook's file comes after them (see the
@@ -385,7 +387,10 @@ prio = 3          # 1-9, default 3
   20 ms and without running anything. For each command it says `proven`, `failed` or `missing` on the code
   checked out now (the tree id of `HEAD` plus any uncommitted edits), with when, in which lane and how long.
   Exit 0 when every command is proven, 1 when not, 2 on a usage error (no `heavyq.toml` and nothing to detect, unknown gate).
-  `--json` is documented in [docs/gates.md](docs/gates.md).
+  A command that both failed and passed on the same tree is labelled **flaky** ("flaky: 1 fail / 2 pass on
+  this tree"): not proven until its last two runs passed, then proven again, no code change needed; a failure from a run that started while the machine was over its limits (forced
+  admission, load, free RAM) is **under load**: rerun once before debugging. `--json` (with a per-command
+  `class`) is documented in [docs/gates.md](docs/gates.md).
 - **`heavyq gate run [name] [--parallel] [--keep-going] [--lane NAME]`** runs the commands that are not proven
   yet, one by one through the queue, exactly like `heavyq <prio> --cache --gate <name> -- sh -c '<command>'`
   with the gate's `prio`, `light` and `remote`. Proven commands are skipped at once ("proven"); a tree

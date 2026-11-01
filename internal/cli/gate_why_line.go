@@ -41,14 +41,6 @@ func gateWhyLine(recs []history.Record, stderr io.Writer) string {
 	case st.Tree == "":
 		return fmt.Sprintf("The %s gate cannot be proven here: %s.", label, st.Reason)
 	}
-	failed, missing := 0, 0
-	for _, c := range st.Commands {
-		if c.State == proof.Failed {
-			failed++
-		} else if c.State != proof.Proven {
-			missing++
-		}
-	}
-	return fmt.Sprintf("The %s gate is not proven on this tree (%s): %d failed, %d missing. Prove it with: heavyq gate run %s",
-		label, treeLabel(st), failed, missing, g.Name)
+	return fmt.Sprintf("The %s gate is not proven on this tree (%s): %s. Prove it with: heavyq gate run %s",
+		label, treeLabel(st), countGate(st), g.Name)
 }

@@ -71,16 +71,19 @@ func printGate(w io.Writer, g proof.Gate) { printGateLabeled(w, g, g.Gate) }
 // ("ready (detected)" for a detected gate). Commands to type still use the
 // plain name.
 func printGateLabeled(w io.Writer, g proof.Gate, label string) {
-	counts := printGateTable(w, g, label)
+	printGateTable(w, g, label)
 	if !g.Proven {
-		fmt.Fprintf(w, "  %d failed, %d missing. Prove it with: heavyq gate run %s\n",
-			counts[proof.Failed], counts[proof.Missing], g.Gate)
+		n := countGate(g)
+		fmt.Fprintf(w, "  %s. Prove it with: heavyq gate run %s\n", n, g.Gate)
+		for _, h := range n.hints(g.Gate) {
+			fmt.Fprintf(w, "  %s\n", h)
+		}
 	}
 }
 
-// printGateTable renders g as a table, one line per command, and returns the
-// number of commands in each state. label names the gate in the heading.
-func printGateTable(w io.Writer, g proof.Gate, label string) map[proof.State]int {
+// printGateTable renders g as a table, one line per command. label names the
+// gate in the heading.
+func printGateTable(w io.Writer, g proof.Gate, label string) {
 	g = redactedGate(g)
 	verdict := "NOT PROVEN"
 	if g.Proven {
@@ -91,9 +94,7 @@ func printGateTable(w io.Writer, g proof.Gate, label string) map[proof.State]int
 		fmt.Fprintf(w, "  %s\n", g.Reason)
 	}
 	fmt.Fprintf(w, "  %-8s %-19s  %-14s %7s  %s\n", "STATE", "WHEN", "LANE", "RUN", "COMMAND")
-	counts := map[proof.State]int{}
 	for _, c := range g.Commands {
-		counts[c.State]++
 		when, lane, run := "-", "-", "-"
 		if !c.At.IsZero() {
 			when = c.At.Local().Format("2006-01-02 15:04:05")
@@ -104,14 +105,25 @@ func printGateTable(w io.Writer, g proof.Gate, label string) map[proof.State]int
 			}
 		}
 		line := fmt.Sprintf("  %-8s %-19s  %-14s %7s  %s", c.State, when, lane, run, c.Cmd)
-		if c.State == proof.Failed && c.Exit != nil {
-			line += fmt.Sprintf("  (exit %d)", *c.Exit)
-		} else if c.Reason != "" {
-			line += "  (" + c.Reason + ")"
-		}
-		fmt.Fprintln(w, line)
+		fmt.Fprintln(w, line+commandNote(c))
 	}
-	return counts
+}
+
+// commandNote is the parenthesised remark at the end of a command's line: the
+// exit code of a failed command and what is known about the failure (flaky,
+// under load), or why a command is missing.
+func commandNote(c proof.Command) string {
+	var parts []string
+	if c.State == proof.Failed && c.Exit != nil {
+		parts = append(parts, fmt.Sprintf("exit %d", *c.Exit))
+	}
+	if c.Reason != "" {
+		parts = append(parts, c.Reason)
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return "  (" + strings.Join(parts, "; ") + ")"
 }
 
 // clip shortens s to at most n bytes (on a character boundary), marking the cut.
