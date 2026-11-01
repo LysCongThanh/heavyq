@@ -1,0 +1,118 @@
+{
+  "path": "proofs.md",
+  "goal": "proofs",
+  "goal_line": 1,
+  "items": [
+    {
+      "id": "p1",
+      "text": "pipes",
+      "checked": false,
+      "proof": {
+        "kind": "cmd",
+        "value": "go test ./... | tee out.log"
+      },
+      "source": "proofs.md",
+      "line": 2,
+      "read_only": false
+    },
+    {
+      "id": "p2",
+      "text": "empty",
+      "checked": false,
+      "proof": {},
+      "source": "proofs.md",
+      "line": 3,
+      "read_only": false
+    },
+    {
+      "id": "p3",
+      "text": "bad gate",
+      "checked": false,
+      "proof": {},
+      "source": "proofs.md",
+      "line": 4,
+      "read_only": false
+    },
+    {
+      "id": "p4",
+      "text": "two",
+      "checked": false,
+      "proof": {
+        "kind": "cmd",
+        "value": "first"
+      },
+      "source": "proofs.md",
+      "line": 5,
+      "read_only": false
+    },
+    {
+      "id": "p5",
+      "text": "backtick cmd",
+      "checked": false,
+      "proof": {
+        "kind": "cmd",
+        "value": "test \"`git rev-parse HEAD`\" != x"
+      },
+      "source": "proofs.md",
+      "line": 6,
+      "read_only": false
+    },
+    {
+      "id": "p6",
+      "text": "spans anywhere before text and `keep` code",
+      "checked": false,
+      "proof": {
+        "kind": "gate",
+        "value": "ready"
+      },
+      "needs": "a human",
+      "source": "proofs.md",
+      "line": 7,
+      "read_only": false
+    },
+    {
+      "id": "p7",
+      "text": "upper",
+      "checked": false,
+      "proof": {
+        "kind": "cmd",
+        "value": "make"
+      },
+      "needs": "x",
+      "source": "proofs.md",
+      "line": 8,
+      "read_only": false
+    },
+    {
+      "id": "p8",
+      "text": "unclosed `proof: make",
+      "checked": false,
+      "proof": {},
+      "source": "proofs.md",
+      "line": 9,
+      "read_only": false
+    }
+  ],
+  "warnings": [
+    {
+      "source": "proofs.md",
+      "line": 3,
+      "msg": "empty `proof:` ignored"
+    },
+    {
+      "source": "proofs.md",
+      "line": 4,
+      "msg": "proof gate name \"Bad Name\" is invalid; proof ignored"
+    },
+    {
+      "source": "proofs.md",
+      "line": 5,
+      "msg": "more than one `proof:`; the first one is used"
+    },
+    {
+      "source": "proofs.md",
+      "line": 11,
+      "msg": "checkbox without text ignored"
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "path": "unicode.md",
+  "goal": "unicode",
+  "goal_line": 1,
+  "items": [
+    {
+      "id": "dang-nhap",
+      "text": "Đăng nhập bằng email",
+      "checked": false,
+      "proof": {
+        "kind": "cmd",
+        "value": "go test ./..."
+      },
+      "source": "unicode.md",
+      "line": 2,
+      "read_only": false
+    },
+    {
+      "id": "ng-k-t-i-kho-n-32dde4",
+      "text": "Đăng ký tài khoản",
+      "checked": false,
+      "proof": {},
+      "source": "unicode.md",
+      "line": 3,
+      "read_only": false
+    },
+    {
+      "id": "2c6246",
+      "text": "日本語のタスク",
+      "checked": false,
+      "proof": {},
+      "source": "unicode.md",
+      "line": 4,
+      "read_only": false
+    },
+    {
+      "id": "moji-done-yes-113ae7",
+      "text": "émoji ✅ done: yes",
+      "checked": true,
+      "proof": {},
+      "source": "unicode.md",
+      "line": 5,
+      "read_only": false
+    },
+    {
+      "id": "ascii-only-task",
+      "text": "ascii only task",
+      "checked": false,
+      "proof": {},
+      "source": "unicode.md",
+      "line": 6,
+      "read_only": false
+    }
+  ],
+  "warnings": [
+    {
+      "source": "unicode.md",
+      "line": 3,
+      "msg": "no valid `id:` prefix (a-z 0-9 . _ -, up to 64 chars); derived id \"ng-k-t-i-kho-n-32dde4\""
+    },
+    {
+      "source": "unicode.md",
+      "line": 4,
+      "msg": "no valid `id:` prefix (a-z 0-9 . _ -, up to 64 chars); derived id \"2c6246\""
+    },
+    {
+      "source": "unicode.md",
+      "line": 5,
+      "msg": "no valid `id:` prefix (a-z 0-9 . _ -, up to 64 chars); derived id \"moji-done-yes-113ae7\""
+    },
+    {
+      "source": "unicode.md",
+      "line": 6,
+      "msg": "no valid `id:` prefix (a-z 0-9 . _ -, up to 64 chars); derived id \"ascii-only-task\""
+    }
+  ]
+}

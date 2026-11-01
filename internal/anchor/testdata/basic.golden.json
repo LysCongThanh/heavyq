@@ -1,0 +1,60 @@
+{
+  "path": "basic.md",
+  "goal": "ship login v2",
+  "goal_line": 1,
+  "items": [
+    {
+      "id": "login-api",
+      "text": "POST /login returns a token",
+      "checked": false,
+      "proof": {
+        "kind": "cmd",
+        "value": "go test ./auth/..."
+      },
+      "source": "basic.md",
+      "line": 3,
+      "read_only": false
+    },
+    {
+      "id": "ui",
+      "text": "login form",
+      "checked": false,
+      "proof": {
+        "kind": "gate",
+        "value": "web"
+      },
+      "needs": "design sign-off",
+      "source": "basic.md",
+      "line": 4,
+      "read_only": false
+    },
+    {
+      "id": "docs",
+      "text": "write the guide",
+      "checked": true,
+      "proof": {},
+      "source": "basic.md",
+      "line": 5,
+      "read_only": false
+    },
+    {
+      "id": "star-item",
+      "text": "bullet with star",
+      "checked": false,
+      "proof": {},
+      "source": "basic.md",
+      "line": 6,
+      "read_only": false
+    },
+    {
+      "id": "plus-item",
+      "text": "capital X",
+      "checked": true,
+      "proof": {},
+      "source": "basic.md",
+      "line": 7,
+      "read_only": false
+    }
+  ],
+  "warnings": []
+}

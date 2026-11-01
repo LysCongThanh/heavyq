@@ -1,0 +1,123 @@
+{
+  "path": "emphasis.md",
+  "goal": "emphasis",
+  "goal_line": 1,
+  "items": [
+    {
+      "id": "bold",
+      "text": "bold id",
+      "checked": false,
+      "proof": {},
+      "source": "emphasis.md",
+      "line": 2,
+      "read_only": false
+    },
+    {
+      "id": "bold-colon",
+      "text": "colon inside",
+      "checked": false,
+      "proof": {},
+      "source": "emphasis.md",
+      "line": 3,
+      "read_only": false
+    },
+    {
+      "id": "under",
+      "text": "underscore id",
+      "checked": false,
+      "proof": {},
+      "source": "emphasis.md",
+      "line": 4,
+      "read_only": false
+    },
+    {
+      "id": "dunder",
+      "text": "double underscore",
+      "checked": false,
+      "proof": {},
+      "source": "emphasis.md",
+      "line": 5,
+      "read_only": false
+    },
+    {
+      "id": "star",
+      "text": "star id",
+      "checked": false,
+      "proof": {},
+      "source": "emphasis.md",
+      "line": 6,
+      "read_only": false
+    },
+    {
+      "id": "code",
+      "text": "code id",
+      "checked": false,
+      "proof": {},
+      "source": "emphasis.md",
+      "line": 7,
+      "read_only": false
+    },
+    {
+      "id": "plain",
+      "text": "text with **bold** and _it_",
+      "checked": false,
+      "proof": {},
+      "source": "emphasis.md",
+      "line": 8,
+      "read_only": false
+    },
+    {
+      "id": "http-example-com-is-not-an-id",
+      "text": "http://example.com is not an id",
+      "checked": false,
+      "proof": {},
+      "source": "emphasis.md",
+      "line": 9,
+      "read_only": false
+    },
+    {
+      "id": "upper-uppercase-is-not-a-valid-id",
+      "text": "UPPER: uppercase is not a valid id",
+      "checked": false,
+      "proof": {},
+      "source": "emphasis.md",
+      "line": 10,
+      "read_only": false
+    },
+    {
+      "id": "no-space-text",
+      "text": "no space:text",
+      "checked": false,
+      "proof": {},
+      "source": "emphasis.md",
+      "line": 11,
+      "read_only": false
+    },
+    {
+      "id": "trailing-colon",
+      "text": "",
+      "checked": false,
+      "proof": {},
+      "source": "emphasis.md",
+      "line": 12,
+      "read_only": false
+    }
+  ],
+  "warnings": [
+    {
+      "source": "emphasis.md",
+      "line": 9,
+      "msg": "no valid `id:` prefix (a-z 0-9 . _ -, up to 64 chars); derived id \"http-example-com-is-not-an-id\""
+    },
+    {
+      "source": "emphasis.md",
+      "line": 10,
+      "msg": "no valid `id:` prefix (a-z 0-9 . _ -, up to 64 chars); derived id \"upper-uppercase-is-not-a-valid-id\""
+    },
+    {
+      "source": "emphasis.md",
+      "line": 11,
+      "msg": "no valid `id:` prefix (a-z 0-9 . _ -, up to 64 chars); derived id \"no-space-text\""
+    }
+  ]
+}

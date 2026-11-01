@@ -1,0 +1,53 @@
+{
+  "path": "tabs.md",
+  "goal": "tabs",
+  "goal_line": 1,
+  "items": [
+    {
+      "id": "top",
+      "text": "top",
+      "checked": false,
+      "proof": {},
+      "source": "tabs.md",
+      "line": 2,
+      "read_only": false
+    },
+    {
+      "id": "tab-child",
+      "text": "one tab",
+      "checked": false,
+      "proof": {},
+      "source": "tabs.md",
+      "line": 3,
+      "read_only": false
+    },
+    {
+      "id": "tab-grandchild",
+      "text": "tab after colon",
+      "checked": false,
+      "proof": {},
+      "source": "tabs.md",
+      "line": 4,
+      "read_only": false
+    },
+    {
+      "id": "tab-dash",
+      "text": "tab after the dash",
+      "checked": false,
+      "proof": {},
+      "source": "tabs.md",
+      "line": 5,
+      "read_only": false
+    },
+    {
+      "id": "dash-tab",
+      "text": "tab after box",
+      "checked": false,
+      "proof": {},
+      "source": "tabs.md",
+      "line": 6,
+      "read_only": false
+    }
+  ],
+  "warnings": []
+}

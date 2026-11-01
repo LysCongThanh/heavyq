@@ -1,0 +1,35 @@
+{
+  "path": "fenced.md",
+  "goal": "fences",
+  "goal_line": 1,
+  "items": [
+    {
+      "id": "real",
+      "text": "before",
+      "checked": false,
+      "proof": {},
+      "source": "fenced.md",
+      "line": 2,
+      "read_only": false
+    },
+    {
+      "id": "after",
+      "text": "after",
+      "checked": false,
+      "proof": {},
+      "source": "fenced.md",
+      "line": 12,
+      "read_only": false
+    },
+    {
+      "id": "last",
+      "text": "last",
+      "checked": false,
+      "proof": {},
+      "source": "fenced.md",
+      "line": 18,
+      "read_only": false
+    }
+  ],
+  "warnings": []
+}

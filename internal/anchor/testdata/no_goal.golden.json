@@ -1,0 +1,32 @@
+{
+  "path": "no_goal.md",
+  "goal": "",
+  "goal_line": 0,
+  "items": [
+    {
+      "id": "orphan",
+      "text": "no goal here",
+      "checked": false,
+      "proof": {},
+      "source": "no_goal.md",
+      "line": 1,
+      "read_only": false
+    },
+    {
+      "id": "other",
+      "text": "second",
+      "checked": false,
+      "proof": {},
+      "source": "no_goal.md",
+      "line": 2,
+      "read_only": false
+    }
+  ],
+  "warnings": [
+    {
+      "source": "no_goal.md",
+      "line": 0,
+      "msg": "no `# Goal:` line"
+    }
+  ]
+}

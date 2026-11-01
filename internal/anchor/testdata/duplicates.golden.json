@@ -1,0 +1,93 @@
+{
+  "path": "duplicates.md",
+  "goal": "dups",
+  "goal_line": 1,
+  "items": [
+    {
+      "id": "a",
+      "text": "one",
+      "checked": false,
+      "proof": {},
+      "source": "duplicates.md",
+      "line": 2,
+      "read_only": false
+    },
+    {
+      "id": "a-2",
+      "text": "two",
+      "checked": false,
+      "proof": {},
+      "source": "duplicates.md",
+      "line": 3,
+      "read_only": false
+    },
+    {
+      "id": "a-3",
+      "text": "three",
+      "checked": false,
+      "proof": {},
+      "source": "duplicates.md",
+      "line": 4,
+      "read_only": false
+    },
+    {
+      "id": "a-2-2",
+      "text": "explicit a-2 comes later",
+      "checked": false,
+      "proof": {},
+      "source": "duplicates.md",
+      "line": 5,
+      "read_only": false
+    },
+    {
+      "id": "same-text",
+      "text": "Same text",
+      "checked": false,
+      "proof": {},
+      "source": "duplicates.md",
+      "line": 6,
+      "read_only": false
+    },
+    {
+      "id": "same-text-2",
+      "text": "Same text",
+      "checked": false,
+      "proof": {},
+      "source": "duplicates.md",
+      "line": 7,
+      "read_only": false
+    }
+  ],
+  "warnings": [
+    {
+      "source": "duplicates.md",
+      "line": 3,
+      "msg": "duplicate id; renamed to \"a-2\""
+    },
+    {
+      "source": "duplicates.md",
+      "line": 4,
+      "msg": "duplicate id; renamed to \"a-3\""
+    },
+    {
+      "source": "duplicates.md",
+      "line": 5,
+      "msg": "duplicate id; renamed to \"a-2-2\""
+    },
+    {
+      "source": "duplicates.md",
+      "line": 6,
+      "msg": "no valid `id:` prefix (a-z 0-9 . _ -, up to 64 chars); derived id \"same-text\""
+    },
+    {
+      "source": "duplicates.md",
+      "line": 7,
+      "msg": "no valid `id:` prefix (a-z 0-9 . _ -, up to 64 chars); derived id \"same-text\""
+    },
+    {
+      "source": "duplicates.md",
+      "line": 7,
+      "msg": "duplicate id; renamed to \"same-text-2\""
+    }
+  ]
+}
