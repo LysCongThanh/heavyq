@@ -4,6 +4,8 @@ package gitutil
 import (
 	"bytes"
 	"fmt"
+	"io"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
@@ -14,18 +16,37 @@ import (
 
 var shaRe = regexp.MustCompile(`^[0-9a-f]{40}([0-9a-f]{24})?$`)
 
-func git(dir string, args ...string) (string, error) {
+// gitTo runs git in dir and streams its stdout to w. heavyq only reads, so
+// GIT_OPTIONAL_LOCKS=0 keeps git from taking the index lock to refresh stat
+// data: a concurrent `git add` or `git commit` (the user's, or another agent's
+// in the same work tree) never fails with "index.lock exists" because of us.
+func gitTo(w io.Writer, dir string, args ...string) error {
 	cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
-	var out, errb bytes.Buffer
-	cmd.Stdout, cmd.Stderr = &out, &errb
+	cmd.Env = append(os.Environ(), "GIT_OPTIONAL_LOCKS=0")
+	var errb bytes.Buffer
+	cmd.Stdout, cmd.Stderr = w, &errb
 	if err := cmd.Run(); err != nil {
 		msg := strings.TrimSpace(errb.String())
 		if msg == "" {
 			msg = err.Error()
 		}
-		return "", fmt.Errorf("git %s: %s", strings.Join(args, " "), msg)
+		return fmt.Errorf("git %s: %s", strings.Join(args, " "), msg)
 	}
-	return strings.TrimSpace(out.String()), nil
+	return nil
+}
+
+// gitRaw returns git's stdout untouched, for NUL- or line-structured output.
+func gitRaw(dir string, args ...string) (string, error) {
+	var out bytes.Buffer
+	if err := gitTo(&out, dir, args...); err != nil {
+		return "", err
+	}
+	return out.String(), nil
+}
+
+func git(dir string, args ...string) (string, error) {
+	out, err := gitRaw(dir, args...)
+	return strings.TrimSpace(out), err
 }
 
 // TopLevel returns the absolute work-tree root containing dir.
@@ -63,8 +84,13 @@ func TreeOf(repo, ref string) (string, error) {
 
 // IsClean reports whether the work tree has no modified or untracked files.
 func IsClean(repo string) bool {
+	clean, err := workTreeClean(repo)
+	return err == nil && clean
+}
+
+func workTreeClean(repo string) (bool, error) {
 	out, err := git(repo, "status", "--porcelain", "--untracked-files=normal")
-	return err == nil && out == ""
+	return out == "", err
 }
 
 // Sibling is a --with repository pinned to a commit.

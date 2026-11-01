@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 
 	"github.com/LysCongThanh/heavyq/internal/gitutil"
 )
@@ -41,10 +42,12 @@ func Key(in KeyInput) (string, string) {
 	if err != nil {
 		return "", "not in a git repository"
 	}
-	if !gitutil.IsClean(top) {
+	// The same identity the ledger records for a clean tree (gitutil.WorkTree);
+	// a dirty tree has an identity too, but it is never cached.
+	tree, err := gitutil.CleanTree(top)
+	if errors.Is(err, gitutil.ErrDirty) {
 		return "", "work tree has uncommitted or untracked files"
 	}
-	tree, err := gitutil.TreeOf(top, "HEAD")
 	if err != nil {
 		return "", "no HEAD commit"
 	}
