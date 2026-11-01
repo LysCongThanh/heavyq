@@ -263,6 +263,30 @@ The server listens on loopback only, requires the per-start token on every API c
 `Host` and `Origin` headers, and hides likely secrets in command lines. See [docs/dashboard.md](docs/dashboard.md)
 for the API.
 
+## Gates (heavyq.toml)
+
+A repository can say what "proven" means for it in a `heavyq.toml` at its repository root: named **gates**,
+each a list of shell commands.
+
+```toml
+[[gate]]
+name = "ready"
+run  = ["gofmt -l . | (! grep .)", "go vet ./...", "go test -race ./..."]
+prio = 3          # 1-9, default 3
+# light  = true   # may use the light slots
+# remote = "auto" # local (default) | auto | <remote name>
+```
+
+- `name`: `[a-z0-9][a-z0-9_-]{0,39}`, unique in the file. `run`: a non-empty list of shell strings, each at
+  most 2000 bytes.
+- Unknown keys, duplicate names, an empty `run` or a `prio` outside 1-9 are errors that name the file and,
+  for unknown keys, the line. heavyq never guesses.
+- **Trust: the same as a Makefile.** `heavyq.toml` holds commands, and whoever can edit it can make them run.
+  Gates run only when you ask for them explicitly. Hooks never execute gates, and the Claude Code hook does
+  not read the file.
+- Status: the loader and the format are in place (see [docs/gates.md](docs/gates.md)). The commands that run
+  and check gates (`heavyq gate run`, `heavyq gate status`) follow in the next release.
+
 ## Comparison
 
 | | heavyq | [pueue](https://github.com/Nukesor/pueue) | [task-spooler](https://viric.name/soft/ts/) | GNU parallel / `sem` | plain `flock` |

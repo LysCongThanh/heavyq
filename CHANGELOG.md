@@ -7,6 +7,11 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **`heavyq.toml`** at the git root: per-repository named gates (`[[gate]]` with `name`, `run`, `prio`,
+  `light`, `remote`) and a reserved `[anchor]` section. The loader (`internal/repoconfig`) validates names,
+  non-empty `run` lists, `prio` 1-9 and remote names, and refuses unknown keys (with the line) and
+  duplicate gate names. It is trusted like a Makefile, and hooks never execute gates. No command uses it
+  yet.
 - **`heavyq why [lane]`**: the story of the queue in plain words ("2 agents wait because every heavy slot
   on local is taken."). With a lane, its running and waiting jobs, the reason per candidate machine, and its
   last recorded run.
