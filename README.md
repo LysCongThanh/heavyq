@@ -5,7 +5,10 @@
 > A lock that doesn't know priority is just a polite race.
 
 [![ci](https://github.com/LysCongThanh/heavyq/actions/workflows/ci.yml/badge.svg)](https://github.com/LysCongThanh/heavyq/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/LysCongThanh/heavyq?sort=semver)](https://github.com/LysCongThanh/heavyq/releases/latest)
 [![Go Reference](https://pkg.go.dev/badge/github.com/LysCongThanh/heavyq.svg)](https://pkg.go.dev/github.com/LysCongThanh/heavyq)
+[![Go Report Card](https://goreportcard.com/badge/github.com/LysCongThanh/heavyq)](https://goreportcard.com/report/github.com/LysCongThanh/heavyq)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/LysCongThanh/heavyq/badge)](https://scorecard.dev/viewer/?uri=github.com/LysCongThanh/heavyq)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 ![heavyq status: running and waiting tickets by priority and lane, slot holders, CPU by lane, and why the head ticket waits](docs/demo.gif)
@@ -63,6 +66,8 @@ go install github.com/LysCongThanh/heavyq@latest
 ```
 
 Or download a binary from [Releases](https://github.com/LysCongThanh/heavyq/releases) (Linux and macOS, amd64 and arm64).
+Each release ships SHA-256 checksums, an SPDX SBOM per archive, and GitHub build provenance:
+`gh attestation verify <archive> --repo LysCongThanh/heavyq`.
 
 ## Quickstart
 
@@ -346,7 +351,7 @@ Remote machines must be Linux.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Issues labelled
 [good first issue](https://github.com/LysCongThanh/heavyq/labels/good%20first%20issue) are scoped to an
-afternoon.
+afternoon. Coding agents: start with [AGENTS.md](AGENTS.md). Security reports: [SECURITY.md](SECURITY.md).
 
 ## License
 

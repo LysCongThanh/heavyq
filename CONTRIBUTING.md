@@ -9,6 +9,7 @@ Contributions that keep it that way are the easiest to merge.
 git clone https://github.com/LysCongThanh/heavyq && cd heavyq
 go test -race ./...        # unit + end-to-end tests (real processes, real flock, an sh -c "remote")
 go vet ./... && gofmt -l .
+golangci-lint run          # v2, config in .golangci.yml (CI pins the version)
 ```
 
 You need Go (see `go.mod`), `git`, `bash` and util-linux (`flock`, `setsid`). No ssh server is required.
@@ -40,7 +41,7 @@ The remote path is tested through a `sh -c` transport, which runs the same code 
   output that a process is still writing.
 - **Fail closed.** If a value is unsafe or unknown (a config value, a remote name, a path), refuse it and
   say why. Never guess and run.
-- **Exit codes are API.** Don't change the meaning of 2, 75, 76, 77 or 255.
+- **Exit codes are API.** Don't change the meaning of 2, 75, 76, 77, 78 or 255.
 - **The hook fails open.** `heavyq hook claude-pretooluse` must never block an agent: on any doubt it
   leaves the command unchanged (exit 0, no output) and logs. New command shapes need table tests in
   `internal/hook/claude_pretooluse_test.go`; output changes need `go test ./internal/hook -update`.
@@ -54,12 +55,15 @@ people don't do the same work.
 ## Pull requests
 
 - One topic per PR, with a test that fails without the change.
-- Conventional commit messages (`feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `ci:`).
-- If you change behaviour, update the README (flags, config table, exit codes) in the same PR.
+- The PR title is a conventional commit (`feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `ci:`, `build:`);
+  a check enforces it, and it becomes the squash commit.
+- If you change behaviour, update the README (flags, config table, exit codes) and the `Unreleased`
+  section of `CHANGELOG.md` in the same PR. The changelog section becomes the release notes.
 
 ## Reporting security issues
 
-If you find a way to make heavyq run something unintended on a remote (for example injection through
-a repo name, lane, ref or config value), please open a private
-[security advisory](https://github.com/LysCongThanh/heavyq/security/advisories/new) rather than a
-public issue.
+See [SECURITY.md](SECURITY.md). Never in a public issue.
+
+## Code of conduct
+
+This project follows the [Contributor Covenant](.github/CODE_OF_CONDUCT.md).
