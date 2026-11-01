@@ -11,6 +11,8 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
+
+	"github.com/LysCongThanh/heavyq/internal/tomlkeys"
 )
 
 // Load reads heavyq.toml from the git top level that contains dir.
@@ -108,11 +110,8 @@ func parse(root, path string, data []byte) (*Repo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
-	if key := firstUnknownKey(md); key != nil {
-		if line := unknownKeyLine(data, key); line > 0 {
-			return nil, fmt.Errorf("%s:%d: unknown key %q", path, line, key.String())
-		}
-		return nil, fmt.Errorf("%s: unknown key %q", path, key.String())
+	if err := tomlkeys.Check(path, data, md); err != nil {
+		return nil, err
 	}
 	repo := &Repo{Root: root, Path: path}
 	if err := repo.fill(raw); err != nil {

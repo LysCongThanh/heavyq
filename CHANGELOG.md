@@ -145,6 +145,12 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **The user config (`~/.config/heavyq/config.toml`) keys are case-sensitive too.** Same cause as for
+  `heavyq.toml`: the TOML library matched keys ignoring case, so `[LOCAL]` or `Heavy_Slots = 3` loaded
+  silently, and `[LOCAL]` next to `[local]` merged into one table, with an undefined winner. Any key with an
+  upper-case letter is now refused as an unknown key, with the file and line. Unknown keys in this file now
+  name their line as well. The check lives in the new `internal/tomlkeys`, shared with `heavyq.toml`; a new
+  fuzz target covers the config parser.
 - **`heavyq.toml` keys are case-sensitive.** The TOML library matched keys to fields ignoring case, so
   `[[GATE]]` or `Run = [...]` loaded silently, and `[[gaTe]]` next to `[[gate]]` filled the same list: one
   of the two gates was dropped, and which one was random. Any key with an upper-case letter is now refused
@@ -155,7 +161,7 @@ versions follow [Semantic Versioning](https://semver.org/).
 ### Tests
 
 - Go fuzz tests for the parsers that read untrusted input: the hook's shell-command parser and rewrite,
-  secret redaction, the anchor markdown parser and `SetChecked`, `heavyq.toml`, and the ledger reader. CI
+  secret redaction, the anchor markdown parser and `SetChecked`, `heavyq.toml`, the user config, and the ledger reader. CI
   runs each for 20 s on pull requests that touch its package and for 2 minutes on the weekly schedule.
 
 ## [0.3.0] - 2026-11-01

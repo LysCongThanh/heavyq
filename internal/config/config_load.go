@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
+
+	"github.com/LysCongThanh/heavyq/internal/tomlkeys"
 )
 
 // SafeName matches names that are safe to embed in remote paths and refs.
@@ -33,26 +35,45 @@ func DefaultPath() string {
 // Load reads the config at path. A missing file is not an error unless
 // required is true (an explicit --config / HEAVYQ_CONFIG was given).
 func Load(path string, required bool) (*Config, error) {
-	cfg := &Config{}
-	if path != "" {
-		md, err := toml.DecodeFile(path, cfg)
-		switch {
-		case err == nil:
-			cfg.Path = path
-			if undec := md.Undecoded(); len(undec) > 0 {
-				return nil, fmt.Errorf("%s: unknown key %q", path, undec[0].String())
-			}
-		case errors.Is(err, os.ErrNotExist) && !required:
-			// defaults only
-		default:
-			return nil, fmt.Errorf("config %s: %w", path, err)
-		}
+	if path == "" {
+		return defaults()
 	}
+	data, err := os.ReadFile(path)
+	switch {
+	case err == nil:
+		return parse(path, data)
+	case errors.Is(err, os.ErrNotExist) && !required:
+		return defaults()
+	default:
+		return nil, fmt.Errorf("config %s: %w", path, err)
+	}
+}
+
+// defaults returns the config used when there is no file.
+func defaults() (*Config, error) {
+	cfg := &Config{}
 	if err := cfg.normalize(); err != nil {
-		if cfg.Path != "" {
-			return nil, fmt.Errorf("%s: %w", cfg.Path, err)
-		}
 		return nil, err
+	}
+	return cfg, nil
+}
+
+// parse decodes, strictly checks and validates data, the content of path.
+// Keys must match the schema exactly: the TOML library matches them to fields
+// ignoring case, so tomlkeys.Check refuses upper-case keys ("[LOCAL]" next to
+// "[local]" would otherwise merge, one silently overriding the other).
+func parse(path string, data []byte) (*Config, error) {
+	cfg := &Config{}
+	md, err := toml.Decode(string(data), cfg)
+	if err != nil {
+		return nil, fmt.Errorf("config %s: %w", path, err)
+	}
+	if err := tomlkeys.Check(path, data, md); err != nil {
+		return nil, err
+	}
+	cfg.Path = path
+	if err := cfg.normalize(); err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
 	}
 	return cfg, nil
 }
