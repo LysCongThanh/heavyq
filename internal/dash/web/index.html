@@ -286,8 +286,12 @@ function causeOf(m,r){const s=ramShort(r);if(s!==null)return `<em>${esc(m)}</em>
 const laneN=l=>`<span class="lane-n"><i style="background:${laneColor(l)}"></i>${esc(l)}</span>`;
 
 /* ───────── story: the state of the queue as sentences ───────── */
-function story(s){const W=s.waiting.length,R=s.running.length,e=el(),parts=[];
- const head=s.waiting[0];
+/* snapshot.story is built in Go (the same sentences as `heavyq why`): sentences of spans. storyFallback below is the
+   same logic in JS, kept for servers that predate the field and for the demo data. */
+function spanHtml(p){const t=esc(p.text);if(p.lane)return laneN(p.lane);if(p.hot)return `<span class="hot">${t}</span>`;
+ if(p.em)return `<em${p.num?' class="k"':""}>${t}</em>`;return t}
+const goStory=s=>Array.isArray(s.story)&&s.story.length?s.story.map(x=>x.parts&&x.parts.length?x.parts.map(spanHtml).join(""):esc(x.text)):null;
+function storyFallback(s,e){const W=s.waiting.length,R=s.running.length,parts=[],head=s.waiting[0];
  if(!W&&!R)parts.push(`<em>All quiet.</em> Nothing runs, nothing waits.`);
  else if(!W)parts.push(`<em>${plural(R,"job")}</em> running and <em>nobody waits</em>.`);
  else{const rs=Object.entries(head.reasons);
@@ -301,6 +305,8 @@ function story(s){const W=s.waiting.length,R=s.running.length,e=el(),parts=[];
   {const left=head.bypass_in_s-e;parts.push(left>0?`${laneN(head.lane)} skips the RAM and load checks in <em class="k">${dur(left)}</em>.`:`${laneN(head.lane)} now skips the RAM and load checks.`)}
  const forced=s.running.filter(t=>t.forced);if(forced.length)parts.push(`${forced.map(t=>laneN(t.lane)).join(", ")} got in through that bypass.`);
  const down=s.machines.filter(m=>!m.reachable);if(down.length)parts.push(`<span class="hot">${down.map(m=>esc(m.name)).join(", ")} ${down.length>1?"are":"is"} unreachable.</span>`);
+ return parts}
+function story(s){const W=s.waiting.length,R=s.running.length,head=s.waiting[0],parts=goStory(s)||storyFallback(s,el());
  const i=S.ins,local=s.running.filter(t=>t.machine==="local").length,rem=R-local;
  const sub=[R?`<span><b>${R}</b> running${rem?` · ${local} local, ${rem} remote`:""}</span>`:"",W?`<span><b>${W}</b> waiting</span>`:"",
   i?`<span>last ${INS[S.win]}: <b>${i.runs}</b> runs · wait p95 <b>${dur(i.wait_p95_s)}</b> · <b>${i.gave_up}</b> gave up · <b>${i.cache_hits+i.coalesced}</b> didn't need to run</span>`:""].filter(Boolean).join("");

@@ -3,6 +3,22 @@
 All notable changes to heavyq. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions follow [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- **`heavyq why [lane]`**: the story of the queue in plain words ("2 agents wait because every heavy slot
+  on local is taken."). With a lane, its running and waiting jobs, the reason per candidate machine, and its
+  last recorded run.
+- **`snapshot.story`** in `status --json` and the dashboard stream: the same sentences, as plain `text` plus
+  `parts` with emphasis. Additive within schema 1. `heavyq status` now opens with them under `STORY`.
+
+### Changed
+
+- The dashboard's opening sentences are computed in Go and rendered from `snapshot.story`. The page keeps its
+  own copy of the logic as a fallback for older servers and the demo data. The sentences are unchanged apart
+  from two grammar fixes ("1 node process holds", and a lane that got in through the bypass is named once).
+
 ## [0.3.0] - 2026-11-01
 
 ### Added

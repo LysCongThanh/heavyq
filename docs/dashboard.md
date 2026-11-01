@@ -47,6 +47,13 @@ Fields may be added within schema 1; renaming or removing one bumps `schema`.
   `bypass_in_s` (head of line only, `-1` otherwise).
 - `coalesced[]`: identical `--cache` runs waiting for one leader.
 - `cpu`: local CPU and memory per lane, and outside the queue per executable (top 8 plus a total).
+- `story[]`: the state of the queue as sentences, built in Go so the dashboard, `heavyq status` and
+  `heavyq why` say the same thing. Each sentence is `{"text": "...", "parts": [{"text", "em", "num", "lane",
+  "hot"}]}`: `text` is plain, `parts` add emphasis (`em`; `num` for a figure; `lane` for a lane name; `hot`
+  for a problem). `em`, `num`, `lane` and `hot` are omitted when false or empty, and the `text` of all parts
+  joined is the sentence's `text`. Countdowns ("skips the RAM and load checks in 2m 10s") are as of
+  `generated_at`. The page renders `story` when present and falls back to its own copy of the logic for older
+  servers.
 
 ## Control without the dashboard
 
