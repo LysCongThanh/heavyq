@@ -42,8 +42,8 @@ func rewritten(t *testing.T, cmd string, o Options) string {
 }
 
 func TestDecideCommandTable(t *testing.T) {
-	const pre = "heavyq 4 --lane wt-api --max-wait 300s --session s1 -- "
-	const light = "heavyq 4 --lane wt-api --light --max-wait 300s --session s1 -- "
+	const pre = "heavyq 4 --lane wt-api --max-wait 300s -- "
+	const light = "heavyq 4 --lane wt-api --light --max-wait 300s -- "
 	cases := []struct{ cmd, want string }{
 		// wrapped: default rules
 		{"npm test", pre + "npm test"},
@@ -74,9 +74,9 @@ func TestDecideCommandTable(t *testing.T) {
 		{"go test ./... 2>&1 | tail -50", pre + "go test ./... 2>&1 | tail -50"},
 		{"npm test | grep -v warn", pre + "npm test | grep -v warn"},
 		{"cd web && npm run build 2>&1 | head -n 40", "cd web && " + pre + "npm run build 2>&1 | head -n 40"},
-		{"CI=1 npm test", "CI=1 heavyq 4 --lane wt-api --remote local --max-wait 300s --session s1 -- npm test"},
+		{"CI=1 npm test", "CI=1 heavyq 4 --lane wt-api --remote local --max-wait 300s -- npm test"},
 		{`NODE_OPTIONS="--max-old-space-size=4096" npm run build`,
-			`NODE_OPTIONS="--max-old-space-size=4096" heavyq 4 --lane wt-api --remote local --max-wait 300s --session s1 -- npm run build`},
+			`NODE_OPTIONS="--max-old-space-size=4096" heavyq 4 --lane wt-api --remote local --max-wait 300s -- npm run build`},
 		// left unchanged: not heavy
 		{"ls -la", ""},
 		{"git status", ""},
@@ -134,12 +134,12 @@ func TestDecideOptions(t *testing.T) {
 	o = testOptions()
 	o.Lane = "agent 7/x"
 	o.Binary = "/opt/my tools/heavyq"
-	if got, want := rewritten(t, "npm test", o), "'/opt/my tools/heavyq' 4 --lane agent_7_x --max-wait 300s --session s1 -- npm test"; got != want {
+	if got, want := rewritten(t, "npm test", o), "'/opt/my tools/heavyq' 4 --lane agent_7_x --max-wait 300s -- npm test"; got != want {
 		t.Fatalf("got %q want %q", got, want)
 	}
 	o = testOptions()
 	o.Rules = append([]config.HookRule{{Match: []string{"npm test"}, Priority: 2, Lane: "ci", Cache: true}}, DefaultRules...)
-	if got, want := rewritten(t, "npm test", o), "heavyq 2 --lane ci --cache --max-wait 300s --session s1 -- npm test"; got != want {
+	if got, want := rewritten(t, "npm test", o), "heavyq 2 --lane ci --cache --max-wait 300s -- npm test"; got != want {
 		t.Fatalf("user rule must win: got %q want %q", got, want)
 	}
 	o.Rules = nil

@@ -55,6 +55,9 @@ func runCommand(cfg *config.Config, args []string, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "heavyq:", err)
 		return ExitUsage
 	}
+	if o.Session == "" { // explicit flag and $HEAVYQ_SESSION win over the hook's file
+		o.Session = q.ReadSession(o.Lane, time.Now(), history.ValidTag)
+	}
 	start, err := procinfo.Default.StartTime(os.Getpid())
 	if err != nil {
 		fmt.Fprintln(stderr, "heavyq: cannot read own process start time:", err)

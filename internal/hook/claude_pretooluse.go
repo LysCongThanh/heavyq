@@ -26,13 +26,18 @@ type Options struct {
 	Lane       string        // $HEAVYQ_LANE of the hook process ("" = derive)
 	Active     bool          // $HEAVYQ_ACTIVE is set: never rewrite
 	LaneFor    func(cwd string) string
+	// SessionSink, when set, is told the Claude session id (already validated:
+	// 1-80 of A-Za-z0-9._:-) and the lane of every command that gets wrapped.
+	// The id travels out of band so the rewritten command stays the same in
+	// every session, which keeps exact permission rules matching.
+	SessionSink func(lane, sessionID string)
 }
 
 // claudeInput is the part of the PreToolUse stdin JSON the hook reads.
 type claudeInput struct {
 	Cwd string `json:"cwd"`
 	// SessionID is kept raw: a value of the wrong type must only cost the
-	// --session flag, never the rewrite.
+	// session label, never the rewrite.
 	SessionID json.RawMessage            `json:"session_id"`
 	Event     string                     `json:"hook_event_name"`
 	ToolName  string                     `json:"tool_name"`
@@ -105,10 +110,10 @@ func Decide(stdin []byte, o Options) ([]byte, string, error) {
 	}
 	wait := o.MaxWait.Round(time.Second)
 	prefix = append(prefix, "--max-wait", fmt.Sprintf("%ds", int(wait.Seconds())))
-	if sid := sessionID(in.SessionID); sid != "" {
-		prefix = append(prefix, "--session", ShellQuote(sid))
-	}
 	prefix = append(prefix, "--")
+	if sid := sessionID(in.SessionID); sid != "" && o.SessionSink != nil {
+		o.SessionSink(lane, sid)
+	}
 	newCmd := cmd[:p.ProgAt] + strings.Join(prefix, " ") + " " + cmd[p.ProgAt:]
 
 	upd := make(map[string]json.RawMessage, len(in.ToolInput)+1)
@@ -141,9 +146,8 @@ func Decide(stdin []byte, o Options) ([]byte, string, error) {
 }
 
 // sessionID returns the Claude session id for the ledger, or "" when it is
-// missing, not a string, or not a valid tag (1-80 of A-Za-z0-9._:-). The value
-// ends up inside a shell command line, so anything else is dropped (the command
-// is still wrapped, just without a session).
+// missing, not a string, or not a valid tag (1-80 of A-Za-z0-9._:-). Anything
+// else is dropped (the command is still wrapped, just without a session).
 func sessionID(raw json.RawMessage) string {
 	var s string
 	if len(raw) == 0 || json.Unmarshal(raw, &s) != nil || !history.ValidTag(s) {
