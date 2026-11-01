@@ -1,0 +1,6 @@
+[heavyq · stance skeptic] why now: claimed done, tree changed since the last proof
+next: heavyq gate status (is this exact code proven?)
+- "Done" is a claim; a gate result on this exact code is evidence.
+- If the tree changed after the last proof, prove again.
+- Cannot prove it? Say what is unverified, not "should work".
+full: heavyq stance show skeptic

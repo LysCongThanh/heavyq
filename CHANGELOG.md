@@ -7,6 +7,18 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Stances: thinking modes as files** (`internal/stance`, `heavyq stance ls|show <name> [--json]`). A stance
+  is a short markdown document describing a way of thinking, with TOML frontmatter between `+++` lines
+  (`name`, `description`, `enter` triggers, `exit` conditions, `cooldown_minutes`, `inject_tokens`; unknown
+  keys are errors with the line; body up to 32 KiB, any language). Five built-ins ship embedded:
+  `breakthrough`, `converge`, `skeptic`, `calm`, `surgeon`. Precedence: repo `.heavyq/stances/*.md` over
+  user `$XDG_CONFIG_HOME/heavyq/stances` (or `~/.config/heavyq/stances`) over built-in, same name overrides,
+  and an invalid file is an error, never a silent fallback. A compact renderer produces the injection text,
+  facts first (`[heavyq · stance <name>] why now: ...`, `next: ...`, at most 3 core lines from a
+  `<!-- core -->` block, `full: heavyq stance show <name>`), within `inject_tokens` (default 150, max 400,
+  about 4 bytes per token). `enter.stall` stays parseable but is status-line-only: no built-in enters on
+  elapsed time alone. This is the pure building block: triggers and injection
+  come next, nothing changes an agent's behaviour yet. See `docs/stances.md`.
 - **Ledger v2: every run is bound to the code it ran on.** History lines gain `v` (schema, `2`), `id` (a
   ULID that sorts by time), `repo` (hash of the git common dir, shared by all work trees), `worktree`,
   `subdir`, `commit`, `tree`, `dirty`, `session`, `item` and `gate`. Lines written by older versions (no
