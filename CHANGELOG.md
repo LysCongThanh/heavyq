@@ -71,6 +71,7 @@ versions follow [Semantic Versioning](https://semver.org/).
 - Priority tickets, heavy and light slots, RAM and load gate with anti-starvation, `status` with per-lane
   CPU attribution, remote runs by exact commit over SSH with score-based placement, and JSONL history.
 
+[0.3.0]: https://github.com/LysCongThanh/heavyq/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/LysCongThanh/heavyq/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/LysCongThanh/heavyq/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/LysCongThanh/heavyq/releases/tag/v0.1.0

@@ -1,0 +1,23 @@
+# heavyq
+
+> Priority, resource-aware queue for heavy shell commands (tests, builds) on workstations running many AI coding agents at once. Single Go binary, no daemon: priority tickets (1-9, FIFO within a priority), heavy/light flock slots, a RAM/load gate, result caching and coalescing keyed by git tree, offload to spare machines over SSH by exact commit, a Claude Code PreToolUse hook that wraps heavy commands automatically, `status --json`, and a loopback web dashboard (`heavyq dash`).
+
+Typical use: `heavyq <prio> [--lane NAME] [--light] [--cache] [--max-wait DUR] -- <command>`. Exit codes are stable API: the command's own code when it ran; 2 usage/setup error; 75 `--max-wait` elapsed; 76 remotes unreachable; 77 remote preparation failed; 78 cancelled by an operator; 255 remote connection lost mid-run.
+
+## Docs
+
+- [README](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/README.md): install, quickstart, flags, configuration table, exit codes, platform support
+- [Claude Code hook](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/claude-code.md): how the PreToolUse hook rewrites commands and what it relies on
+- [Dashboard, JSON snapshot and control API](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/dashboard.md): security model, `/api/v1` endpoints, `status --json` schema
+- [Example config](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/examples/config.toml): annotated TOML
+
+## Project
+
+- [CHANGELOG](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/CHANGELOG.md): release history (Keep a Changelog)
+- [AGENTS.md](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/AGENTS.md): rules for coding agents contributing to heavyq
+- [SECURITY.md](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/SECURITY.md): reporting vulnerabilities, verifying releases
+
+## Optional
+
+- [CONTRIBUTING](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/CONTRIBUTING.md): package map and house rules
+- [Go API reference](https://pkg.go.dev/github.com/LysCongThanh/heavyq): internal packages only; the CLI is the interface

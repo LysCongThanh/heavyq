@@ -15,6 +15,7 @@ builds:
     flags: [-trimpath]
     ldflags:
       - -s -w -X github.com/LysCongThanh/heavyq/internal/cli.Version={{.Version}}
+    mod_timestamp: "{{ .CommitTimestamp }}" # reproducible binaries
 
 archives:
   - formats: [tar.gz]
@@ -25,7 +26,21 @@ checksum:
   name_template: checksums.txt
   algorithm: sha256
 
+# SPDX SBOM per archive (syft is installed by the release workflow).
+sboms:
+  - artifacts: archive
+
+release:
+  footer: |
+    ---
+    **Verify a download** (build provenance, signed by GitHub Actions through Sigstore):
+
+    ```bash
+    gh attestation verify heavyq_{{ .Version }}_linux_amd64.tar.gz --repo LysCongThanh/heavyq
+    ```
+
+# Used only when CHANGELOG.md has no section for the tag (see .github/workflows/release.yml).
 changelog:
   sort: asc
   filters:
-    exclude: ["^docs:", "^test:", "^ci:"]
+    exclude: ["^docs:", "^test:", "^ci:", "^chore:", "^build\\(deps\\):"]
