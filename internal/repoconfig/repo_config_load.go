@@ -91,8 +91,7 @@ func parse(root, path string, data []byte) (*Repo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
-	if undec := md.Undecoded(); len(undec) > 0 {
-		key := undec[0]
+	if key := firstUnknownKey(md); key != nil {
 		if line := unknownKeyLine(data, key); line > 0 {
 			return nil, fmt.Errorf("%s:%d: unknown key %q", path, line, key.String())
 		}

@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("[[gaTe]]\nname = \"a\"\nrun = [\"x\"]\n[[gate]]\nname = \"a\"\nrun = [\"y\"]\n")
