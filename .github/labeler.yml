@@ -1,0 +1,28 @@
+# actions/labeler: label PRs by the files they touch (see .github/workflows/pr.yml).
+documentation:
+  - changed-files:
+      - any-glob-to-any-file: ["**/*.md", "docs/**", "llms.txt"]
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file: [".github/**", ".goreleaser.yaml", ".golangci.yml"]
+
+"area: hook":
+  - changed-files:
+      - any-glob-to-any-file: ["internal/hook/**", "examples/claude-code/**"]
+
+"area: dashboard":
+  - changed-files:
+      - any-glob-to-any-file: ["internal/dash/**", "internal/snapshot/**"]
+
+"area: remote":
+  - changed-files:
+      - any-glob-to-any-file: ["internal/remote/**"]
+
+"area: cache":
+  - changed-files:
+      - any-glob-to-any-file: ["internal/cache/**"]
+
+"area: scheduler":
+  - changed-files:
+      - any-glob-to-any-file: ["internal/schedule/**", "internal/queue/**", "internal/slots/**", "internal/control/**"]
