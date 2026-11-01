@@ -387,8 +387,8 @@ prio = 3          # 1-9, default 3
   20 ms and without running anything. For each command it says `proven`, `failed` or `missing` on the code
   checked out now (the tree id of `HEAD` plus any uncommitted edits), with when, in which lane and how long.
   Exit 0 when every command is proven, 1 when not, 2 on a usage error (no `heavyq.toml` and nothing to detect, unknown gate).
-  A command that both passed and failed on the same tree is **flaky** and stays unproven ("flaky: 1 pass / 1
-  fail on this tree"); a failure from a run that started while the machine was over its limits (forced
+  A command that both failed and passed on the same tree is labelled **flaky** ("flaky: 1 fail / 2 pass on
+  this tree"): not proven until its last two runs passed, then proven again, no code change needed; a failure from a run that started while the machine was over its limits (forced
   admission, load, free RAM) is **under load**: rerun once before debugging. `--json` (with a per-command
   `class`) is documented in [docs/gates.md](docs/gates.md).
 - **`heavyq gate run [name] [--parallel] [--keep-going] [--lane NAME]`** runs the commands that are not proven

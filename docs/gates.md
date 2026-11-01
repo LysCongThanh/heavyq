@@ -138,26 +138,30 @@ is a run of the command when all of these hold:
   nor fail anything. Exit 0 passes; any other exit code is a failure. A `--cache` hit or a run that reused an
   identical in-flight run counts, because the ledger only gives those the tree they proved.
 
-A command that is not proven is classified by those runs. The first row that applies wins:
+Each command is classified by those runs. The first row that applies wins:
 
 | Class | When | State |
 |---|---|---|
-| `flaky` | on this tree the command both **passed** and **failed**, and at least one failure is not explained by load (below) | `failed` |
-| (none) | the latest run passed, and no failure on this tree is unexplained | `proven` |
 | `under_load` | the latest run failed, and the machine was over its limits when that run was admitted | `failed` |
-| `failed` | the latest run failed, with nothing to explain it | `failed` |
+| `flaky` | the command both **failed** (not explained by load, below) and **passed** on this tree, and the latest run failed, or only one pass follows the failure | `failed` |
+| `flaky` | same, and the last two runs on this tree passed | `proven` |
+| `failed` | the latest run failed, and it never passed on this tree | `failed` |
+| (none) | the latest run passed, and no failure on this tree is unexplained | `proven` |
 
-- **Flaky is not proven**, even when the latest run passed. A tree on which the command has both passed and
-  failed stays unproven for good: heavyq cannot tell which result was the odd one out. Fix the flakiness, or
-  change the code (any edit is another tree). `gate status` says `flaky: N pass / M fail on this tree`. The
-  numbers count runs; a cache hit or coalesced result repeats a run that already has its own line, so it is
-  not counted again.
+- **Flaky is a label, and proof recovers by repetition.** A command that failed and passed on the same tree
+  is proven once its last two runs passed, and the label stays (`proven (flaky: 1 fail / 2 pass on this
+  tree)`). Until then it is not proven, and `gate status` says `flaky — re-run once to confirm:
+  heavyq gate run <name>`. Changing the code is never needed to get there. `gate run` re-runs a flaky command
+  for real (without `--cache`), because a replayed pass is the same run again. The counts (`passes`, `fails`)
+  stay visible when it is proven. They count runs: a cache hit or coalesced result repeats a run that already
+  has its own line, so it is neither counted nor taken as a repetition.
 - **Under load.** A failure is "under load" when its ledger record says the run was admitted past the resource
   gate by the anti-starvation bypass (`forced`), or that at admission the 1-minute load was at or above the
   machine's limit (`max_load_ratio` x cores), or less RAM was free than the job's budget (`job_mb`, or
   `light_mb` for `--light`). The reading is the one the scheduler judged: the local machine, or for a remote
-  the probe placement used. A failure under load is still a failure, so the command is not proven, but it is
-  not evidence of flakiness: if the rerun passes, the command is proven. Rerun once before you debug.
+  the probe placement used. A failure under load is still a failure, so the command is not proven while it is
+  the latest run, but it is not evidence of flakiness and it never breaks a repetition: if the rerun passes,
+  the command is proven. Rerun once before you debug.
   A record without a machine reading (an older line, a result replayed from the cache, a platform that cannot
   be measured) is never called under load.
 
@@ -192,11 +196,11 @@ gate ready: NOT PROVEN on tree 30275da9949f+1c9be0e2 (uncommitted edits)
 A failure that is flaky or happened under load says so on its line, and the summary counts them:
 
 ```
-  failed   2026-11-02 00:44:10  agent-3         31.2s  go test -race -count=1 ./...  (exit 1; flaky: 1 pass / 1 fail on this tree)
+  failed   2026-11-02 00:44:10  agent-3         31.2s  go test -race -count=1 ./...  (exit 1; flaky: 1 fail / 1 pass on this tree)
   failed   2026-11-02 00:44:52  agent-3          9.1s  go vet ./...  (exit 1; under load: load 14.20 >= 12.00 at start)
   2 failed (1 flaky, 1 under load), 0 missing. Prove it with: heavyq gate run ready
   under load: the machine was over its limits when the run started; rerun once before debugging: heavyq gate run ready
-  flaky: it passed and failed on this very code, so this tree stays unproven; fix the flakiness or change the code
+  flaky — re-run once to confirm: heavyq gate run ready
 ```
 
 `heavyq why` closes with the same counts: `The ready gate is not proven on this tree (tree 30275da9949f):
@@ -229,18 +233,18 @@ object (additive changes only):
 | `tree`, `commit`, `dirty` | the code asked about; `tree` is `""` when it cannot be identified (`commit` is omitted before the first commit) |
 | `reason` | set when nothing can be proven at all (unknown tree); omitted otherwise |
 | `commands[].cmd` | the command string from `heavyq.toml` (secrets redacted) |
-| `commands[].state` | `proven`, `failed` or `missing`. A flaky command is `failed` |
-| `commands[].class` | only when `state` is `failed`: `flaky`, `under_load` or `failed` (see above); omitted otherwise |
-| `commands[].at`, `lane`, `run_secs`, `cache`, `exit`, `machine` | the deciding run; all but `run_secs` are omitted for `missing`. For `flaky` it is the latest failure that load does not explain. `cache` is `hit`, `coalesced`, `miss` or `skip` and is omitted without `--cache` |
+| `commands[].state` | `proven`, `failed` or `missing`. A flaky command is `proven` once its last two runs passed, else `failed` |
+| `commands[].class` | `flaky` (with either state), or, when `state` is `failed`, `under_load` or `failed` (see above); omitted otherwise |
+| `commands[].at`, `lane`, `run_secs`, `cache`, `exit`, `machine` | the deciding run; all but `run_secs` are omitted for `missing`. For a `flaky` command that is not proven yet after a pass, it is the latest failure that load does not explain. `cache` is `hit`, `coalesced`, `miss` or `skip` and is omitted without `--cache` |
 | `commands[].passes`, `fails` | runs on this tree that exited 0 / did not (cache replays are not counted again); each omitted when 0 |
-| `commands[].reason` | why a command is `missing` (`tree unknown`, too long to match), or the evidence for its class: `flaky: 1 pass / 1 fail on this tree`, `under load: load 14.20 >= 12.00 at start`, `under load: 800 MB free < 3072 MB job budget at start`, `under load: admitted past a resource limit by the anti-starvation bypass` |
+| `commands[].reason` | why a command is `missing` (`tree unknown`, too long to match), or the evidence for its class: `flaky: 1 fail / 2 pass on this tree`, `under load: load 14.20 >= 12.00 at start`, `under load: 800 MB free < 3072 MB job budget at start`, `under load: admitted past a resource limit by the anti-starvation bypass` |
 
 ## `heavyq gate run [name] [--parallel] [--keep-going] [--lane NAME]`
 
 For each command that `gate status` would not call proven, in file order, heavyq runs the equivalent of
 
 ```
-heavyq <prio> --cache --gate <name> --remote <remote> [--light] [--lane NAME] -- sh -c '<command>'
+heavyq <prio> --cache --gate <name> --remote <remote> [--light] [--lane NAME] -- sh -c '<command>'   # no --cache for a flaky command
 ```
 
 from the repository root, with the gate's `prio`, `light` and `remote`. It goes through the same queue,

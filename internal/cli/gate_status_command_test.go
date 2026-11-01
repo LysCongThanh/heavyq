@@ -64,7 +64,7 @@ func TestPrintGateNamesFlakyAndUnderLoadFailures(t *testing.T) {
 	g := proof.Gate{Gate: "ready", Tree: strings.Repeat("a", 40), Commands: []proof.Command{
 		{Cmd: "go vet", State: proof.Proven, At: now, Exit: &zero},
 		{Cmd: "go test", State: proof.Failed, Class: proof.ClassFlaky, At: now, Exit: &one, Passes: 2, Fails: 1,
-			Reason: "flaky: 2 pass / 1 fail on this tree"},
+			Reason: "flaky: 1 fail / 2 pass on this tree"},
 		{Cmd: "go build", State: proof.Failed, Class: proof.ClassUnderLoad, At: now, Exit: &seven,
 			Reason: "under load: load 9.00 >= 6.00 at start"},
 		{Cmd: "make lint", State: proof.Failed, Class: proof.ClassFailed, At: now, Exit: &one, Fails: 1},
@@ -74,12 +74,12 @@ func TestPrintGateNamesFlakyAndUnderLoadFailures(t *testing.T) {
 	printGate(&out, g)
 	got := out.String()
 	for _, want := range []string{
-		"(exit 1; flaky: 2 pass / 1 fail on this tree)",
+		"(exit 1; flaky: 1 fail / 2 pass on this tree)",
 		"(exit 7; under load: load 9.00 >= 6.00 at start)",
 		"make lint  (exit 1)\n",
 		"3 failed (1 flaky, 1 under load), 1 missing. Prove it with: heavyq gate run ready",
 		"rerun once before debugging: heavyq gate run ready",
-		"this tree stays unproven",
+		"flaky \u2014 re-run once to confirm: heavyq gate run ready",
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("missing %q in:\n%s", want, got)

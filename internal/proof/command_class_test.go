@@ -56,12 +56,19 @@ func TestClassifyAFailedCommandOnATree(t *testing.T) {
 		{"single pass", []history.Record{run("go test", nil)}, Proven, "", 1, 0, "", 0},
 		{"plain failure", []history.Record{run("go test", all(exit(1), idle))}, Failed, ClassFailed, 0, 1, "", 1},
 		{"failure without a machine reading", []history.Record{run("go test", exit(1))}, Failed, ClassFailed, 0, 1, "", 1},
-		{"pass then fail is flaky", []history.Record{run("go test", nil), run("go test", all(exit(1), idle))},
-			Failed, ClassFlaky, 1, 1, "flaky: 1 pass / 1 fail", 1},
-		{"fail then pass is flaky", []history.Record{run("go test", all(exit(2), idle)), run("go test", idle)},
-			Failed, ClassFlaky, 1, 1, "flaky: 1 pass / 1 fail", 2},
+		{"pass then fail: flaky, not proven", []history.Record{run("go test", nil), run("go test", all(exit(1), idle))},
+			Failed, ClassFlaky, 1, 1, "flaky: 1 fail / 1 pass", 1},
+		{"fail then a single pass: flaky, not proven yet", []history.Record{run("go test", all(exit(2), idle)), run("go test", idle)},
+			Failed, ClassFlaky, 1, 1, "flaky: 1 fail / 1 pass", 2},
+		{"fail, pass, pass: proven, labelled flaky", []history.Record{run("go test", exit(1)), run("go test", nil), run("go test", nil)},
+			Proven, ClassFlaky, 2, 1, "flaky: 1 fail / 2 pass", 0},
+		{"pass, fail, pass, pass: proven again by repetition", []history.Record{run("go test", nil), run("go test", exit(1)), run("go test", nil), run("go test", nil)},
+			Proven, ClassFlaky, 3, 1, "flaky: 1 fail / 3 pass", 0},
+		{"a failure under load between two passes does not break the repetition", []history.Record{
+			run("go test", all(exit(1), idle)), run("go test", idle), run("go test", all(exit(1), loaded)), run("go test", idle)},
+			Proven, ClassFlaky, 2, 2, "flaky: 2 fail / 2 pass", 0},
 		{"counts every run", []history.Record{run("go test", nil), run("go test", exit(1)), run("go test", exit(1)), run("go test", nil)},
-			Failed, ClassFlaky, 2, 2, "flaky: 2 pass / 2 fail", 1},
+			Failed, ClassFlaky, 2, 2, "flaky: 2 fail / 2 pass", 1},
 		{"forced failure is under load", []history.Record{run("go test", all(exit(1), func(r *history.Record) { r.Forced = true }))},
 			Failed, ClassUnderLoad, 0, 1, "anti-starvation", 1},
 		{"load at the limit is under load", []history.Record{run("go test", all(exit(1), func(r *history.Record) {
@@ -83,9 +90,9 @@ func TestClassifyAFailedCommandOnATree(t *testing.T) {
 			Failed, ClassUnderLoad, 1, 1, "under load", 1},
 		{"a failure under load, then a pass: proven", []history.Record{run("go test", all(exit(1), loaded)), run("go test", idle)},
 			Proven, "", 1, 1, "", 0},
-		{"a plain failure, a pass and a failure under load: flaky", []history.Record{
+		{"a plain failure, a pass, then a failure under load: the latest run decides", []history.Record{
 			run("go test", all(exit(1), idle)), run("go test", idle), run("go test", all(exit(1), loaded))},
-			Failed, ClassFlaky, 1, 2, "flaky: 1 pass / 2 fail", 1},
+			Failed, ClassUnderLoad, 1, 2, "under load", 1},
 		{"a plain failure, then one under load: under load", []history.Record{
 			run("go test", all(exit(1), idle)), run("go test", all(exit(1), loaded))},
 			Failed, ClassUnderLoad, 0, 2, "under load", 1},
@@ -93,7 +100,7 @@ func TestClassifyAFailedCommandOnATree(t *testing.T) {
 			run("go test", exit(1)), run("go test", nil),
 			run("go test", func(r *history.Record) { r.Cache = "hit" }), run("go test", func(r *history.Record) { r.Cache = "hit" }),
 			run("go test", func(r *history.Record) { r.Cache = "coalesced" })},
-			Failed, ClassFlaky, 1, 1, "flaky: 1 pass / 1 fail", 1},
+			Failed, ClassFlaky, 1, 1, "flaky: 1 fail / 1 pass", 1},
 		{"a replayed failure does not lose the load of the run it copies", []history.Record{
 			run("go test", all(exit(1), loaded)), run("go test", all(exit(1), func(r *history.Record) { r.Cache = "hit" })),
 			run("go test", idle)},
@@ -101,7 +108,7 @@ func TestClassifyAFailedCommandOnATree(t *testing.T) {
 		{"a result that only arrived by replay counts once", []history.Record{
 			run("go test", func(r *history.Record) { r.Cache = "hit" }), run("go test", all(exit(1), func(r *history.Record) { r.Cache = "hit" })),
 			run("go test", func(r *history.Record) { r.Cache = "hit" })},
-			Failed, ClassFlaky, 1, 1, "flaky: 1 pass / 1 fail", 1},
+			Failed, ClassFlaky, 1, 1, "flaky: 1 fail / 1 pass", 1},
 	}
 	subj := Subject{Repo: repoA, Tree: treeA}
 	for _, c := range cases {
@@ -119,7 +126,7 @@ func TestClassifyAFailedCommandOnATree(t *testing.T) {
 	}
 }
 
-// A flaky command points at the failure that makes it so, not at a later pass.
+// A flaky command that is not proven yet points at the failure behind it, not at a later pass.
 func TestFlakyReportsTheLatestUnexplainedFailure(t *testing.T) {
 	at := func(m int, mod func(*history.Record)) func(*history.Record) {
 		return all(func(r *history.Record) { r.End = base.Add(time.Duration(m) * time.Minute) }, mod)

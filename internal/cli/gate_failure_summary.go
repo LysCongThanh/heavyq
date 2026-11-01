@@ -56,7 +56,7 @@ func (n gateCounts) hints(gate string) []string {
 		out = append(out, "under load: the machine was over its limits when the run started; rerun once before debugging: heavyq gate run "+gate)
 	}
 	if n.flaky > 0 {
-		out = append(out, "flaky: it passed and failed on this very code, so this tree stays unproven; fix the flakiness or change the code")
+		out = append(out, "flaky \u2014 re-run once to confirm: heavyq gate run "+gate)
 	}
 	return out
 }

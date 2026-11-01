@@ -60,7 +60,8 @@ func skipUnlessMeasurable(t *testing.T, r history.Record) {
 	}
 }
 
-// The same code passes, then fails: flaky, and not proven, whatever comes next.
+// The same code passes, then fails: flaky, and not proven until it has passed
+// twice in a row since. Flaky is a label, not a dead end.
 func TestE2EGateSameTreePassThenFailIsFlaky(t *testing.T) {
 	h := newRig(t, calmConfig)
 	_, cmd := flagGateRepo(t, h)
@@ -78,11 +79,12 @@ func TestE2EGateSameTreePassThenFailIsFlaky(t *testing.T) {
 	rc, g := h.gateJSON()
 	c := g.Commands[0]
 	if rc != 1 || g.Proven || c.State != proof.Failed || c.Class != proof.ClassFlaky || c.Passes != 1 || c.Fails != 1 ||
-		c.Exit == nil || *c.Exit != 1 || !strings.Contains(c.Reason, "flaky: 1 pass / 1 fail") {
+		c.Exit == nil || *c.Exit != 1 || !strings.Contains(c.Reason, "flaky: 1 fail / 1 pass") {
 		t.Fatalf("after pass then fail: rc=%d %+v", rc, g)
 	}
 	rc, out := h.run("gate", "status")
-	for _, want := range []string{"NOT PROVEN", "failed", "(exit 1; flaky: 1 pass / 1 fail on this tree)", "1 failed (1 flaky), 0 missing", "stays unproven"} {
+	for _, want := range []string{"NOT PROVEN", "failed", "(exit 1; flaky: 1 fail / 1 pass on this tree)", "1 failed (1 flaky), 0 missing",
+		"re-run once to confirm: heavyq gate run ready"} {
 		if rc != 1 || !strings.Contains(out, want) {
 			t.Fatalf("gate status text lacks %q (rc=%d):\n%s", want, rc, out)
 		}
@@ -91,17 +93,26 @@ func TestE2EGateSameTreePassThenFailIsFlaky(t *testing.T) {
 		t.Fatalf("why (rc=%d):\n%s", rc, out)
 	}
 
-	// Running the gate again cannot clear it: the command passes (from the
-	// result cache, so it is not counted as another pass), the tree stays flaky.
+	// The cause goes away. One pass after the failure is not enough, and the
+	// re-run really runs (the cached pass from the first gate run is not replayed).
+	if err := os.Remove(filepath.Join(h.root, "fail-flag")); err != nil {
+		t.Fatal(err)
+	}
 	rc, out = h.run("gate", "run")
-	if rc != 1 || !strings.Contains(out, "flaky: 1 pass / 1 fail") {
-		t.Fatalf("gate run on a flaky tree: rc=%d\n%s", rc, out)
+	if rc != 1 || !strings.Contains(out, "flaky: 1 fail / 2 pass") {
+		t.Fatalf("one pass after the failure: rc=%d\n%s", rc, out)
 	}
-	if r := h.runOfGateCommand(cmd); r.Exit != 0 || r.Cache != "hit" {
-		t.Fatalf("the rerun should be a cached pass: %+v", r)
+	if r := h.runOfGateCommand(cmd); r.Exit != 0 || r.Cache != "" {
+		t.Fatalf("the re-run must be a real run, not a cache hit: %+v", r)
 	}
-	if rc, g = h.gateJSON(); rc != 1 || g.Commands[0].Class != proof.ClassFlaky || g.Commands[0].Passes != 1 {
-		t.Fatalf("still flaky, one pass: rc=%d %+v", rc, g.Commands[0])
+	// The second pass in a row proves it, still labelled flaky.
+	rc, out = h.run("gate", "run")
+	if rc != 0 || !strings.Contains(out, "PROVEN") || !strings.Contains(out, "(flaky: 1 fail / 3 pass on this tree)") {
+		t.Fatalf("two passes in a row: rc=%d\n%s", rc, out)
+	}
+	if rc, g = h.gateJSON(); rc != 0 || !g.Proven || g.Commands[0].State != proof.Proven || g.Commands[0].Class != proof.ClassFlaky ||
+		g.Commands[0].Passes != 3 || g.Commands[0].Fails != 1 {
+		t.Fatalf("proven, flaky, counts kept: rc=%d %+v", rc, g.Commands[0])
 	}
 
 	// Another tree has no history: the same command is simply unproven there.

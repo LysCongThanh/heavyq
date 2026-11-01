@@ -55,8 +55,10 @@ func TestEvaluateStates(t *testing.T) {
 			[]State{Proven, Failed, Proven}, false},
 		{"latest wins: fail after pass", []history.Record{rec("fmt", at(1)), rec("fmt", func(r *history.Record) { r.Exit = 3 }), rec("vet", nil), rec("test", nil)},
 			[]State{Failed, Proven, Proven}, false},
-		{"a pass after a failure is flaky, not proven", []history.Record{rec("fmt", func(r *history.Record) { r.Exit = 3 }), rec("fmt", nil), rec("vet", nil), rec("test", nil)},
+		{"a single pass after a failure is flaky, not proven yet", []history.Record{rec("fmt", func(r *history.Record) { r.Exit = 3 }), rec("fmt", nil), rec("vet", nil), rec("test", nil)},
 			[]State{Failed, Proven, Proven}, false},
+		{"two passes after a failure prove it", []history.Record{rec("fmt", func(r *history.Record) { r.Exit = 3 }), rec("fmt", nil), rec("fmt", nil), rec("vet", nil), rec("test", nil)},
+			[]State{Proven, Proven, Proven}, true},
 		{"a pass after a failure under load is proven", []history.Record{
 			rec("fmt", func(r *history.Record) { r.Exit, r.Forced = 3, true }), rec("fmt", nil), rec("vet", nil), rec("test", nil)},
 			[]State{Proven, Proven, Proven}, true},

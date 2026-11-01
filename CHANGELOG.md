@@ -66,11 +66,14 @@ versions follow [Semantic Versioning](https://semver.org/).
 - **Flaky and under-load detection (#30).** The ledger records the machine as it was when a run was admitted:
   `load1`, `free_mb`, `cores`, plus the limits applied to it (`max_load`, `job_mb`); local runs use the sample
   the resource gate judged, remote runs the probe placement used. `heavyq gate status` (text and `--json`)
-  classifies every failed command: **`flaky`** when on this tree the command both passed and failed (not
-  proven, even if the latest run passed: "flaky: 1 pass / 1 fail on this tree"), **`under_load`** when the
+  classifies every failed command: **`flaky`** when on this tree the command both failed and passed. It is
+  a label, and proof recovers by repetition: proven once its last two runs passed ("proven (flaky: 1 fail /
+  2 pass on this tree)"), not proven while the latest run failed or only one pass follows the failure
+  ("flaky — re-run once to confirm: heavyq gate run ready"; `gate run` then really re-runs it, without
+  `--cache`), **`under_load`** when the
   failing run was admitted by the anti-starvation bypass, at or above the load limit, or with less free RAM
   than its job budget ("rerun once before debugging"), else **`failed`**. A failure under load does not make
-  a command flaky, so a clean rerun proves it. `--json` gains `commands[].class`, `passes` and `fails`, and
+  a command flaky and never breaks a repetition, so a clean rerun proves it. `--json` gains `commands[].class`, `passes` and `fails`, and
   `reason` now also carries the evidence. `heavyq why` shows the counts in its gate sentence
   ("1 failed (1 flaky), 0 missing"). Lines without the new fields load as before and are never called under
   load.
