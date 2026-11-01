@@ -8,6 +8,7 @@ Typical use: `heavyq <prio> [--lane NAME] [--light] [--cache] [--max-wait DUR] -
 
 - [README](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/README.md): install, quickstart, flags, configuration table, exit codes, platform support
 - [Claude Code hook](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/claude-code.md): how the PreToolUse hook rewrites commands and what it relies on
+- [Gates (heavyq.toml)](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/gates.md): per-repo gate format, validation rules, trust model
 - [Dashboard, JSON snapshot and control API](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/dashboard.md): security model, `/api/v1` endpoints, `status --json` schema
 - [Example config](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/examples/config.toml): annotated TOML
 

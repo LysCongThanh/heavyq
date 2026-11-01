@@ -83,7 +83,9 @@ heavyq 4 --max-wait 10m -- cargo test             # exit 75 if not started withi
 heavyq 4 --cache -- npm test                      # same clean commit already tested? reuse that result
 heavyq 4 --session "$ID" --item T-12 -- npm test  # tag the run in history: who ran it, for which work item
 
-heavyq status      # what runs, what waits, and why
+heavyq status      # what runs, what waits, and why (opens with a short story in plain words)
+heavyq why         # just that story: "2 agents wait because every heavy slot on local is taken."
+heavyq why api     # one lane: its running and waiting jobs, the reason per machine, its last run
 heavyq history     # recent runs, with the commit each one ran on (-v: tree, session, item, gate)
 heavyq hook install claude   # let Claude Code agents use the queue without being told
 ```
@@ -269,7 +271,7 @@ installed. Everything lives under `work_dir` (default `~/.heavyq`).
 ```bash
 heavyq dash              # read-only; prints http://127.0.0.1:PORT/#token=...
 heavyq dash --control    # the page can also cancel jobs, change priorities, pause machines
-heavyq status --json     # the same state, machine-readable (schema 1)
+heavyq status --json     # the same state, machine-readable (schema 1, with the story as sentences)
 ```
 
 The dashboard answers, in this order: is the machine OK, what runs and what it costs, **who waits and
@@ -292,6 +294,30 @@ Open `http://127.0.0.1:PORT/#demo` from any `heavyq dash` to see the page with s
 The server listens on loopback only, requires the per-start token on every API call, rejects foreign
 `Host` and `Origin` headers, and hides likely secrets in command lines. See [docs/dashboard.md](docs/dashboard.md)
 for the API.
+
+## Gates (heavyq.toml)
+
+A repository can say what "proven" means for it in a `heavyq.toml` at its repository root: named **gates**,
+each a list of shell commands.
+
+```toml
+[[gate]]
+name = "ready"
+run  = ["gofmt -l . | (! grep .)", "go vet ./...", "go test -race ./..."]
+prio = 3          # 1-9, default 3
+# light  = true   # may use the light slots
+# remote = "auto" # local (default) | auto | <remote name>
+```
+
+- `name`: `[a-z0-9][a-z0-9_-]{0,39}`, unique in the file. `run`: a non-empty list of shell strings, each at
+  most 2000 bytes.
+- Unknown keys, duplicate names, an empty `run` or a `prio` outside 1-9 are errors that name the file and,
+  for unknown keys, the line. heavyq never guesses.
+- **Trust: the same as a Makefile.** `heavyq.toml` holds commands, and whoever can edit it can make them run.
+  Gates run only when you ask for them explicitly. Hooks never execute gates, and the Claude Code hook does
+  not read the file.
+- Status: the loader and the format are in place (see [docs/gates.md](docs/gates.md)). The commands that run
+  and check gates (`heavyq gate run`, `heavyq gate status`) follow in the next release.
 
 ## Comparison
 
