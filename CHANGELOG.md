@@ -3,6 +3,27 @@
 All notable changes to heavyq. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions follow [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] - 2026-11-01
+
+### Added
+
+- **`heavyq dash`**: a local web dashboard. One embedded page, no daemon, no new dependencies. It shows
+  machines (RAM vs what a job needs, load vs limit, slots), running jobs with CPU and memory, waiting jobs with
+  the reason per machine and the anti-starvation countdown, identical runs sharing one result, what runs
+  *outside* the queue by executable, and insights from history (wait p50/p95, give-ups, forced admissions,
+  cache hits, busiest lanes).
+  - Loopback only, a random token per start, `Host` and `Origin` checks, a strict CSP. Read-only unless
+    started with `--control`.
+- **`heavyq status --json`**: the same state as a versioned JSON snapshot (schema 1).
+- **Operator control**: `heavyq cancel <pid>`, `heavyq reprio <pid> <1-9>`, `heavyq pause|resume <machine>`
+  (also from the dashboard). Requests go through `<queue dir>/ctl`, and each job's own process applies them.
+  A cancelled job exits 78. A running one gets SIGTERM, its whole process tree included, then SIGKILL 10 s
+  later.
+- History records more: jobs that gave up or were cancelled (`result`), admissions through the
+  anti-starvation bypass (`forced`), and CPU time and peak memory of local runs (`cpu_s`, `max_rss_mb`).
+- Likely secrets in command lines (`TOKEN=…`, `scheme://user:pass@`, `--password …`, well-known token
+  shapes) are hidden in `status --json` and the dashboard.
+
 ## [0.2.0] - 2026-11-01
 
 ### Added

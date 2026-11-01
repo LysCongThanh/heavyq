@@ -225,6 +225,35 @@ What a remote run sees, and what it doesn't:
 Remote requirements: Linux with `bash`, `git`, `flock`, `setsid` (util-linux), `base64`, `awk`. Nothing is
 installed. Everything lives under `work_dir` (default `~/.heavyq`).
 
+## Dashboard and control
+
+```bash
+heavyq dash              # read-only; prints http://127.0.0.1:PORT/#token=...
+heavyq dash --control    # the page can also cancel jobs, change priorities, pause machines
+heavyq status --json     # the same state, machine-readable (schema 1)
+```
+
+The dashboard answers, in this order: is the machine OK, what runs and what it costs, **who waits and
+why** (a reason per waiting job and per machine, plus the anti-starvation countdown), what eats the
+machine *outside* the queue (by executable: often the agents themselves), and how the last hour went
+(wait p50/p95, give-ups, forced admissions, cache hits, busiest lanes).
+
+There is no daemon. `heavyq dash` reads the same queue files as `heavyq status`, and actions are requests
+that the job's own heavyq process applies on its next poll. The same actions work from a terminal:
+
+```bash
+heavyq cancel 48213        # by the pid shown in status: a waiting job leaves the queue, a running one is stopped
+heavyq reprio 50122 2      # a waiting job moves to priority 2 (keeps its place among equals)
+heavyq pause buildbox      # no new jobs start there; running jobs finish
+heavyq resume buildbox
+```
+
+Open `http://127.0.0.1:PORT/#demo` from any `heavyq dash` to see the page with sample data.
+
+The server listens on loopback only, requires the per-start token on every API call, rejects foreign
+`Host` and `Origin` headers, and hides likely secrets in command lines. See [docs/dashboard.md](docs/dashboard.md)
+for the API.
+
 ## Comparison
 
 | | heavyq | [pueue](https://github.com/Nukesor/pueue) | [task-spooler](https://viric.name/soft/ts/) | GNU parallel / `sem` | plain `flock` |
@@ -299,6 +328,7 @@ cache), `CLAUDE_CONFIG_DIR` (`--scope user` target). Commands run locally get `H
 | 75 | `--max-wait` elapsed before the ticket's turn (EX_TEMPFAIL: retry later) |
 | 76 | the ticket can only run remotely and its remotes were unreachable for `remote_down_max` |
 | 77 | remote preparation failed (push, worktree, cache hook, or a slot taken outside the queue) |
+| 78 | cancelled by an operator (`heavyq cancel` or the dashboard) |
 | 127 / 126 | command not found / not executable |
 | 255 | connection to the remote lost mid-run (the remote side stops the command) |
 
@@ -306,7 +336,8 @@ cache), `CLAUDE_CONFIG_DIR` (`--scope user` target). Commands run locally get `H
 
 Linux is the primary target and is what CI runs. On **macOS**, slots, priorities, tickets and remote runs
 work. Local RAM and load are not measured (there is no `/proc`), so the local gate falls back to slots
-only and `status` says so. Per-lane CPU attribution is Linux-only. Process identity uses `ps -o lstart=`.
+only and `status` says so. Per-lane CPU attribution, the "outside the queue" breakdown and cancelling a command's
+whole process tree are Linux-only (elsewhere a cancel reaches the command and the children visible at that moment). Process identity uses `ps -o lstart=`.
 Remote machines must be Linux.
 
 ## Contributing
