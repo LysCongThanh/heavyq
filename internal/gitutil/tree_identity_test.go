@@ -194,7 +194,7 @@ func TestBinaryEditsChangeTheIdentity(t *testing.T) {
 	}
 }
 
-func TestHugeUntrackedFileIsIdentifiedBySizeAndTime(t *testing.T) {
+func TestHugeUntrackedFileIsIdentifiedByItsStamp(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "huge")
 	f, err := os.Create(p)
@@ -205,14 +205,15 @@ func TestHugeUntrackedFileIsIdentifiedBySizeAndTime(t *testing.T) {
 		t.Fatal(err)
 	}
 	f.Close()
-	kind, sum := digestEntry(sha256.New(), make([]byte, 4096), p)
-	if kind != 'B' || len(sum) != 32 {
-		t.Fatalf("kind %c, %d bytes", kind, len(sum))
+	budget := maxUntrackedBytes
+	kind, sum := digestEntry(sha256.New(), make([]byte, 4096), &budget, p)
+	if kind != kindBig || len(sum) != 32 || budget != maxUntrackedBytes {
+		t.Fatalf("kind %c, %d bytes, budget spent %d", kind, len(sum), maxUntrackedBytes-budget)
 	}
-	if kind, _ := digestEntry(sha256.New(), nil, filepath.Join(dir, "missing")); kind != 'G' {
+	if kind, _ := digestEntry(sha256.New(), nil, &budget, filepath.Join(dir, "missing")); kind != kindGone {
 		t.Fatalf("a vanished file must be marked gone, got %c", kind)
 	}
-	if kind, _ := digestEntry(sha256.New(), nil, dir); kind != 'O' {
+	if kind, _ := digestEntry(sha256.New(), nil, &budget, dir); kind != kindOther {
 		t.Fatalf("a directory must be 'other', got %c", kind)
 	}
 }

@@ -15,7 +15,7 @@ type Checkout struct {
 	Worktree string // absolute path of the work tree root
 	Subdir   string // the directory relative to Worktree ("" at the root)
 	Commit   string // HEAD ("" before the first commit)
-	Tree     string // exact files: see TreeID.ID
+	Tree     string // exact files: see TreeID.ID ("" = unknown, never proof)
 	Dirty    bool
 }
 
@@ -58,11 +58,14 @@ func Identify(dir string) (Checkout, error) {
 	if err != nil {
 		return co, err
 	}
-	if co.Commit, err = ResolveCommit(co.Worktree, "HEAD"); err != nil {
-		co.Commit, co.Dirty = "", !IsClean(co.Worktree)
+	head, err := ResolveCommit(co.Worktree, "HEAD")
+	if err != nil {
+		co.Dirty = !IsClean(co.Worktree)
 		return co, nil // unborn HEAD: a repo, but nothing to identify yet
 	}
-	id, err := WorkTree(co.Worktree)
+	co.Commit = head
+	// HEAD is resolved once: commit, tree and edits all refer to this commit.
+	id, err := workTreeAt(co.Worktree, head)
 	if err != nil {
 		return co, err
 	}

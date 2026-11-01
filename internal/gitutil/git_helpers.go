@@ -89,7 +89,9 @@ func IsClean(repo string) bool {
 }
 
 func workTreeClean(repo string) (bool, error) {
-	out, err := git(repo, "status", "--porcelain", "--untracked-files=normal")
+	// Submodules are never ignored, whatever submodule.<name>.ignore or
+	// diff.ignoreSubmodules say: a changed submodule is a changed tree.
+	out, err := git(repo, "status", "--porcelain", "--untracked-files=normal", "--ignore-submodules=none")
 	return out == "", err
 }
 
