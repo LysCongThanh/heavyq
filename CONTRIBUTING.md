@@ -48,6 +48,21 @@ The remote path is tested through a `sh -c` transport, which runs the same code 
   leaves the command unchanged (exit 0, no output) and logs. New command shapes need table tests in
   `internal/hook/claude_pretooluse_test.go`; output changes need `go test ./internal/hook -update`.
 
+## Fuzzing
+
+The parsers that read input heavyq does not control have Go fuzz tests (`Fuzz*` in `*_fuzz_test.go`): the
+hook's shell-command parser and rewrite, `internal/redact`, `internal/anchor`, `heavyq.toml`, and the ledger
+reader. CI fuzzes each for 20 s on pull requests that touch its package and for 2 minutes every week.
+
+```bash
+go test ./internal/anchor -run '^$' -fuzz '^FuzzSetChecked$' -fuzztime 30s   # one target at a time
+go clean -fuzzcache                                                          # fuzzing fills the cache
+```
+
+A crasher lands in `testdata/fuzz/<FuzzName>/`. Fix the parser, then commit that file with the fix: it runs as
+a regression test on every plain `go test`. A new parser that reads untrusted input gets a fuzz target and an
+entry in the `fuzz` job of `.github/workflows/ci.yml`.
+
 ## Good first issues
 
 Look for the [`good first issue`](https://github.com/LysCongThanh/heavyq/labels/good%20first%20issue)
