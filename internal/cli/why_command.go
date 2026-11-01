@@ -52,6 +52,9 @@ func whyCommand(cfg *config.Config, args []string, w, stderr io.Writer) int {
 		for _, sent := range snapshot.Story(s, &ins, now) {
 			lines = append(lines, sent.Text)
 		}
+		if l := gateWhyLine(recs, stderr); l != "" {
+			lines = append(lines, l)
+		}
 	}
 	for _, l := range lines {
 		fmt.Fprintln(w, l)
