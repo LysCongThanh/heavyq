@@ -19,6 +19,14 @@ versions follow [Semantic Versioning](https://semver.org/).
   about 4 bytes per token). `enter.stall` stays parseable but is status-line-only: no built-in enters on
   elapsed time alone. This is the pure building block: triggers and injection
   come next, nothing changes an agent's behaviour yet. See `docs/stances.md`.
+- **Dashboard Tower: an exception-first home.** The top of the page is one calm line (`Nothing needs you. 4
+  lanes working, 2 unproven.`) unless a fact heavyq measured needs a human: a **red gate** (the latest
+  conclusive gate run on a lane's current tree failed), a **loop** (the same command failed twice on the same
+  tree within 30 minutes), a **starved** lane (head of the queue past 2/3 of `force_after`, or a give-up in
+  the last hour) or **machine** trouble (unreachable, paused, over 40% of RAM outside the queue). Each card
+  has the evidence and at most one action (a button with `--control`, else the command to copy) and can be
+  dismissed for 10 minutes in that browser. `status --json` gains `exceptions[]` and `gates[]` (additive,
+  schema 1) and `heavyq why` lists each exception in one `Needs you:` line. See `docs/dashboard.md`.
 - **Ledger v2: every run is bound to the code it ran on.** History lines gain `v` (schema, `2`), `id` (a
   ULID that sorts by time), `repo` (hash of the git common dir, shared by all work trees), `worktree`,
   `subdir`, `commit`, `tree`, `dirty`, `session`, `item` and `gate`. Lines written by older versions (no
