@@ -48,7 +48,7 @@ func TestE2EHookRewritesAndTheRewriteRuns(t *testing.T) {
 		t.Fatalf("%v: %q", err, out)
 	}
 	cmd, _ := resp.H.U["command"].(string)
-	want := binPath + " 3 --lane wt-billing --max-wait 60s -- sh -c 'echo ran-in-queue $HEAVYQ_LANE' 2>&1 | tail -1"
+	want := binPath + " 3 --lane wt-billing --max-wait 60s --session s -- sh -c 'echo ran-in-queue $HEAVYQ_LANE' 2>&1 | tail -1"
 	if resp.H.Event != "PreToolUse" || resp.H.Dec != "" || cmd != want || resp.H.U["timeout"] != 180000.0 || resp.H.U["description"] != "d" {
 		t.Fatalf("unexpected response: %s\nwant command %q", out, want)
 	}
@@ -59,8 +59,8 @@ func TestE2EHookRewritesAndTheRewriteRuns(t *testing.T) {
 	if err != nil || strings.TrimSpace(string(got)) != "ran-in-queue wt-billing" {
 		t.Fatalf("rewritten command: %v %q", err, got)
 	}
-	if !strings.Contains(h.read("history.jsonl"), `"lane":"wt-billing"`) {
-		t.Fatal("the rewritten command did not go through the queue")
+	if hist := h.read("history.jsonl"); !strings.Contains(hist, `"lane":"wt-billing"`) || !strings.Contains(hist, `"session":"s"`) {
+		t.Fatalf("the rewritten command did not go through the queue with the hook's session id: %s", hist)
 	}
 	if !strings.Contains(h.read("hook.log"), "rewritten: ") {
 		t.Fatal("the rewrite was not logged")

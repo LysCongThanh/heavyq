@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/LysCongThanh/heavyq/internal/config"
+	"github.com/LysCongThanh/heavyq/internal/history"
 	"github.com/LysCongThanh/heavyq/internal/queue"
 )
 
@@ -29,7 +30,10 @@ type Options struct {
 
 // claudeInput is the part of the PreToolUse stdin JSON the hook reads.
 type claudeInput struct {
-	Cwd       string                     `json:"cwd"`
+	Cwd string `json:"cwd"`
+	// SessionID is kept raw: a value of the wrong type must only cost the
+	// --session flag, never the rewrite.
+	SessionID json.RawMessage            `json:"session_id"`
 	Event     string                     `json:"hook_event_name"`
 	ToolName  string                     `json:"tool_name"`
 	ToolInput map[string]json.RawMessage `json:"tool_input"`
@@ -100,7 +104,11 @@ func Decide(stdin []byte, o Options) ([]byte, string, error) {
 		prefix = append(prefix, "--cache")
 	}
 	wait := o.MaxWait.Round(time.Second)
-	prefix = append(prefix, "--max-wait", fmt.Sprintf("%ds", int(wait.Seconds())), "--")
+	prefix = append(prefix, "--max-wait", fmt.Sprintf("%ds", int(wait.Seconds())))
+	if sid := sessionID(in.SessionID); sid != "" {
+		prefix = append(prefix, "--session", ShellQuote(sid))
+	}
+	prefix = append(prefix, "--")
 	newCmd := cmd[:p.ProgAt] + strings.Join(prefix, " ") + " " + cmd[p.ProgAt:]
 
 	upd := make(map[string]json.RawMessage, len(in.ToolInput)+1)
@@ -130,6 +138,18 @@ func Decide(stdin []byte, o Options) ([]byte, string, error) {
 		return nil, "", err
 	}
 	return b, "rewritten: " + newCmd, nil
+}
+
+// sessionID returns the Claude session id for the ledger, or "" when it is
+// missing, not a string, or not a valid tag (1-80 of A-Za-z0-9._:-). The value
+// ends up inside a shell command line, so anything else is dropped (the command
+// is still wrapped, just without a session).
+func sessionID(raw json.RawMessage) string {
+	var s string
+	if len(raw) == 0 || json.Unmarshal(raw, &s) != nil || !history.ValidTag(s) {
+		return ""
+	}
+	return s
 }
 
 // marshal encodes without HTML escaping so '&&' stays readable.
