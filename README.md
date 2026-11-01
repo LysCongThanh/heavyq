@@ -87,6 +87,8 @@ heavyq status      # what runs, what waits, and why (opens with a short story in
 heavyq why         # just that story: "2 agents wait because every heavy slot on local is taken."
 heavyq why api     # one lane: its running and waiting jobs, the reason per machine, its last run
 heavyq history     # recent runs, with the commit each one ran on (-v: tree, session, item, gate)
+heavyq gate status # is this exact code proven? (the gates in heavyq.toml; exit 0 yes, 1 no)
+heavyq gate run    # run what is not proven yet, through the queue, cached
 heavyq hook install claude   # let Claude Code agents use the queue without being told
 ```
 
@@ -324,8 +326,20 @@ prio = 3          # 1-9, default 3
 - **Trust: the same as a Makefile.** `heavyq.toml` holds commands, and whoever can edit it can make them run.
   Gates run only when you ask for them explicitly. Hooks never execute gates, and the Claude Code hook does
   not read the file.
-- Status: the loader and the format are in place (see [docs/gates.md](docs/gates.md)). The commands that run
-  and check gates (`heavyq gate run`, `heavyq gate status`) follow in the next release.
+- **`heavyq gate status [name] [--json]`** answers "has this exact code passed?" from the run ledger, in about
+  20 ms and without running anything. For each command it says `proven`, `failed` or `missing` on the code
+  checked out now (the tree id of `HEAD` plus any uncommitted edits), with when, in which lane and how long.
+  Exit 0 when every command is proven, 1 when not, 2 on a usage error (no `heavyq.toml`, unknown gate).
+  `--json` is documented in [docs/gates.md](docs/gates.md).
+- **`heavyq gate run [name] [--parallel] [--keep-going] [--lane NAME]`** runs the commands that are not proven
+  yet, one by one through the queue, exactly like `heavyq <prio> --cache --gate <name> -- sh -c '<command>'`
+  with the gate's `prio`, `light` and `remote`. Proven commands are skipped at once ("proven"); a tree
+  that was proven before, even by another agent in another worktree, costs nothing. It stops at the first
+  failure unless `--keep-going`. Exit 0 only when the whole gate is proven on the code checked out when it
+  ends.
+- The gate is the same one CI runs: this repository's own [`heavyq.toml`](heavyq.toml) defines `ready` (gofmt,
+  `go vet`, `go test -race`), and CI runs `heavyq gate run ready` with the binary it just built.
+- When a `heavyq.toml` exists, `heavyq why` ends with a sentence on whether its `ready` gate is proven here.
 
 ## Comparison
 

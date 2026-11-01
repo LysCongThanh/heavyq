@@ -32,6 +32,7 @@ usage:
   heavyq [--config FILE] <prio 1-9> [flags] -- <command...>
   heavyq [--config FILE] status [--json]
   heavyq [--config FILE] why [lane]
+  heavyq [--config FILE] gate status [name] [--json] | run [name] [--parallel] [--keep-going] [--lane NAME]
   heavyq [--config FILE] dash [--control] [--addr 127.0.0.1:0] [--open]
   heavyq cancel <ticket|pid> | reprio <ticket|pid> <1-9>
   heavyq [--config FILE] pause|resume <machine>
@@ -58,6 +59,9 @@ run flags:
   --gate NAME          which gate it is part of
                        (ids: 1-80 characters from A-Za-z0-9._:-)
   -v, --verbose        explain cache decisions
+
+gate: ` + "`gate status`" + ` says whether this exact code passed every command of a gate from heavyq.toml
+(exit 0 proven, 1 not, 2 usage); ` + "`gate run`" + ` runs the unproven ones through the queue with --cache.
 
 Lower priority numbers run first; equal priorities are FIFO.
 Exit codes: the command's own; 2 usage; 75 max-wait; 76 remote unreachable
@@ -102,11 +106,13 @@ func Main(args []string, stdout, stderr io.Writer) int {
 		return dashCommand(cfg, args[1:], stdout, stderr)
 	case "why":
 		return whyCommand(cfg, args[1:], stdout, stderr)
+	case "gate":
+		return gateCommand(cfg, args[1:], stdout, stderr)
 	case "cancel", "reprio", "pause", "resume":
 		return controlCommand(cfg, args[0], args[1:], stdout, stderr)
 	}
 	if p, err := strconv.Atoi(args[0]); err != nil || p < 1 || p > 9 {
-		fmt.Fprintf(stderr, "heavyq: first argument must be a priority 1-9 or a command (status, why, dash, history, cache, hook, cancel, reprio, pause, resume, version)\n\n%s", usage)
+		fmt.Fprintf(stderr, "heavyq: first argument must be a priority 1-9 or a command (status, why, gate, dash, history, cache, hook, cancel, reprio, pause, resume, version)\n\n%s", usage)
 		return ExitUsage
 	}
 	return runCommand(cfg, args, stderr)

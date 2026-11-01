@@ -1,0 +1,12 @@
+# What "proven" means for heavyq itself. `heavyq gate status` says whether the
+# code checked out now has passed all of it; `heavyq gate run` runs what has not.
+# CI runs the same gate with the freshly built binary, so a local proof and a CI
+# proof mean the same thing. See docs/gates.md.
+[[gate]]
+name = "ready"
+run  = [
+  "gofmt -l . | (! grep .)",
+  "go vet ./...",
+  "go test -race -count=1 ./...",
+]
+prio = 3

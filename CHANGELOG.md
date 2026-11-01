@@ -29,8 +29,25 @@ versions follow [Semantic Versioning](https://semver.org/).
 - **`heavyq.toml`** at the git root: per-repository named gates (`[[gate]]` with `name`, `run`, `prio`,
   `light`, `remote`) and a reserved `[anchor]` section. The loader (`internal/repoconfig`) validates names,
   non-empty `run` lists, `prio` 1-9 and remote names, and refuses unknown keys (with the line) and
-  duplicate gate names. It is trusted like a Makefile, and hooks never execute gates. No command uses it
-  yet.
+  duplicate gate names. It is trusted like a Makefile, and hooks never execute gates.
+- **`heavyq gate status [name] [--json]`**: is this exact code proven? Per gate command, `proven`, `failed`
+  or `missing` on the tree checked out now (clean or dirty), with when, lane and run time, read from the
+  ledger without running anything (about 20 ms). The latest conclusive run on the tree decides; gave-up,
+  cancelled and interrupted runs are inconclusive; a cache hit counts. An unidentifiable tree (a submodule
+  with edits of its own, no commit, not git) proves nothing and says why. Exit 0 proven, 1 not, 2 usage
+  error. `--json` is documented in `docs/gates.md`.
+- **`heavyq gate run [name] [--parallel] [--keep-going] [--lane NAME]`**: runs the gate's unproven commands
+  through the queue exactly like `heavyq <prio> --cache --gate <name> --remote <r> -- sh -c '<command>'`,
+  with the gate's `prio`, `light` and `remote`. Proven commands are skipped at once; it stops at the first
+  failure unless `--keep-going`. Exit 0 only when the ledger proves the whole gate on the code checked out
+  when it ends.
+- **`internal/proof`**: the matching rules behind both (same repo, same tree, the exact `sh -c` command,
+  exit 0 and a finished run), pure and table-tested.
+- **heavyq proves itself.** This repository has a `heavyq.toml` with gate `ready` (gofmt, `go vet`,
+  `go test -race`), and CI runs `heavyq gate run ready` with the freshly built binary instead of separate
+  vet and test steps.
+- **`heavyq why`** ends with "The ready gate is proven / not proven on this tree" when the repository has a
+  `heavyq.toml`.
 - **`heavyq why [lane]`**: the story of the queue in plain words ("2 agents wait because every heavy slot
   on local is taken."). With a lane, its running and waiting jobs, the reason per candidate machine, and its
   last recorded run.
