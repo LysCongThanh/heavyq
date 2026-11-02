@@ -1,0 +1,37 @@
+name: changelog
+
+# A pull request that changes internal/ or cmd/ code adds a changelog fragment, changelog.d/<slug>.<kind>.md
+# (changelog.d/README.md), unless it carries the label no-changelog. Cheap: it reads the list of changed files
+# from the API and runs tools/changelog, which is stdlib only. Re-runs when a label is added or removed.
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, labeled, unlabeled]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable
+      - name: a fragment for code changes, or the no-changelog label
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        run: |
+          gh api "repos/${REPO}/pulls/${PR}/files" --paginate --jq '.[] | select(.status != "removed") | .filename' \
+            | go run ./tools/changelog check -labels "$LABELS"
