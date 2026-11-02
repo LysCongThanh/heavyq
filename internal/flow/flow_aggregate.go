@@ -22,6 +22,9 @@ type Throughput struct {
 	P50ClaimToProofS float64 `json:"p50_claim_to_proof_s"`
 	WindowS          float64 `json:"window_s"`
 	N                int     `json:"n"` // items proven inside the window
+	// LastProof is when the most recent item in the window was proven, null when none was: the statusline and the
+	// forecast flag "at risk" when nothing has been proven for twice the median while lanes are working.
+	LastProof *time.Time `json:"last_proof"`
 }
 
 // Constraint is the state holding the largest share of lead time. State is ""
@@ -95,6 +98,10 @@ func throughputOf(in Input, holds map[string]*itemHolds, from time.Time, activeS
 			continue
 		}
 		tp.N++
+		if tp.LastProof == nil || st.At.After(*tp.LastProof) {
+			t := st.At.UTC()
+			tp.LastProof = &t
+		}
 		if ih := holds[st.ID]; ih != nil {
 			if c, ok := ih.lastClaim(st.At); ok {
 				lat = append(lat, st.At.Sub(c).Seconds())

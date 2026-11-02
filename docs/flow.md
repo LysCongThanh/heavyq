@@ -55,7 +55,7 @@ later).
  "items":{"total":8,"proven":5,"running":2,"blocked":1,"claimed_unproven":0,"open":0},
  "needs_you":[{"item":"doc-7","lane":"docs","session":"sess-1","reason":"permission_prompt: Bash(npm run e2e)","since":"2026-11-02T10:31:00Z"}],
  "constraint":{"state":"ci_wait","share":0.41,"significant":true},
- "throughput":{"proven_per_hour":2.1,"p50_claim_to_proof_s":1800,"window_s":14400,"n":9},
+ "throughput":{"proven_per_hour":2.1,"p50_claim_to_proof_s":1800,"window_s":14400,"n":9,"last_proof":"2026-11-02T10:35:00Z"},
  "lanes":[{"lane":"api","state":"proving","item":"login-api","since":"2026-11-02T10:35:00Z"}],
  "session":{"model":"claude-opus-5","agent_version":"2.1.90","rate_limits":{"five_hour_pct":61,"seven_day_pct":20}},
  "fleet":{"lead_s":5400,"by_state_s":{"working":3000,"ci_wait":2200},"flow_efficiency":0.55},
@@ -67,6 +67,8 @@ added, never renamed or retyped.
 
 - `run` is `null` until the preflight records run spans. `session` is `null` until a session meta record exists.
 - `constraint.state` is `""` when there is no lead time. `needs_you` and `lanes` are `[]` when empty.
+- `throughput.last_proof` is when the newest item in the window was proven, `null` when none was (with `p50_claim_to_proof_s`
+  it tells "nothing proven for twice the median while lanes work", the at-risk signal).
 - `items.open` counts items nobody holds and nothing proves (stale ones included). `claimed_unproven` counts items
   ticked without a passing proof.
 - `needs_you[].item` is the item the lane holds, `""` when none. `since` is when the lane started waiting.

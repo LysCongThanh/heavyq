@@ -164,6 +164,9 @@ func TestThroughputCountsProvenItemsPerActiveHourWithMedianClaimToProof(t *testi
 	if tp.N != 3 || tp.P50ClaimToProofS != 30*60 || tp.WindowS != 4*3600 {
 		t.Fatalf("%+v", tp)
 	}
+	if tp.LastProof == nil || !tp.LastProof.Equal(at(100)) {
+		t.Errorf("last_proof is the newest proof in the window: %v", tp.LastProof)
+	}
 	if want := 3.0 / 1.6666666666666667; tp.ProvenPerHour < want-0.01 || tp.ProvenPerHour > want+0.01 { // 100 active minutes
 		t.Errorf("proven per active hour %v, want %v", tp.ProvenPerHour, want)
 	}
@@ -193,7 +196,10 @@ func TestSnapshotJSONShapeIsTheContract(t *testing.T) {
 	}
 	var tp map[string]json.RawMessage
 	_ = json.Unmarshal(m["throughput"], &tp)
-	for _, k := range []string{"proven_per_hour", "p50_claim_to_proof_s", "window_s", "n"} {
+	if string(tp["last_proof"]) != "null" {
+		t.Errorf("last_proof is null without a proof: %s", tp["last_proof"])
+	}
+	for _, k := range []string{"proven_per_hour", "p50_claim_to_proof_s", "window_s", "n", "last_proof"} {
 		if _, ok := tp[k]; !ok {
 			t.Errorf("throughput lacks %q", k)
 		}

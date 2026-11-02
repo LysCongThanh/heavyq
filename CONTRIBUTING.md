@@ -45,6 +45,9 @@ The remote path is tested through a `sh -c` transport, which runs the same code 
 | `internal/flow` | pure derivation of how work moves: per-item (else per-session) timelines of states, fleet aggregates, throughput, the constraint, and the `Snapshot` that is `flow/state.json`. See `docs/flow.md` |
 | `internal/flowstate` | the I/O around `flow`: `state.json` written atomically, debounced and under `flock`; the hook events log; the per-session block flags |
 | `internal/sessionmeta` | the per-session record (model, agent version, rate limits) kept from the status-line JSON; the ledger joins `agent` and `model` on it |
+||||||| 51a57ba
+| `internal/preflight` | the preflight checks as pure functions of gathered facts (anchor, dependencies, environment, Claude Code permissions, quota), the GO / NO-GO report and the SessionStart nudge rule. See `docs/preflight.md` |
+| `internal/runspan` | run spans: the plan of one long run, a JSON file per span under the repository's common dir (`Open`, `End`, `Current`, `List`) |
 | `internal/repoconfig` | per-repo `heavyq.toml`: named gates, validation (trusted like a Makefile) |
 | `internal/tomlkeys` | strict-key check shared by both config parsers: unknown or upper-case keys, with their line |
 | `internal/cli/*_command_spec.go` | one file per command: its table entry (name, synopsis, flags, subcommands) and its dispatch, registered from `init()` through `command_registry.go`. The table generates `heavyq --help`, `<cmd> --help`, `heavyq completion` and the man page, and `Main` dispatches through it; drift tests tie it to the flag definitions |

@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "verdict": "NO-GO",
+  "goal": "ship login v2",
+  "hours": 8,
+  "parallel": 3,
+  "items": [
+    "api"
+  ],
+  "checked": [
+    "anchor",
+    "dependencies",
+    "environment",
+    "quota"
+  ],
+  "skipped": [
+    "permissions: no Claude Code settings found"
+  ],
+  "findings": [
+    {
+      "check": "anchor",
+      "severity": "block",
+      "subject": "ui",
+      "text": "item ui has no proof: it can only be ticked by hand, never proven",
+      "fix": "edit .heavyq/anchor.md:3: add `proof: <command>` to ui"
+    },
+    {
+      "check": "dependencies",
+      "severity": "block",
+      "subject": "docs",
+      "text": "item docs needs a human: design sign-off",
+      "fix": "answer it, then delete the `needs:` span at .heavyq/anchor.md:3"
+    },
+    {
+      "check": "environment",
+      "severity": "warn",
+      "subject": "/repo",
+      "text": "3.0 GiB free on the file system of /repo: a long run may fill it",
+      "fix": "heavyq cache clear"
+    },
+    {
+      "check": "environment",
+      "severity": "warn",
+      "text": "3 lanes planned but 2 heavy slots in all (local 2): the rest queue behind them",
+      "fix": "heavyq preflight --parallel 2"
+    },
+    {
+      "check": "quota",
+      "severity": "warn",
+      "text": "the 5 hour window is 85% used: the agent will likely hit the limit and stop",
+      "fix": "heavyq preflight --hours 2"
+    }
+  ]
+}
