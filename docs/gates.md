@@ -96,6 +96,10 @@ needs  = ["pg", "port:2"]              # optional: pool values each command hold
 [anchor]                               # reserved: accepted, not used yet
 file  = ".heavyq/anchor.md"
 extra = ["plans/*/phase-*.md"]
+
+[items]                                # optional: limits of the claim size gate (docs/items.md)
+iterations      = 3                    # proof runs an item is expected to need, 1-20
+max_proof_share = 1.0                  # share of the 30 min lease the expected proof time may use, (0, 1]
 ```
 
 | Key | Type | Default | Rules |
@@ -109,6 +113,8 @@ extra = ["plans/*/phase-*.md"]
 | `pool` | tables | none | `[[pool]]` tables, as in the user config; a pool here replaces the user's pool of the same name. See [pools](pools.md). |
 | `anchor.file` | string | none | relative path inside the repository |
 | `anchor.extra` | list of strings | none | relative globs inside the repository |
+| `items.iterations` | integer | `3` | 1-20; proof runs an item is expected to need; `item claim` refuses an item whose proof p50 times this is over the lease budget |
+| `items.max_proof_share` | number | `1` | above 0, at most 1; the share of the 30 minute lease that budget is |
 
 The file may be empty (no gates). It is at most 1 MiB and must be a regular file (a symlink to one is fine).
 

@@ -3,6 +3,7 @@ package repoconfig
 import (
 	"errors"
 	"fmt"
+	"math"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -45,6 +46,11 @@ func (r *Repo) fill(raw rawFile) error {
 		}
 		r.Anchor = a
 	}
+	it, err := raw.Items.validate()
+	if err != nil {
+		return fmt.Errorf("[items]: %w", err)
+	}
+	r.Items = it
 	return nil
 }
 
@@ -121,4 +127,25 @@ func (ra rawAnchor) validate() (Anchor, error) {
 		}
 	}
 	return Anchor(ra), nil // same fields; the types differ only in TOML tags
+}
+
+// validate fills the defaults and range-checks the keys; a nil [items] is all defaults.
+func (ri *rawItems) validate() (Items, error) {
+	out := DefaultItems()
+	if ri == nil {
+		return out, nil
+	}
+	if v := ri.MaxProofShare; v != nil {
+		if math.IsNaN(*v) || *v <= 0 || *v > 1 {
+			return Items{}, fmt.Errorf("max_proof_share %v must be above 0 and at most 1", *v)
+		}
+		out.MaxProofShare = *v
+	}
+	if v := ri.Iterations; v != nil {
+		if *v < 1 || *v > MaxIterations {
+			return Items{}, fmt.Errorf("iterations %d must be between 1 and %d", *v, MaxIterations)
+		}
+		out.Iterations = *v
+	}
+	return out, nil
 }

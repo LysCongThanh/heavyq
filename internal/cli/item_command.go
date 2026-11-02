@@ -17,7 +17,7 @@ import (
 
 const itemUsage = `usage:
   heavyq [--config FILE] item ls [--all] [--json]
-  heavyq [--config FILE] item claim <id> | --next [--json]
+  heavyq [--config FILE] item claim <id> | --next [--force] [--json]
   heavyq [--config FILE] item release <id> [--force]
   heavyq [--config FILE] item done <id> [--run] [--json]
   heavyq [--config FILE] item block <id> "needs: <what a human must provide>"
@@ -25,6 +25,7 @@ const itemUsage = `usage:
 Items are the checklist lines of .heavyq/anchor.md (and the read-only extra sources of heavyq.toml [anchor]).
 claim leases an item to this lane (TTL 30 min, renewed by every heavyq run in the lane); done refuses until the
 item's proof passes on this exact code, then ticks its box; block records what is missing and frees the item.
+claim refuses an item with no runnable proof or a proof too long for one lease (--force overrides; --next skips it).
 Exit: 0 ok, 1 refused (held, unproven, nothing to claim), 2 usage. See docs/items.md.
 `
 

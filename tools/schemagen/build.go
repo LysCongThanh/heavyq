@@ -91,7 +91,7 @@ func build(f schemaFile) ([]byte, error) {
 
 // definitionNames are friendlier names for the types of the TOML schemas (the Go ones are unexported or
 // too generic): Go type name -> definition name.
-var definitionNames = map[string]string{"rawGate": "Gate", "rawAnchor": "Anchor", "Spec": "Pool"}
+var definitionNames = map[string]string{"rawGate": "Gate", "rawAnchor": "Anchor", "rawItems": "Items", "Spec": "Pool"}
 
 // toDraft07 renames $defs to definitions (the draft 7 spelling), renames definitions and indents the result.
 // Renaming applies to quoted definition keys and to the last segment of references only; the TOML schemas
