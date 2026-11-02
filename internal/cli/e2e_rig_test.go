@@ -89,9 +89,15 @@ type rig struct {
 // newSerialRig instead: t.Setenv panics in a parallel test.
 func newRig(t *testing.T, config string) *rig {
 	t.Helper()
-	t.Parallel()
+	// A test may make several rigs, and t.Parallel panics when called twice.
+	if _, again := parallelTests.LoadOrStore(t, true); !again {
+		t.Parallel()
+	}
 	return newSerialRig(t, config)
 }
+
+// parallelTests are the tests that newRig has already made parallel.
+var parallelTests sync.Map
 
 // newSerialRig is newRig for a test that must not run in parallel (see newRig).
 func newSerialRig(t *testing.T, config string) *rig {
