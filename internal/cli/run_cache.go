@@ -56,11 +56,9 @@ func (r *run) cachePhase(lane string) (rc int, done bool) {
 		return skip("no cache directory (set XDG_CACHE_HOME or HOME)")
 	case r.opts.Ref != "HEAD":
 		return skip("--ref other than HEAD")
-	case len(r.opts.With) > 0:
-		return skip("--with sibling repos are not part of the key")
 	}
 	key, tree, why := cache.KeyAndTree(cache.KeyInput{Dir: r.localDir(), Argv: r.opts.Argv, EnvNames: r.cfg.Cache.Env,
-		Version: version(), BaseRef: r.opts.BaseRef, Getenv: os.LookupEnv})
+		Version: version(), BaseRef: r.opts.BaseRef, Siblings: siblingIDs(r.pl.siblings), Getenv: os.LookupEnv})
 	if why != "" {
 		return skip(why)
 	}
@@ -164,7 +162,7 @@ func (r *run) cacheFinish(machine string, rc int, ran bool, runSecs float64) {
 	rec := cs.rec
 	cs.rec = nil
 	key, why := cache.Key(cache.KeyInput{Dir: r.localDir(), Argv: r.opts.Argv, EnvNames: r.cfg.Cache.Env,
-		Version: version(), BaseRef: r.opts.BaseRef, Getenv: os.LookupEnv})
+		Version: version(), BaseRef: r.opts.BaseRef, Siblings: siblingIDs(r.pl.siblings), Getenv: os.LookupEnv})
 	switch {
 	case !ran:
 		rec.Abort()
@@ -172,6 +170,9 @@ func (r *run) cacheFinish(machine string, rc int, ran bool, runSecs float64) {
 	case key != cs.key:
 		rec.Abort()
 		cs.note = "the work tree changed during the run (" + orDefault(why, "different commit") + "); nothing stored"
+	case machine == config.LocalName && r.siblingDrift() != "":
+		rec.Abort()
+		cs.note = "a --with sibling changed during the run (" + r.siblingDrift() + "); nothing stored"
 	default:
 		err := cs.store.Commit(rec, cache.Meta{Key: cs.key, Created: time.Now(), Exit: rc, Machine: machine,
 			Lane: r.me.Lane, Cmd: r.me.Cmd, RunSecs: runSecs})

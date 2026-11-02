@@ -26,6 +26,8 @@ type runOptions struct {
 	Ref      string
 	BaseRef  string
 	With     []string
+	// NeedGH: the command uses the GitHub CLI login of this machine, so it runs here (--need-gh).
+	NeedGH bool
 	// Needs are the pool values the run holds while it runs (--needs).
 	Needs []pools.Need
 	Cache bool
@@ -71,7 +73,7 @@ func parseRunArgs(args []string, cfg *config.Config) (runOptions, error) {
 		}
 		var v string
 		switch name {
-		case "--light", "--needs-ram", "--cache", "--digest", "-v", "--verbose":
+		case "--light", "--needs-ram", "--cache", "--digest", "-v", "--verbose", "--need-gh":
 			if hasVal {
 				return o, fmt.Errorf("%s takes no value", name)
 			}
@@ -81,6 +83,8 @@ func parseRunArgs(args []string, cfg *config.Config) (runOptions, error) {
 				o.Light = true
 			case "--needs-ram":
 				o.NeedsRAM = true
+			case "--need-gh":
+				o.NeedGH = true
 			case "--cache":
 				o.Cache = true
 			case "--digest":

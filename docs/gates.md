@@ -92,6 +92,8 @@ prio   = 3                             # optional, 1-9, default 3
 light  = false                         # optional, may use the light slots
 remote = "local"                       # optional: local (default) | auto | <remote name>
 needs  = ["pg", "port:2"]              # optional: pool values each command holds while it runs (see pools.md)
+with   = ["shared-schema@v2.1.0"]      # optional: sibling repos next to this one, pinned (see remote.md)
+need_gh = false                        # optional: the commands use this machine's GitHub CLI login: run here only
 
 [proof]                                # optional: where proofs run (gates without a remote key, item done --run)
 remote = "auto"                        # local (default) | auto | <remote name>
@@ -113,6 +115,8 @@ max_proof_share = 1.0                  # share of the 30 min lease the expected 
 | `gate.light` | bool | `false` | |
 | `gate.remote` | string | `"local"` | `local`, `auto`, or a remote name (`[A-Za-z0-9][A-Za-z0-9._-]{0,63}`). Whether the remote exists is checked against your own config when the gate runs. |
 | `gate.needs` | list of strings | none | `pool` or `pool:N` entries, each pool once; every command of the gate holds them while it runs, see [pools](pools.md). With `needs`, `remote` must be `local` or `auto` (the run stays local). |
+| `gate.with` | list of strings | none | sibling repositories each command needs next to this one: `"name"` or `"name@ref"` (a directory next to the repository, or a path containing `/`). Passed to every command as `--with`: pinned at the start of the run, shipped with remote runs, and part of the proof, so a sibling at another commit is another run, and a sibling that cannot be resolved proves nothing. See [remote](remote.md#sibling-repositories---with). |
+| `gate.need_gh` | bool | `false` | the commands call the GitHub CLI with this machine's login, so the gate runs here only (passes `--need-gh`). Not with a named `remote`; it overrides a `[proof] remote` default, and `--remote <name>` on the command line is exit 2. |
 | `pool` | tables | none | `[[pool]]` tables, as in the user config; a pool here replaces the user's pool of the same name. See [pools](pools.md). |
 | `proof.remote` | string | unset | `[proof]`: where `item done --run` and `gate run` run proofs for gates without their own `remote` key; `local`, `auto` or a remote name. Overrides `[proof]` of the user config. See [items](items.md#where-the-proof-runs). |
 | `anchor.file` | string | none | relative path inside the repository |
@@ -193,7 +197,7 @@ flaky detection and the Tower's loop detection share (`internal/runident`). It i
 | subdirectory | relative to the repository root; gate commands run from the root |
 | `cache.env` | for each listed variable its value, or "unset" (set-but-empty differs from unset) |
 | base ref | the commit of `--base-ref` / `queue.base_ref`; a ref that does not resolve counts as none |
-| `--with` siblings | name and pinned commit, when used |
+| `--with` siblings | name and full pinned commit of each, in any order |
 
 Where the run executed (local or a remote) is not part of it, nor is the lane, the priority or the heavyq
 version (the cache key adds the version on top).

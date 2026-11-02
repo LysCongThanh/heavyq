@@ -54,6 +54,12 @@ type Gate struct {
 	// Needs are pool values every command of the gate holds while it runs
 	// ("pg", "port:2"). A gate with needs runs on this machine.
 	Needs []string
+	// With are sibling repositories every command needs next to this one,
+	// "name@ref" or "name" (HEAD); they are passed to the run as --with.
+	With []string
+	// NeedGH: the commands use the GitHub CLI login of this machine, so the
+	// gate runs here (--need-gh).
+	NeedGH bool
 	// Detected marks the default gate Detect made up from files at the git
 	// root because the repository has no heavyq.toml; Sources names those
 	// files. Both are zero for a gate read from a file.
@@ -151,6 +157,8 @@ type rawGate struct {
 	Light  bool     `toml:"light"`
 	Remote string   `toml:"remote"`
 	Needs  []string `toml:"needs"`
+	With   []string `toml:"with"`
+	NeedGH bool     `toml:"need_gh"`
 }
 
 type rawAnchor struct {

@@ -118,7 +118,9 @@ type Ticket struct {
 	Needs []string `json:"needs,omitempty"`
 	// Pools are the values a running ticket holds, by pool.
 	Pools map[string][]string `json:"pools,omitempty"`
-	WaitS float64             `json:"wait_s"`
+	// With are the pinned --with sibling repositories ("name@sha12"); absent without any.
+	With  []string `json:"with,omitempty"`
+	WaitS float64  `json:"wait_s"`
 	// CancelRequested: an operator asked to stop it; its process applies
 	// the request within about a poll interval.
 	CancelRequested bool `json:"cancel_requested"`

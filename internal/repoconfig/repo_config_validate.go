@@ -107,6 +107,24 @@ func (rg rawGate) validate() (Gate, error) {
 		}
 		g.Needs = rg.Needs
 	}
+	if rg.NeedGH {
+		if g.RemoteSet && g.Remote != config.LocalName && g.Remote != remoteAuto {
+			return Gate{}, fmt.Errorf("need_gh uses the GitHub login of this machine, so remote %q is not possible (use %q)", g.Remote, config.LocalName)
+		}
+		g.NeedGH = true
+	}
+	seenWith := map[string]bool{}
+	for j, spec := range rg.With {
+		repo, _, err := config.ParseSiblingSpec(spec)
+		if err != nil {
+			return Gate{}, fmt.Errorf("with[%d]: %w", j, err)
+		}
+		if seenWith[repo] {
+			return Gate{}, fmt.Errorf("with[%d]: %q is listed twice", j, repo)
+		}
+		seenWith[repo] = true
+	}
+	g.With = rg.With
 	return g, nil
 }
 

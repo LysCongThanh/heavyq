@@ -121,6 +121,14 @@ func placeGate(cfg *config.Config, t *gateTarget, remoteFlag string, stderr io.W
 		fmt.Fprintf(stderr, "heavyq: gate %s needs pool values of this machine: running locally, not on %s (%s)\n", g.Name, pl.Remote, pl.From)
 		pl = proofPlace{config.LocalName, pl.From}
 	}
+	if g.NeedGH && pl.Remote != config.LocalName && pl.Remote != config.RemoteAuto {
+		if remoteFlag != "" {
+			fmt.Fprintf(stderr, "heavyq: gate %s needs this machine's GitHub login (need_gh), so --remote %s is not possible\n", g.Name, pl.Remote)
+			return g, ExitUsage
+		}
+		fmt.Fprintf(stderr, "heavyq: gate %s needs this machine's GitHub login (need_gh): running locally, not on %s (%s)\n", g.Name, pl.Remote, pl.From)
+		pl = proofPlace{config.LocalName, pl.From}
+	}
 	pl, why := fitProofToTree(t.repo.Root, pl, stderr)
 	if why != "" {
 		fmt.Fprintln(stderr, "heavyq:", why)
@@ -239,6 +247,12 @@ func gateRunArgs(g repoconfig.Gate, cmd, lane string, fresh bool) []string {
 	}
 	if len(g.Needs) > 0 {
 		args = append(args, "--needs", strings.Join(g.Needs, ","))
+	}
+	for _, w := range g.With {
+		args = append(args, "--with", w)
+	}
+	if g.NeedGH {
+		args = append(args, "--need-gh")
 	}
 	args = append(args, "--")
 	return append(args, proof.Argv(cmd)...)

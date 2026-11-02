@@ -66,6 +66,9 @@ func recordDetail(r history.Record) string {
 	add("session", r.Session)
 	add("item", r.Item)
 	add("gate", r.Gate)
+	if r.With != "" {
+		parts = append(parts, "with: "+strings.ReplaceAll(r.With, ",", " "))
+	}
 	return strings.Join(parts, "  ")
 }
 

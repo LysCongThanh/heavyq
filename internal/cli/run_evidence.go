@@ -48,6 +48,11 @@ func (r *run) settled(before gitutil.Checkout) gitutil.Checkout {
 	if before.Tree == "" {
 		return before
 	}
+	if m := r.siblingDrift(); m != "" { // a sibling moved or was edited under the running command
+		r.verbosef("ledger: a --with sibling changed during the run (%s); no tree identity recorded", m)
+		before.Tree = ""
+		return before
+	}
 	after, err := gitutil.Identify(r.localDir())
 	if err != nil || after.Tree == before.Tree {
 		return before
@@ -60,12 +65,8 @@ func (r *run) settled(before gitutil.Checkout) gitutil.Checkout {
 // runID is the run_id of this run on the code co: the same computation the
 // cache key and `gate status` use, with the environment this process has.
 func (r *run) runID(co gitutil.Checkout) string {
-	var sibs []string
-	for _, s := range r.pl.siblings {
-		sibs = append(sibs, s.Name+"@"+s.SHA)
-	}
 	return runident.ID(runident.Input{Tree: co.Tree, Argv: r.opts.Argv, Subdir: co.Subdir, EnvNames: r.cfg.Cache.Env,
-		Getenv: os.LookupEnv, BaseSHA: runident.BaseSHA(r.localDir(), r.opts.BaseRef), Siblings: sibs})
+		Getenv: os.LookupEnv, BaseSHA: runident.BaseSHA(r.localDir(), r.opts.BaseRef), Siblings: siblingIDs(r.pl.siblings)})
 }
 
 // tag stamps who ran it, what exactly it ran (the argv hash, taken before the
@@ -77,6 +78,7 @@ func (r *run) tag(rec *history.Record, co gitutil.Checkout) {
 	rec.Session, rec.Item, rec.Gate = r.opts.Session, r.opts.Item, r.opts.Gate
 	rec.Agent, rec.Model = agentModelOf(co.Worktree, rec.Session) // from the session meta record, when there is one
 	rec.Needs = strings.Join(pools.FormatNeeds(r.opts.Needs), ",")
+	rec.With = strings.Join(siblingLabels(r.pl.siblings), ",")
 	if r.me != nil { // a cache hit is recorded before the ticket exists
 		rec.Pools = pools.FormatHeld(r.opts.Needs, r.me.Pools)
 	}

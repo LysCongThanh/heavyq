@@ -276,6 +276,21 @@
       "type": "object",
       "description": "QueueConfig holds queue-wide behaviour."
     },
+    "RunConfig": {
+      "properties": {
+        "need_gh_repos": {
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+          },
+          "type": "array",
+          "description": "Repository directory names whose commands call the GitHub CLI with this machine's login: runs there behave as if --need-gh were given (this machine only)."
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "description": "Defaults for `heavyq \u003cprio\u003e -- cmd`."
+    },
     "Pool": {
       "oneOf": [
         {
@@ -363,6 +378,9 @@
     },
     "proof": {
       "$ref": "#/definitions/ProofConfig"
+    },
+    "run": {
+      "$ref": "#/definitions/RunConfig"
     },
     "pool": {
       "items": {

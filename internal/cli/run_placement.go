@@ -42,40 +42,31 @@ func preparePlacement(cfg *config.Config, o *runOptions, stderr io.Writer) (*pla
 		}
 		o.Remote = config.LocalName
 	}
-	p := &placement{target: o.Remote, wd: wd, refIsHead: o.Ref == "HEAD"}
+	mainRepo, err := mainRepoRoot(wd, o.Repo)
+	if err != nil {
+		return nil, err
+	}
+	if err := o.pinToThisMachineForGH(cfg, mainRepo, stderr); err != nil {
+		return nil, err
+	}
+	sibs, err := resolveSiblings(o.With, mainRepo)
+	if err != nil {
+		return nil, err
+	}
+	p := &placement{target: o.Remote, wd: wd, refIsHead: o.Ref == "HEAD", siblings: sibs}
 	if p.target == "" {
 		p.target = "local"
 		if cfg.AutoEnabled() {
-			if repo, why := autoEligible(wd, o); why == "" {
+			if repo, why := autoEligible(wd, o, sibs); why == "" {
 				p.target, p.defaultMode, o.Repo = "auto", true, repo
+				mainRepo = repo
 			}
-		}
-	}
-	mainRepo := o.Repo
-	if mainRepo == "" {
-		mainRepo, _ = gitutil.TopLevel(wd)
-	}
-	if mainRepo != "" {
-		if mainRepo, err = filepath.Abs(mainRepo); err != nil {
-			return nil, err
 		}
 	}
 	if p.target != "local" {
 		if err := p.resolveRemoteSource(mainRepo, o, stderr); err != nil {
 			return nil, err
 		}
-	}
-	for _, spec := range o.With {
-		s, err := gitutil.ResolveSibling(spec, mainRepo)
-		if err != nil {
-			return nil, err
-		}
-		for _, x := range p.siblings {
-			if x.Name == s.Name {
-				return nil, fmt.Errorf("--with %q given twice", s.Name)
-			}
-		}
-		p.siblings = append(p.siblings, s)
 	}
 	if p.target == "local" && o.Ref != "HEAD" {
 		if p.sha, err = gitutil.ResolveCommit(mainRepo, o.Ref); err != nil {
@@ -85,6 +76,9 @@ func preparePlacement(cfg *config.Config, o *runOptions, stderr io.Writer) (*pla
 	}
 	p.refreshLocal()
 	if p.target == "local" && p.localWhy != "" {
+		if o.NeedGH {
+			return nil, fmt.Errorf("cannot run locally: %s (--need-gh keeps the run on this machine: commit/checkout the sibling or the ref first)", p.localWhy)
+		}
 		return nil, fmt.Errorf("cannot run locally: %s (commit/checkout, or run remotely with --remote)", p.localWhy)
 	}
 	p.candidates = p.machines(cfg)
@@ -169,7 +163,7 @@ func (p *placement) machines(cfg *config.Config) []string {
 // autoEligible reports the repo root when a default ticket may be placed
 // remotely: inside a clean git repo and the command references nothing
 // outside it. Otherwise it returns the reason it stays local.
-func autoEligible(wd string, o *runOptions) (string, string) {
+func autoEligible(wd string, o *runOptions, sibs []gitutil.Sibling) (string, string) {
 	dir := wd
 	if o.Repo != "" {
 		dir = o.Repo
@@ -184,7 +178,7 @@ func autoEligible(wd string, o *runOptions) (string, string) {
 	if !gitutil.IsClean(top) {
 		return "", "uncommitted changes"
 	}
-	if why := schedule.OutsideRepoReference(o.Argv, top); why != "" {
+	if why := schedule.OutsideRepoReference(argvWithoutSiblingPaths(o.Argv, sibs), top); why != "" {
 		return "", "command " + why
 	}
 	return top, ""

@@ -57,6 +57,10 @@ func patchRepoFile(root *jsonschema.Schema) {
 	needs := prop(gate, "needs")
 	needs.Description = `Pool values every command holds while it runs, for example ["pg", "port:2"]. A gate with needs runs on this machine.`
 	needs.Items.Pattern = `^[a-z][a-z0-9_]{0,31}(:[0-9]+)?$`
+	with := prop(gate, "with")
+	with.Description = `Sibling repositories every command needs next to this one, "name@ref" (a directory next to the repository, or a path containing "/"; ref defaults to HEAD). Passed to the run as --with: pinned to a commit, shipped with it on remote runs, and part of the proof identity.`
+	with.Items.MinLength = u64(1)
+	prop(gate, "need_gh").Description = "The commands use the GitHub CLI with this machine's login, so the gate runs here only (--need-gh). Not combinable with a named remote."
 
 	proof := def(root, "rawProof")
 	proof.Description = "Where `heavyq item done --run` and `heavyq gate run` run proofs for this repository; the user config has the same table."
@@ -97,6 +101,11 @@ func patchUserConfig(root *jsonschema.Schema) {
 	proof.Description = "Where `heavyq item done --run` and `heavyq gate run` run proofs. The same table in a repository's heavyq.toml overrides it there."
 	prop(proof, "remote").Description = `"local" (the default), "auto" (the scheduler picks among local and the configured remotes, free slots first) or the name of a [[remote]]. A gate with its own remote key keeps it; --remote wins over both.`
 	prop(proof, "remote").Default = config.LocalName
+	runCfg := def(root, "RunConfig")
+	runCfg.Description = "Defaults for `heavyq <prio> -- cmd`."
+	needGH := prop(runCfg, "need_gh_repos")
+	needGH.Description = "Repository directory names whose commands call the GitHub CLI with this machine's login: runs there behave as if --need-gh were given (this machine only)."
+	needGH.Items.Pattern = config.SafeName.String()
 	machine := def(root, "MachineConfig")
 	prop(machine, "name").Pattern = config.SafeName.String()
 	patchPoolSpec(root)

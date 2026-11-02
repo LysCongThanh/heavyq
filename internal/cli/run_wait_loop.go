@@ -122,7 +122,7 @@ func (r *run) round(headSince *time.Time) (*claim, int, int, []*queue.Ticket, er
 // stillSafeRemotely re-verifies an implicit auto ticket right before it goes
 // remote, and ships the commit that is checked out now.
 func (r *run) stillSafeRemotely() bool {
-	repo, why := autoEligible(r.pl.wd, &r.opts)
+	repo, why := autoEligible(r.pl.wd, &r.opts, r.pl.siblings)
 	if why != "" || repo != r.pl.repo {
 		return false
 	}
