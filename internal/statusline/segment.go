@@ -136,10 +136,12 @@ func forecastPart(fc forecast.Result, now time.Time, th Theme, words bool) rende
 	return render.Line{{Text: Pick(th, GlyphGood) + " on track" + dot + eta, Style: render.Good}}
 }
 
-// ETAClock is the local time of day, with the weekday when it is not today.
+// ETAClock is the local time of day. Within the next 18 hours the clock alone is
+// unambiguous ("~00:05" just after midnight), so the weekday is added only for
+// later times: a segment that grows past midnight would push out the constraint.
 func ETAClock(eta, now time.Time) string {
 	eta, now = eta.Local(), now.Local()
-	if eta.YearDay() == now.YearDay() && eta.Year() == now.Year() {
+	if d := eta.Sub(now); d >= 0 && d < 18*time.Hour {
 		return eta.Format("15:04")
 	}
 	return eta.Format("Mon 15:04")

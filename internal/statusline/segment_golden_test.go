@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/LysCongThanh/heavyq/internal/flow"
 	"github.com/LysCongThanh/heavyq/internal/flowstate"
@@ -141,5 +142,20 @@ func TestJoinAppendsToTheLastLine(t *testing.T) {
 	}
 	if got := Join("a", "SEG", Theme{ASCII: true}); got != "a | SEG" {
 		t.Errorf("ascii separator: %q", got)
+	}
+}
+
+// Just before midnight a forecast for just after it stays a plain clock, so the
+// segment does not grow and push the constraint out (the 23:00-24:00 failure).
+func TestETAClockAcrossMidnightStaysShort(t *testing.T) {
+	now := time.Date(2026, 11, 2, 23, 20, 0, 0, time.Local)
+	for eta, want := range map[time.Time]string{
+		now.Add(45 * time.Minute): "00:05",
+		now.Add(17 * time.Hour):   "16:20",
+		now.Add(30 * time.Hour):   "Wed 05:20",
+	} {
+		if got := ETAClock(eta, now); got != want {
+			t.Errorf("ETAClock(%v) = %q, want %q", eta, got, want)
+		}
 	}
 }

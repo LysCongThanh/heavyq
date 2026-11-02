@@ -1,0 +1,1 @@
+- The statusline forecast keeps a plain clock (`~00:05`) for any time within the next 18 hours, so a forecast past midnight no longer widens the segment and pushes out the constraint.
