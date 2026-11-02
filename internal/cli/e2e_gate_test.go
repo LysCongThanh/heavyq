@@ -158,7 +158,7 @@ func TestE2EGateRerunAfterLedgerLossIsAnInstantCacheHit(t *testing.T) {
 }
 
 func TestE2EGateFailingCommandShowsFailedAndKeepGoingRunsTheRest(t *testing.T) {
-	h := newRig(t, calmConfig) // a busy test machine must not turn this plain failure into "under load"
+	h := newRig(t, baseConfig)
 	repo := gateRepo(t, h, "")
 	h.edit(repo, "broken\n")
 	rc, out := h.run("gate", "run", "ready")
@@ -183,7 +183,7 @@ func TestE2EGateFailingCommandShowsFailedAndKeepGoingRunsTheRest(t *testing.T) {
 }
 
 func TestE2EGateParallelRunsEveryCommandAndProves(t *testing.T) {
-	h := newRig(t, "[queue]\npoll = \"50ms\"\nresource_gate = false\n[local]\nheavy_slots = 3\nlight_slots = 1\n")
+	h := newRig(t, parallelConfig)
 	gateRepo(t, h, "")
 	rc, out := h.run("gate", "run", "--parallel", "--lane", "gl")
 	if rc != 0 || h.counts() != "111" {

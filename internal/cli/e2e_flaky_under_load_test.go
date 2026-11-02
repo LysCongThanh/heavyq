@@ -13,15 +13,12 @@ import (
 	"github.com/LysCongThanh/heavyq/internal/proof"
 )
 
-// calmConfig never calls a machine loaded: the RAM budget is 1 MB and the load
-// limit is the highest the config allows, so a failure can only be "failed" or
-// "flaky" whatever the test machine is doing.
-const calmConfig = baseConfig + "job_mb = 1\nlight_mb = 1\nmax_load_ratio = 64\n"
-
-// loadedConfig is the opposite for RAM only: the job budget is more RAM than
-// any machine has, so a failed run always started with less free RAM than its
-// budget (and the load limit is out of play, so the reason is always the RAM).
-const loadedConfig = baseConfig + "job_mb = 100000000\nmax_load_ratio = 64\n"
+// loadedConfig is the opposite of baseConfig for RAM only: the job budget is
+// more RAM than any machine has, so a failed run always started with less free
+// RAM than its budget (and the load limit is out of play, so the reason is
+// always the RAM).
+const loadedConfig = "[queue]\npoll = \"50ms\"\nresource_gate = false\n[local]\nheavy_slots = 1\nlight_slots = 1\n" +
+	"job_mb = 100000000\nmax_load_ratio = 64\n"
 
 // flagGateRepo commits a heavyq.toml whose gate "ready" has one command that
 // fails exactly when <root>/fail-flag exists. The flag is outside the work
@@ -63,7 +60,7 @@ func skipUnlessMeasurable(t *testing.T, r history.Record) {
 // The same code passes, then fails: flaky, and not proven until it has passed
 // twice in a row since. Flaky is a label, not a dead end.
 func TestE2EGateSameTreePassThenFailIsFlaky(t *testing.T) {
-	h := newRig(t, calmConfig)
+	h := newRig(t, baseConfig)
 	_, cmd := flagGateRepo(t, h)
 	if rc, out := h.run("gate", "run"); rc != 0 {
 		t.Fatalf("first gate run rc=%d\n%s", rc, out)
@@ -196,7 +193,7 @@ func TestE2EGateFailureWithLittleFreeRAMIsUnderLoad(t *testing.T) {
 
 // A plain failure on a machine inside its limits stays "failed".
 func TestE2EGatePlainFailureIsFailed(t *testing.T) {
-	h := newRig(t, calmConfig)
+	h := newRig(t, baseConfig)
 	_, cmd := flagGateRepo(t, h)
 	h.touch("fail-flag")
 	if rc, out := h.run("gate", "run"); rc != 1 {
