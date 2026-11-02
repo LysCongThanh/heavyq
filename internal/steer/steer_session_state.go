@@ -2,7 +2,6 @@ package steer
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -156,6 +155,3 @@ func (s Sessions) LatestCanary() (id string, st SessionState, ok bool) {
 	}
 	return id, st, ok
 }
-
-// ErrNoSession is returned by callers that need a session id and got none.
-var ErrNoSession = errors.New("no valid session id")
