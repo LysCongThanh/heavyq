@@ -7,6 +7,21 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Named pools: ports, databases and browsers handed out to parallel agents** (`internal/pools`,
+  [docs/pools.md](docs/pools.md)). `[[pool]]` tables (`name`, `values` as a range `"4100-4199"` or a list, or
+  `size`) in the user config and in `heavyq.toml` (the repository's pool replaces the user's of the same name).
+  `heavyq 4 --needs port:2,pg,browser -- npm run e2e` is admitted only when its slot and every need can be taken
+  in one scheduling round, so it never holds part of what it asked for. Each value is a `flock` file held by the
+  run's heavyq process, released when it ends or dies. The command gets `HEAVYQ_PORT_1`, `HEAVYQ_PORT_2`,
+  `HEAVYQ_PG`, `HEAVYQ_BROWSER`. Port pools skip ports that are bound now (listen probe on `127.0.0.1` and `::1`)
+  and the OS ephemeral range. Gates may declare `needs = ["pg", "port:2"]`. A ticket with needs runs locally
+  (a named `--remote` is refused). `status` has a `POOLS` section and `status --json` a `pools` array (and `needs` /
+  `pools` per ticket); `why` says `waiting for pg: 3/3 held by a, b, c`; the Tower's starved card and the
+  dashboard's machines section show pools. The ledger gains the flat fields `needs` and `pools`. A ticket waiting
+  for a pool does not hold back a later ticket that shares none of its pools.
+
+### Added
+
 - **Ledger tail reader and indexes: hooks stay under 20 ms.** A full scan of a 100,000-line ledger (about
   55 MB, a month of a busy fleet) took 0.3-0.7 s. `history.ReadTail` now reads the newest records backwards
   in chunks, across the monthly files, with a record count and/or a `since` time (the last 2,000 records of
@@ -37,21 +52,6 @@ versions follow [Semantic Versioning](https://semver.org/).
 - **README is a short hero** (tagline, a 14-second proof GIF recorded from real runs, install, Run / Prove / Steer).
   The reference sections moved into `docs/` (`queue.md`, `remote.md`, `configuration.md`, `exit-codes.md`, ...) unchanged.
   `docs/tapes/proof.tape` records the GIF; the `demo` workflow re-records it on release tags.
-- **`heavyq item ls|claim|release|done|block`: claim, prove and finish work items.** It joins the anchor
-  (`.heavyq/anchor.md` plus read-only `[anchor] extra` sources), the lease store and the run ledger. Status is a
-  pure function of those facts (`internal/itemstatus`): `open`, `claimed` (lane, expires), `proven` (short
-  commit, time), `stale` (proven on an older tree), `blocked` (needs) and `claimed_done_unproven` (a box ticked
-  with no proof). `proof: gate:<name>` uses the gate's status and `proof: <cmd>` the run identity of `sh -c
-  <cmd>`, like a gate command; a claimed item is judged on its lane's work tree. Lane comes from
-  `$HEAVYQ_LANE` or the work tree name, session from `$HEAVYQ_SESSION` or the hook's session file. Leases
-  are TTL-based, and **any heavyq run in a lane renews that lane's leases** when it ends (fail-open, no event).
-  `claim --next` never hands one item to two worktrees. `done` refuses without proof (exit 1, `next: heavyq
-  gate run <name>` or `heavyq item done <id> --run`); `--run` runs the proof through the queue, tagged with the
-  item, and on success ticks exactly that checkbox under the lease lock (plan-file items are only marked done
-  in the events log, never rewritten) and releases the lease. `block <id> "needs: ..."` records the need and
-  frees the item until it is claimed again. All commands take `--json` where they print data and end with a
-  `next:` line in agent mode. `status --json` gains `items[]` (additive, schema 1) and the Tower a `blocked`
-  exception. The lease package gains `Finish`, `RenewLane`, `Events` and `WithLock`. See `docs/items.md`.
 
 ## [0.4.0] - 2026-11-02
 

@@ -9,6 +9,7 @@ import (
 	"github.com/LysCongThanh/heavyq/internal/config"
 	"github.com/LysCongThanh/heavyq/internal/control"
 	"github.com/LysCongThanh/heavyq/internal/metrics"
+	"github.com/LysCongThanh/heavyq/internal/pools"
 	"github.com/LysCongThanh/heavyq/internal/queue"
 	"github.com/LysCongThanh/heavyq/internal/remote"
 	"github.com/LysCongThanh/heavyq/internal/schedule"
@@ -19,11 +20,21 @@ import (
 type claim struct {
 	machine string
 	slot    string
-	lock    *slots.Lock // local slots only; nil in dry mode
+	lock    *slots.Lock  // local slots only; nil in dry mode
+	lease   *pools.Lease // pool values held with the slot; nil without needs and in dry mode
 	score   int
 	forced  bool // the resource gate would have refused without the bypass
 	// reading is the machine as it was when this claim was made (ledger).
 	reading admissionReading
+}
+
+// releaseAll gives back the slot and the pool values of the claim. Safe on nil.
+func (c *claim) releaseAll() {
+	if c == nil {
+		return
+	}
+	c.lease.Release()
+	c.lock.Release()
 }
 
 // evalInput is one scheduling round for one ticket.
@@ -35,7 +46,8 @@ type evalInput struct {
 	opps     []schedule.Opportunity
 	headWait time.Duration
 	needsRAM bool
-	dry      bool // status: report only, never keep a lock
+	dry      bool       // status: report only, never keep a lock
+	poolSet  *pools.Set // pools the ticket's needs refer to; nil without needs
 }
 
 // evaluate gates every opportunity, obtains a slot where possible and
@@ -62,6 +74,14 @@ func evaluate(in evalInput) (*claim, map[string]string) {
 			reasons[op.Machine] = why
 			continue
 		}
+		// The slot and every need are taken together or not at all.
+		if op.Machine == config.LocalName {
+			if why := claimPools(in, c); why != "" {
+				c.releaseAll()
+				reasons[op.Machine] = why
+				continue
+			}
+		}
 		c.reading = readingOf(v.state, in.ticket.Light)
 		if forced {
 			gate.Forced = false
@@ -70,12 +90,12 @@ func evaluate(in evalInput) (*claim, map[string]string) {
 		c.score = metrics.Score(v.state.Metrics, in.cfg.Queue.LoadWeightMB, in.needsRAM)
 		if best == nil || c.score > best.score {
 			if best != nil {
-				best.lock.Release()
+				best.releaseAll()
 				reasons[best.machine] = "lower placement score"
 			}
 			best = c
 		} else {
-			c.lock.Release()
+			c.releaseAll()
 			reasons[op.Machine] = "lower placement score"
 		}
 	}

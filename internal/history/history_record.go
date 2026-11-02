@@ -44,6 +44,12 @@ type Record struct {
 	Result string `json:"result,omitempty"`
 	// Forced: admitted by the anti-starvation bypass of the resource gate.
 	Forced bool `json:"forced,omitempty"`
+	// Needs are the pool values the run asked for, comma-separated ("port:2,pg"),
+	// and Pools the values it held, "pool=v1,v2 pool=v" in the order of Needs
+	// (empty when it never ran). Flat strings, so the ledger line stays flat and
+	// Record stays comparable. Added within v2: older lines have neither.
+	Needs string `json:"needs,omitempty"`
+	Pools string `json:"pools,omitempty"`
 	// The machine as it was when the run was admitted (local: metrics.Local,
 	// remote: the probe placement used), with the limits the resource gate
 	// applied to it. All of it is absent when the machine could not be

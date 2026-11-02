@@ -2,10 +2,12 @@ package cli
 
 import (
 	"os"
+	"strings"
 
 	"github.com/LysCongThanh/heavyq/internal/config"
 	"github.com/LysCongThanh/heavyq/internal/gitutil"
 	"github.com/LysCongThanh/heavyq/internal/history"
+	"github.com/LysCongThanh/heavyq/internal/pools"
 	"github.com/LysCongThanh/heavyq/internal/runident"
 )
 
@@ -73,6 +75,10 @@ func (r *run) tag(rec *history.Record, co gitutil.Checkout) {
 	rec.CmdHash = history.CmdHash(r.opts.Argv)
 	rec.RunID = r.runID(co)
 	rec.Session, rec.Item, rec.Gate = r.opts.Session, r.opts.Item, r.opts.Gate
+	rec.Needs = strings.Join(pools.FormatNeeds(r.opts.Needs), ",")
+	if r.me != nil { // a cache hit is recorded before the ticket exists
+		rec.Pools = pools.FormatHeld(r.opts.Needs, r.me.Pools)
+	}
 	rec.Repo, rec.Worktree, rec.Subdir = co.Repo, co.Worktree, co.Subdir
 	rec.Commit, rec.Tree, rec.Dirty = co.Commit, co.Tree, co.Dirty
 }

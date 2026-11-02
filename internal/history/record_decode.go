@@ -112,6 +112,10 @@ func (r *Record) set(key string, ln lineBuf, i int) (int, bool) {
 		r.CPUSecs, i, ok = floatValue(ln.b, i)
 	case "max_rss_mb":
 		r.MaxRSSMB, i, ok = intValue(ln.b, i)
+	case "needs":
+		r.Needs, i, ok = ln.str(i)
+	case "pools":
+		r.Pools, i, ok = ln.str(i)
 	case "session":
 		r.Session, i, ok = ln.str(i)
 	case "item":

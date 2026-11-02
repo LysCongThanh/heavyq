@@ -36,6 +36,12 @@ func preparePlacement(cfg *config.Config, o *runOptions, stderr io.Writer) (*pla
 	if err != nil {
 		return nil, err
 	}
+	if len(o.Needs) > 0 { // pool values are resources of this machine
+		if o.Remote != "" && o.Remote != config.LocalName && o.Remote != "auto" {
+			return nil, fmt.Errorf("--needs asks for pool values of this machine, so --remote %s is not possible (use local)", o.Remote)
+		}
+		o.Remote = config.LocalName
+	}
 	p := &placement{target: o.Remote, wd: wd, refIsHead: o.Ref == "HEAD"}
 	if p.target == "" {
 		p.target = "local"

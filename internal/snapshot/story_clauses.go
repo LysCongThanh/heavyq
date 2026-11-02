@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/LysCongThanh/heavyq/internal/pools"
 )
 
 // maxCauses bounds how many resource causes the first sentence names.
@@ -58,6 +60,8 @@ func causeOf(machine, reason string) []Span {
 	switch short, isRAM := ramShort(reason); {
 	case isRAM:
 		b.em(machine).text(" is ").num(mb(short)).text(" short on RAM")
+	case pools.IsReason(reason):
+		b.text("pool ").em(strings.TrimPrefix(reason, pools.ReasonPrefix))
 	case strings.Contains(reason, "slots busy"):
 		b.text("every heavy slot on ").em(machine).text(" is taken")
 	case strings.HasPrefix(reason, "load"):

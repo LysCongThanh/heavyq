@@ -24,7 +24,6 @@ exit    the command's own, else: 75 queue busy past --max-wait: retry
         first; 76/77 remote down: retry or --remote local; 2 usage.
 proof   heavyq gate status [name]  (exit 0 = proven on this exact code)
         heavyq gate run [name]     (runs what is unproven)
-item    heavyq item claim --next | done <id> --run | block <id> "needs: x"
 why     heavyq why [lane]: who waits, and why
 `
 

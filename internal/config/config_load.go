@@ -10,6 +10,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 
+	"github.com/LysCongThanh/heavyq/internal/pools"
 	"github.com/LysCongThanh/heavyq/internal/tomlkeys"
 )
 
@@ -107,6 +108,10 @@ func (c *Config) normalize() error {
 		return err
 	}
 	if err := c.Cache.normalize(); err != nil {
+		return err
+	}
+	var err error
+	if c.Pools, err = pools.Build(c.PoolSpecs); err != nil {
 		return err
 	}
 	seen := map[string]bool{LocalName: true}

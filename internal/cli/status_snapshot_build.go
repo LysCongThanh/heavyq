@@ -42,8 +42,10 @@ func buildSnapshot(cfg *config.Config, probes *probeCache, cpuInterval time.Dura
 			PollS: cfg.Queue.Poll.Seconds(), RemoteDownMaxS: cfg.Queue.RemoteDownMax.Seconds(),
 		},
 		Machines: []snapshot.Machine{}, Running: []snapshot.Running{}, Waiting: []snapshot.Waiting{},
-		Coalesced: []snapshot.Group{}, Gates: []snapshot.LaneGate{}, Items: []snapshot.LaneItems{}, Exceptions: []snapshot.Exception{}, CPU: snapshot.CPU{Lanes: []snapshot.Usage{}, Outside: []snapshot.Usage{}},
+		Coalesced: []snapshot.Group{}, Gates: []snapshot.LaneGate{}, Exceptions: []snapshot.Exception{}, Pools: []snapshot.Pool{}, CPU: snapshot.CPU{Lanes: []snapshot.Usage{}, Outside: []snapshot.Usage{}},
 	}
+	set := displayPoolSet(cfg)
+	s.Pools = poolSnapshots(set, qs)
 	perTicket := sampleUsage(&s.CPU, qs, cpuInterval)
 	s.GeneratedAt = time.Now()
 
@@ -60,7 +62,7 @@ func buildSnapshot(cfg *config.Config, probes *probeCache, cpuInterval time.Dura
 			CPUPct: u.CPUPct, RSSMB: u.RSSMB,
 		})
 	}
-	s.Waiting = waitingSnapshots(cfg, qs, probes, s.GeneratedAt)
+	s.Waiting = waitingSnapshots(cfg, qs, probes, s.GeneratedAt, set)
 	s.Coalesced = coalescedSnapshot()
 	s.Story = snapshot.Story(s, nil, s.GeneratedAt)
 	fillExceptions(cfg, &s, s.GeneratedAt)
@@ -76,7 +78,7 @@ func ticketSnapshot(t *queue.Ticket, now time.Time, cancel bool) snapshot.Ticket
 	return snapshot.Ticket{
 		ID: t.Name, Pid: t.Pid, Lane: t.Lane, Prio: t.Prio, Light: t.Light, Target: t.Target,
 		Candidates: cands, Cmd: redact.Command(t.Cmd), Since: t.Since,
-		WaitS: waitSecs(t, now), CancelRequested: cancel,
+		WaitS: waitSecs(t, now), CancelRequested: cancel, Needs: t.Needs, Pools: t.Pools,
 	}
 }
 

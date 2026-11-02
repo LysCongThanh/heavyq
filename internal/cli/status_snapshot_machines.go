@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/LysCongThanh/heavyq/internal/config"
+	"github.com/LysCongThanh/heavyq/internal/pools"
 	"github.com/LysCongThanh/heavyq/internal/queue"
 	"github.com/LysCongThanh/heavyq/internal/remote"
 	"github.com/LysCongThanh/heavyq/internal/schedule"
@@ -97,12 +98,12 @@ func slotBusyOutside(cfg *config.Config, m config.MachineConfig, name string, v 
 
 // waitingSnapshots explains, for every waiting ticket and each of its
 // candidate machines, why it has not started.
-func waitingSnapshots(cfg *config.Config, qs queue.Snapshot, probes *probeCache, now time.Time) []snapshot.Waiting {
+func waitingSnapshots(cfg *config.Config, qs queue.Snapshot, probes *probeCache, now time.Time, set *pools.Set) []snapshot.Waiting {
 	out := []snapshot.Waiting{}
 	box := controlBox()
 	for i, t := range qs.Waiting {
 		ahead := qs.Waiting[:i]
-		opps, blocked := schedule.Opportunities(t, ahead, slotCounts(cfg))
+		opps, blocked := schedule.Opportunities(t, skipPoolBlocked(set, t, ahead), slotCounts(cfg))
 		w := snapshot.Waiting{Ticket: ticketSnapshot(t, now, box.CancelRequested(t.Name)), Position: i + 1,
 			Reasons: map[string]string{}, BypassInS: -1}
 		for m := range blocked {
@@ -120,7 +121,7 @@ func waitingSnapshots(cfg *config.Config, qs queue.Snapshot, probes *probeCache,
 		}
 		if len(opps) > 0 {
 			c, reasons := evaluate(evalInput{cfg: cfg, ticket: t, snap: qs, probes: probes,
-				opps: opps, headWait: waited, dry: true})
+				opps: opps, headWait: waited, dry: true, poolSet: set})
 			for m, why := range reasons {
 				w.Reasons[m] = why
 			}
@@ -128,7 +129,7 @@ func waitingSnapshots(cfg *config.Config, qs queue.Snapshot, probes *probeCache,
 				w.Reasons[c.machine] = ""
 			}
 		}
-		if head && cfg.GateEnabled() {
+		if head && cfg.GateEnabled() && !poolReasonIn(w.Reasons) { // the bypass never skips a pool
 			w.BypassInS = max(0, (cfg.Queue.ForceAfter.Duration - waited).Seconds())
 		}
 		out = append(out, w)

@@ -10,6 +10,7 @@ import (
 
 	"github.com/LysCongThanh/heavyq/internal/config"
 	"github.com/LysCongThanh/heavyq/internal/history"
+	"github.com/LysCongThanh/heavyq/internal/pools"
 	"github.com/LysCongThanh/heavyq/internal/queue"
 )
 
@@ -25,7 +26,9 @@ type runOptions struct {
 	Ref      string
 	BaseRef  string
 	With     []string
-	Cache    bool
+	// Needs are the pool values the run holds while it runs (--needs).
+	Needs []pools.Need
+	Cache bool
 	// Session, Item and Gate tag the run in the ledger: who ran it and why.
 	// Session and Item default to $HEAVYQ_SESSION and $HEAVYQ_ITEM.
 	Session string
@@ -87,7 +90,7 @@ func parseRunArgs(args []string, cfg *config.Config) (runOptions, error) {
 			}
 			continue
 		case "--lane", "--max-wait", "--remote", "--repo", "--ref", "--base-ref", "--with",
-			"--session", "--item", "--gate":
+			"--session", "--item", "--gate", "--needs":
 			if v, err = takeVal(); err != nil {
 				return o, err
 			}
@@ -111,6 +114,10 @@ func parseRunArgs(args []string, cfg *config.Config) (runOptions, error) {
 			o.BaseRef = v
 		case "--with":
 			o.With = append(o.With, v)
+		case "--needs":
+			if err := o.addNeeds(v); err != nil {
+				return o, err
+			}
 		case "--session", "--item", "--gate":
 			if !history.ValidTag(v) {
 				return o, fmt.Errorf("%s %q: want 1-80 characters from A-Za-z0-9._:-", name, v)

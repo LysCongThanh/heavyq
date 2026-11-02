@@ -27,6 +27,10 @@ type Ticket struct {
 	Candidates []string  `json:"candidates"` // machines this ticket may run on
 	Since      time.Time `json:"since"`
 	Cmd        string    `json:"cmd"`
+	// Needs are the pool values the run asks for ("pg", "port:2"); Pools are
+	// the values it holds once running, by pool, in the order they are exported.
+	Needs []string            `json:"needs,omitempty"`
+	Pools map[string][]string `json:"pools,omitempty"`
 
 	Machine   string    `json:"machine,omitempty"`
 	Slot      string    `json:"slot,omitempty"`

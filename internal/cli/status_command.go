@@ -99,6 +99,7 @@ func printStatusText(w io.Writer, cfg *config.Config, q *queue.Dir, probes *prob
 	for _, r := range cfg.Remotes {
 		printRemote(w, cfg, r, snap, probes)
 	}
+	printPools(w, displayPoolSet(cfg), snap)
 	if len(snap.Waiting) > 0 {
 		printHeadReasons(w, cfg, snap, probes)
 	}

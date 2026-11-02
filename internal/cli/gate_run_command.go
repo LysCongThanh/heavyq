@@ -203,6 +203,9 @@ func gateRunArgs(g repoconfig.Gate, cmd, lane string, fresh bool) []string {
 	if g.Light {
 		args = append(args, "--light")
 	}
+	if len(g.Needs) > 0 {
+		args = append(args, "--needs", strings.Join(g.Needs, ","))
+	}
 	args = append(args, "--")
 	return append(args, proof.Argv(cmd)...)
 }

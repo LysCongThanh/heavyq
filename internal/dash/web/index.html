@@ -196,6 +196,8 @@ main{max-width:1320px;margin:0 auto;padding:28px 16px 64px;container-type:inline
 .bar .need{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink);border-radius:1px}
 .cap .meta{font-size:12.5px;color:var(--ink-3);line-height:18px}
 .cap .meta b{color:var(--ink)}
+.pools{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.pools .chip i{width:7px;height:7px;border-radius:50%;display:inline-block}
 .slots{display:inline-flex;gap:3px;vertical-align:-1px;margin-left:2px}
 .slots i{width:9px;height:9px;border-radius:2px;box-shadow:inset 0 0 0 1px var(--line-3)}
 .slots i.outside{background:color-mix(in oklab,var(--out) 70%,transparent);box-shadow:none}
@@ -296,9 +298,9 @@ const el=()=>S.at?(Date.now()-S.at)/1000:0;
 /* ───────── reasons ───────── */
 function ramShort(r){const m=r.match(/^RAM (\d+) MB(?: \(minus (\d+) MB held[^)]*\))? < (\d+) MB needed/);if(!m)return null;return Math.max(0,+m[3]-(+m[1]-(+(m[2]||0))))}
 function shortWhy(r){if(r==="")return "starts on the next poll";const s=ramShort(r);if(s!==null)return mb(s)+" short on RAM";
- if(/slots busy/.test(r))return "slots busy";if(/^load/.test(r))return "load over limit";if(/unreachable/.test(r))return "unreachable";if(/paused/.test(r))return "paused";
+ if(/^waiting for /.test(r))return r.slice(12);if(/slots busy/.test(r))return "slots busy";if(/^load/.test(r))return "load over limit";if(/unreachable/.test(r))return "unreachable";if(/paused/.test(r))return "paused";
  const b=r.match(/^behind (.*)$/);if(b)return "behind "+b[1].replace(/ \(p\d\)/g,"");return r}
-function causeOf(m,r){const s=ramShort(r);if(s!==null)return `<em>${esc(m)}</em> is <em class="k">${mb(s)}</em> short on RAM`;
+function causeOf(m,r){if(/^waiting for /.test(r))return `pool <em>${esc(r.slice(12))}</em>`;const s=ramShort(r);if(s!==null)return `<em>${esc(m)}</em> is <em class="k">${mb(s)}</em> short on RAM`;
  if(/slots busy/.test(r))return `every heavy slot on <em>${esc(m)}</em> is taken`;
  if(/^load/.test(r))return `<em>${esc(m)}</em> is over its load limit`;
  if(/unreachable/.test(r))return `<em>${esc(m)}</em> is unreachable`;
@@ -306,7 +308,7 @@ function causeOf(m,r){const s=ramShort(r);if(s!==null)return `<em>${esc(m)}</em>
 const laneN=l=>`<span class="lane-n"><i style="background:${laneColor(l)}"></i>${esc(l)}</span>`;
 
 /* ───────── tower: facts heavyq measured that need a human (snapshot.exceptions, computed in Go) ───────── */
-const SNOOZE_MS=600000,KIND={red_gate:"red gate",loop:"loop",starved:"starved",machine:"machine",blocked:"blocked"};
+const SNOOZE_MS=600000,KIND={red_gate:"red gate",loop:"loop",starved:"starved",machine:"machine"};
 function snoozed(){try{const d=JSON.parse(store.get("hq.snooze")||"{}"),n=Date.now();for(const k in d)if(n-d[k]>=SNOOZE_MS)delete d[k];return d}catch(e){return {}}}
 const snooze=(id,on)=>{const d=snoozed();if(on)d[id]=Date.now();else if(id)delete d[id];else for(const k in d)delete d[k];store.set("hq.snooze",JSON.stringify(d))};
 function towerAction(e){const a=e.action;if(!a)return "";const cmd=`<code title="Run this in a terminal">${esc(a.command)}</code><button class="btn sm" data-act="copy" data-cmd="${esc(a.command)}">Copy</button>`;
@@ -425,7 +427,11 @@ function capacity(s){return `<div class="sec"><h2>Machines</h2><span class="lege
    bar=`<div class="bar" role="img" aria-label="${mb(m.free_mb)} free of ${mb(total)}">${outMB?`<span class="o" style="width:${pct(outMB)}" title="outside the queue: ${mb(outMB)}"></span>`:""}${lanes.map(t=>`<span style="width:${pct(t.rss_mb)};background:${laneColor(t.lane)}" title="${esc(t.lane)}: ${mb(t.rss_mb)}"></span>`).join("")}<span class="u" style="width:${pct(rest)}" title="${c?"system and caches":"in use"}: ${mb(rest)}"></span><span class="rv" style="width:${pct(Math.min(m.reserved_mb,m.free_mb))}" title="held for just-started jobs: ${mb(m.reserved_mb)}"></span><span class="need" style="left:calc(${(Math.max(0,1-need/total)*100).toFixed(2)}% - 1px)" title="a heavy job needs ${mb(need)} free"></span></div>`;
    const ok=m.admits==="";meta=`<b>${mb(m.free_mb)}</b> free${m.total_mb?" of "+mb(m.total_mb):""}, needs ${mb(need)} · load <b class="num">${m.load1.toFixed(1)}</b>/${m.max_load.toFixed(0)} ${slots}<br><span style="color:${ok&&!m.paused?"var(--ok-fg)":"var(--warn-fg)"}">${m.paused?"paused":ok?"ready for a heavy job":esc(shortWhy(m.admits))}</span>`}
   else{bar=`<div class="bar"></div>`;meta=`resources not measured here: slots only ${slots}<br>${m.admits===""?"ready":esc(shortWhy(m.admits))}`}
-  return `<div class="cap"><div class="name"><span class="dot" style="background:${m.paused?"var(--st-off)":m.admits===""?"var(--st-run)":"var(--st-wait)"}"></span>${esc(m.name)}${m.paused?'<span class="tag">paused</span>':""}<span class="spacer"></span>${ctl}</div>${bar}<div class="meta">${meta}</div></div>`}).join("")}</div>`}
+  return `<div class="cap"><div class="name"><span class="dot" style="background:${m.paused?"var(--st-off)":m.admits===""?"var(--st-run)":"var(--st-wait)"}"></span>${esc(m.name)}${m.paused?'<span class="tag">paused</span>':""}<span class="spacer"></span>${ctl}</div>${bar}<div class="meta">${meta}</div></div>`}).join("")}</div>${poolChips(s)}`}
+/* pools: one chip per named pool (ports, databases, ...), held/capacity, holders in the tooltip */
+function poolChips(s){const ps=s.pools||[];if(!ps.length)return "";
+ return `<div class="pools" aria-label="pools">${ps.map(p=>{const full=p.capacity>0&&p.held>=p.capacity,who=p.holders.map(h=>h.lane+": "+h.value).join("\n");
+  return `<span class="chip${full?" warn":""}" title="${esc(who||"nothing held")}"><span class="mono">${esc(p.name)}</span><b class="num">${p.held}/${p.capacity}</b>${p.holders.slice(0,6).map(h=>`<i style="background:${laneColor(h.lane)}"></i>`).join("")}</span>`}).join("")}</div>`}
 
 /* ───────── history ───────── */
 function historyBlock(){const h=S.hist;if(!h.length)return "";const ls=[...new Set(h.map(r=>r.lane))].sort();
@@ -467,6 +473,7 @@ setInterval(()=>{if(S.snap&&!document.hidden&&!S.confirm&&!document.querySelecto
 const DEMO=(()=>{const now=Date.now(),iso=s=>new Date(now-s*1000).toISOString();
  let seed=7;const rnd=()=>{seed=(seed*1103515245+12345)&0x7fffffff;return seed/0x7fffffff};
  const snap={schema:1,generated_at:iso(0),version:"0.3.0",host:"dev-ws",config:{path:"",resource_gate:true,force_after_s:900,hold_for_s:60,poll_s:2,remote_down_max_s:600},
+ pools:[{name:"pg",capacity:3,held:2,holders:[{value:"app_wt1",lane:"wt-search",ticket:"x"},{value:"app_wt2",lane:"main",ticket:"y"}]},{name:"port",capacity:100,held:1,holders:[{value:"4100",lane:"wt-search",ticket:"x"}]}],
  machines:[
   {name:"local",reachable:true,paused:false,metrics_known:true,cores:16,load1:13.4,max_load:12,free_mb:2810,total_mb:31794,reserved_mb:0,job_mb:3072,light_mb:1024,reserve_mb:2048,
    slots:[{name:"heavy-1",kind:"heavy",state:"held",ticket:"2-01762011505000000000-48213-wt-search",lane:"wt-search"},{name:"heavy-2",kind:"heavy",state:"outside"},{name:"light-1",kind:"light",state:"held",ticket:"5-01762011580000000000-49007-wt-docs",lane:"wt-docs"}],admits:"RAM 2810 MB < 5120 MB needed (job 3072 + reserve 2048)"},

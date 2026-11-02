@@ -51,7 +51,6 @@ func fillExceptions(cfg *config.Config, s *snapshot.Snapshot, now time.Time) {
 	} else {
 		s.Gates = laneGates(cfg, recs, now, proofRecords)
 	}
-	s.Items = laneItems(cfg, recs, now)
 	s.Exceptions = snapshot.ComputeExceptions(*s, recs, now)
 }
 
