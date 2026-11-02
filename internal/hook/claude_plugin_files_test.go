@@ -9,11 +9,6 @@ import (
 	"testing"
 )
 
-// pluginHookCommand is the command the Claude Code plugin runs. It is documented verbatim in
-// docs/claude-code.md; the tests below keep hooks.json, the docs and the settings installer in step.
-// Without the binary it exits 0 silently, so the plugin never blocks an agent.
-const pluginHookCommand = `sh -c 'command -v heavyq >/dev/null 2>&1 && exec heavyq hook claude-pretooluse || exit 0'`
-
 // The CI stand-in for `claude plugin validate`: the repository files are parsed and checked against the
 // schema documented at https://code.claude.com/docs/en/plugins/components.md and marketplace-reference.md.
 
@@ -89,6 +84,13 @@ func TestPluginManifest(t *testing.T) {
 	}
 }
 
+// pluginCommand is the command the plugin runs for a heavyq hook subcommand (what follows "heavyq hook ").
+func pluginCommand(sub string) string {
+	return "sh -c 'command -v heavyq >/dev/null 2>&1 && exec heavyq hook " + sub + " || exit 0'"
+}
+
+// The plugin carries every installable feature: hooks.json must say exactly what the Features table says
+// (event, matcher, timeout, subcommand), wrapped in the command -v guard.
 func TestPluginHooksFile(t *testing.T) {
 	var f struct {
 		Hooks map[string][]struct {
@@ -101,28 +103,43 @@ func TestPluginHooksFile(t *testing.T) {
 		} `json:"hooks"`
 	}
 	decodeJSON(t, "plugins/heavyq/hooks/hooks.json", &f)
-	if len(f.Hooks) != 1 || len(f.Hooks["PreToolUse"]) != 1 {
-		t.Fatalf("want exactly one PreToolUse group (under a top-level \"hooks\" key), got %+v", f.Hooks)
+	want := 0
+	for _, feat := range Features {
+		for _, s := range feat.specs {
+			want++
+			groups := f.Hooks[s.Event]
+			if len(groups) != 1 || len(groups[0].Hooks) != 1 {
+				t.Errorf("%s: want exactly one group with one hook (under a top-level \"hooks\" key), got %+v", s.Event, groups)
+				continue
+			}
+			g, h := groups[0], groups[0].Hooks[0]
+			if g.Matcher != s.Matcher {
+				t.Errorf("%s: matcher %q, want %q", s.Event, g.Matcher, s.Matcher)
+			}
+			if h.Type != "command" || h.Command != pluginCommand(s.Sub) || h.Timeout != s.Timeout {
+				t.Errorf("%s: hook = %+v, want command %q with timeout %d", s.Event, h, pluginCommand(s.Sub), s.Timeout)
+			}
+			if isOurs(map[string]any{"command": h.Command}) {
+				t.Errorf("%s: the plugin command must not look like a settings-installed entry: uninstall would remove it from nowhere, and tests would confuse the two", s.Event)
+			}
+		}
 	}
-	g := f.Hooks["PreToolUse"][0]
-	if g.Matcher != "Bash" || len(g.Hooks) != 1 {
-		t.Fatalf("group = %+v", g)
+	if len(f.Hooks) != want {
+		t.Errorf("hooks.json has %d events, the Features table %d", len(f.Hooks), want)
 	}
-	h := g.Hooks[0]
-	if h.Type != "command" || h.Command != pluginHookCommand || h.Timeout != hookTimeoutSecs {
-		t.Errorf("hook = %+v, want command %q with timeout %d", h, pluginHookCommand, hookTimeoutSecs)
-	}
-	if !strings.Contains(h.Command, "heavyq "+Subcommand) {
-		t.Errorf("command no longer runs `heavyq %s`", Subcommand)
-	}
-	if isOurs(map[string]any{"command": h.Command}) {
-		t.Error("the plugin command must not look like a settings-installed entry: uninstall would remove it from nowhere, and tests would confuse the two")
+	if !strings.Contains(pluginCommand(Subcommand[len("hook "):]), "heavyq "+Subcommand) {
+		t.Error("the queue command no longer runs `heavyq " + Subcommand + "`")
 	}
 }
 
-func TestPluginDocsQuoteTheHookCommand(t *testing.T) {
-	if !strings.Contains(string(repoFile(t, "docs/claude-code.md")), pluginHookCommand) {
-		t.Errorf("docs/claude-code.md must document the plugin hook command verbatim: %s", pluginHookCommand)
+func TestPluginDocsQuoteTheHookCommands(t *testing.T) {
+	docs := string(repoFile(t, "docs/claude-code.md"))
+	for _, feat := range Features {
+		for _, s := range feat.specs {
+			if !strings.Contains(docs, pluginCommand(s.Sub)) {
+				t.Errorf("docs/claude-code.md must document the plugin hook command verbatim: %s", pluginCommand(s.Sub))
+			}
+		}
 	}
 }
 

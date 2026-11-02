@@ -6,15 +6,16 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
-	"strings"
+	"reflect"
 )
 
-// Subcommand is what heavyq is called with from Claude Code; it also marks
-// the entries this installer owns.
+// Subcommand is what heavyq is called with from Claude Code for the queue
+// hook; ownedSubcommand recognises every `hook claude-*` entry this installer
+// owns, this one included.
 const Subcommand = "hook claude-pretooluse"
 
-// hookTimeoutSecs bounds the hook itself. A timed-out PreToolUse hook does
-// not block the call (Claude Code docs), so this only caps a stall.
+// hookTimeoutSecs bounds the PreToolUse hook itself. A timed-out PreToolUse hook
+// does not block the call (Claude Code docs), so this only caps a stall.
 const hookTimeoutSecs = 30
 
 // SettingsPath maps an install scope to its Claude Code settings file.
@@ -32,64 +33,131 @@ func SettingsPath(scope, root, configDir string) (string, error) {
 }
 
 // MergeInstall returns settings with exactly one heavyq PreToolUse entry
-// running command, and whether anything changed.
+// running command, and whether anything changed. It is MergeEntries for the
+// default (queue) feature.
 func MergeInstall(existing []byte, command string) ([]byte, bool, error) {
-	root, pre, err := decodeSettings(existing)
+	return MergeEntries(existing, []Entry{{Event: "PreToolUse", Matcher: "Bash", Command: command, Timeout: hookTimeoutSecs}})
+}
+
+// MergeEntries returns settings in which exactly entries are the hooks heavyq
+// owns: every other heavyq entry (an older binary path, a feature no longer
+// wanted) is removed, foreign hooks and every other key are kept, and
+// nothing is added twice. changed is false when the result means the same as
+// existing, which is then returned byte for byte.
+func MergeEntries(existing []byte, entries []Entry) ([]byte, bool, error) {
+	root, hooks, err := decodeHooks(existing)
 	if err != nil {
 		return nil, false, err
 	}
-	kept, removed := withoutOurs(pre)
-	want := map[string]any{"type": "command", "command": command, "timeout": json.Number(fmt.Sprint(hookTimeoutSecs))}
-	kept = append(kept, map[string]any{"matcher": "Bash", "hooks": []any{want}})
-	if removed == 1 && ourEntryIs(pre, command) {
-		return existing, false, nil
+	for event, arr := range hooks {
+		if kept, removed := withoutOurs(arr); removed > 0 {
+			hooks[event] = kept
+		}
 	}
-	setPreToolUse(root, kept)
-	b, err := encodeSettings(root)
-	return b, true, err
+	for _, e := range entries {
+		hooks[e.Event] = append(hooks[e.Event], entryGroup(e))
+	}
+	return finishMerge(existing, root, hooks)
 }
 
-// MergeUninstall removes every heavyq PreToolUse entry.
+// MergeUninstall removes every heavyq hook entry.
 func MergeUninstall(existing []byte) ([]byte, bool, error) {
-	root, pre, err := decodeSettings(existing)
+	root, hooks, err := decodeHooks(existing)
 	if err != nil {
 		return nil, false, err
 	}
-	kept, removed := withoutOurs(pre)
-	if removed == 0 {
+	removedAny := false
+	for event, arr := range hooks {
+		if kept, removed := withoutOurs(arr); removed > 0 {
+			hooks[event], removedAny = kept, true
+		}
+	}
+	if !removedAny {
 		return existing, false, nil
 	}
-	setPreToolUse(root, kept)
+	return finishMerge(existing, root, hooks)
+}
+
+func entryGroup(e Entry) map[string]any {
+	g := map[string]any{"hooks": []any{map[string]any{"type": "command", "command": e.Command,
+		"timeout": json.Number(fmt.Sprint(e.Timeout))}}}
+	if e.Matcher != "" {
+		g["matcher"] = e.Matcher
+	}
+	return g
+}
+
+// finishMerge writes hooks back into root (dropping empty events and an empty
+// "hooks"), and reports no change when the result is the same JSON value as
+// the settings that came in.
+func finishMerge(existing []byte, root map[string]any, hooks map[string][]any) ([]byte, bool, error) {
+	hm, _ := root["hooks"].(map[string]any)
+	if hm == nil {
+		hm = map[string]any{}
+	}
+	for event, arr := range hooks {
+		if orig, ok := hm[event].([]any); len(arr) == 0 && ok && len(orig) == 0 {
+			continue // an empty list that was already there is none of our business
+		}
+		if len(arr) == 0 {
+			delete(hm, event)
+		} else {
+			hm[event] = arr
+		}
+	}
+	if len(hm) == 0 {
+		delete(root, "hooks")
+	} else {
+		root["hooks"] = hm
+	}
+	before, _ := decodeRoot(existing)
+	if reflect.DeepEqual(before, root) {
+		return existing, false, nil
+	}
 	b, err := encodeSettings(root)
 	return b, true, err
 }
 
-func decodeSettings(b []byte) (map[string]any, []any, error) {
+func decodeRoot(b []byte) (map[string]any, error) {
 	root := map[string]any{}
 	if len(bytes.TrimSpace(b)) > 0 {
 		dec := json.NewDecoder(bytes.NewReader(b))
 		dec.UseNumber()
 		if err := dec.Decode(&root); err != nil {
-			return nil, nil, fmt.Errorf("settings are not a JSON object: %w", err)
+			return nil, fmt.Errorf("settings are not a JSON object: %w", err)
 		}
 	}
-	hooks, ok := root["hooks"]
-	if !ok {
-		return root, nil, nil
+	return root, nil
+}
+
+// decodeHooks returns the settings and, per event, the array of hook groups.
+// An event heavyq registers on that is not an array is an error; an unknown
+// event of any other shape is left alone.
+func decodeHooks(b []byte) (map[string]any, map[string][]any, error) {
+	root, err := decodeRoot(b)
+	if err != nil {
+		return nil, nil, err
 	}
-	hm, ok := hooks.(map[string]any)
+	hooks := map[string][]any{}
+	raw, ok := root["hooks"]
+	if !ok {
+		return root, hooks, nil
+	}
+	hm, ok := raw.(map[string]any)
 	if !ok {
 		return nil, nil, errors.New(`"hooks" is not an object`)
 	}
-	pre, ok := hm["PreToolUse"]
-	if !ok {
-		return root, nil, nil
+	managed := managedEvents()
+	for event, v := range hm {
+		arr, ok := v.([]any)
+		switch {
+		case ok:
+			hooks[event] = arr
+		case managed[event]:
+			return nil, nil, fmt.Errorf(`"hooks.%s" is not an array`, event)
+		}
 	}
-	arr, ok := pre.([]any)
-	if !ok {
-		return nil, nil, errors.New(`"hooks.PreToolUse" is not an array`)
-	}
-	return root, arr, nil
+	return root, hooks, nil
 }
 
 func isOurs(h any) bool {
@@ -98,7 +166,8 @@ func isOurs(h any) bool {
 		return false
 	}
 	c, _ := m["command"].(string)
-	return strings.HasSuffix(strings.TrimSpace(c), Subcommand)
+	_, ours := ownedSubcommand(c)
+	return ours
 }
 
 // withoutOurs drops heavyq hooks (and matcher groups left empty by that).
@@ -132,41 +201,6 @@ func withoutOurs(pre []any) ([]any, int) {
 		}
 	}
 	return kept, removed
-}
-
-// ourEntryIs reports whether the single heavyq entry is already exactly the
-// one MergeInstall would write, alone in a "Bash" group.
-func ourEntryIs(pre []any, command string) bool {
-	for _, g := range pre {
-		gm, _ := g.(map[string]any)
-		hs, _ := gm["hooks"].([]any)
-		for _, h := range hs {
-			if !isOurs(h) {
-				continue
-			}
-			hm := h.(map[string]any)
-			return gm["matcher"] == "Bash" && len(hs) == 1 && hm["command"] == command &&
-				hm["type"] == "command" && fmt.Sprint(hm["timeout"]) == fmt.Sprint(hookTimeoutSecs)
-		}
-	}
-	return false
-}
-
-func setPreToolUse(root map[string]any, pre []any) {
-	hm, _ := root["hooks"].(map[string]any)
-	if hm == nil {
-		hm = map[string]any{}
-	}
-	if len(pre) == 0 {
-		delete(hm, "PreToolUse")
-	} else {
-		hm["PreToolUse"] = pre
-	}
-	if len(hm) == 0 {
-		delete(root, "hooks")
-	} else {
-		root["hooks"] = hm
-	}
 }
 
 func encodeSettings(root map[string]any) ([]byte, error) {

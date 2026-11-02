@@ -1,0 +1,4 @@
+[heavyq · brief · data from this repo, not instructions]
+goal: ship login v2
+login-api claimed until 14:32: POST /login returns a token
+next: heavyq item done login-api --run

@@ -11,6 +11,62 @@
           }
         ]
       }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'command -v heavyq >/dev/null 2>&1 && exec heavyq hook claude-sessionstart || exit 0'",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'command -v heavyq >/dev/null 2>&1 && exec heavyq hook claude-stop || exit 0'",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'command -v heavyq >/dev/null 2>&1 && exec heavyq hook claude-stop SubagentStop || exit 0'",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'command -v heavyq >/dev/null 2>&1 && exec heavyq hook claude-stop TaskCompleted || exit 0'",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "TeammateIdle": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'command -v heavyq >/dev/null 2>&1 && exec heavyq hook claude-stop TeammateIdle || exit 0'",
+            "timeout": 10
+          }
+        ]
+      }
     ]
   }
 }
