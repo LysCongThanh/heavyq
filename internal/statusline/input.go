@@ -11,6 +11,8 @@ import (
 	"io"
 	"os"
 	"time"
+
+	"github.com/LysCongThanh/heavyq/internal/sessionmeta"
 )
 
 // maxInput bounds the status-line JSON read from stdin (a few KB in practice).
@@ -29,6 +31,8 @@ type Input struct {
 	SessionID string
 	FiveHour  int // rate_limits.five_hour used percentage; -1 when absent
 	SevenDay  int // rate_limits.seven_day used percentage; -1 when absent
+	// FiveHourResets and SevenDayResets are rate_limits.*.resets_at; nil when absent.
+	FiveHourResets, SevenDayResets *time.Time
 }
 
 // Dir is where the session is working: workspace.current_dir, else cwd.
@@ -61,6 +65,7 @@ func ParseInput(b []byte) Input {
 	rl := sub(top["rate_limits"])
 	in.FiveHour = percent(rl["five_hour"])
 	in.SevenDay = percent(rl["seven_day"])
+	in.FiveHourResets, in.SevenDayResets = resetsAt(rl["five_hour"]), resetsAt(rl["seven_day"])
 	return in
 }
 
@@ -108,4 +113,15 @@ func ReadInput(r io.Reader) []byte {
 	case <-time.After(readTimeout):
 		return nil
 	}
+}
+
+// resetsAt reads a rate-limit window's reset time (Unix seconds); nil when absent.
+func resetsAt(raw json.RawMessage) *time.Time {
+	var w struct {
+		ResetsAt *float64 `json:"resets_at"`
+	}
+	if json.Unmarshal(raw, &w) != nil {
+		return nil
+	}
+	return sessionmeta.ResetTime(w.ResetsAt)
 }

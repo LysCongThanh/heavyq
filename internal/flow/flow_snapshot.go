@@ -40,6 +40,9 @@ type Snapshot struct {
 	// Baseline is what the constraint finder has learned is normal, as of this
 	// computation: the next refresh reads it back (Input.Baseline).
 	Baseline *Baseline `json:"baseline,omitempty"`
+	// Quota is the open usage-limit episode, one entry for the whole fleet; null
+	// when there is none (additive).
+	Quota *QuotaInfo `json:"quota"`
 }
 
 // ItemCounts say where the anchor's items stand.
@@ -83,12 +86,17 @@ type EventNote struct {
 func Build(in Input) Snapshot {
 	tls, holds := derive(in)
 	fleet, constraint, tp := aggregate(in, tls, holds)
-	blocks := foldBlocks(in.Hooks, in.Records, in.Now)
+	blocks := in.blocks()
+	quota := deriveQuota(in)
 	snap := Snapshot{
 		Schema: SchemaVersion, Repo: in.Repo, Updated: in.Now.UTC(), Goal: in.Goal, Run: runJSON(in.Run),
 		Items: countItems(in.Items), NeedsYou: needsYou(in, blocks), Constraint: constraint, Throughput: tp,
 		Lanes: lanesNow(in, tls, blocks), Session: in.Session, Fleet: fleet, Events: recentEvents(in),
-		Baseline: NextBaseline(in.Baseline, fleet, in.Now),
+		Baseline: NextBaseline(in.Baseline, fleet, in.Now), Quota: quota,
+	}
+	if quota != nil { // one entry for the fleet, not one per stopped lane
+		snap.NeedsYou = append(snap.NeedsYou, NeedsYou{Lane: "fleet", Reason: QuotaText(quota, in.Now.Location()), Since: quota.Since.UTC()})
+		sort.SliceStable(snap.NeedsYou, func(i, j int) bool { return snap.NeedsYou[i].Since.Before(snap.NeedsYou[j].Since) })
 	}
 	return snap
 }
@@ -146,7 +154,7 @@ func lanesNow(in Input, tls []Timeline, blocks []Block) []LaneState {
 	last := map[string]time.Time{}
 	for _, t := range tls {
 		st, since, ok := t.Current(in.Now, ActiveGap)
-		if !ok || t.Lane == "" {
+		if !ok || t.Lane == "" || in.GoneLanes[t.Lane] {
 			continue
 		}
 		end := t.Spans[len(t.Spans)-1].End

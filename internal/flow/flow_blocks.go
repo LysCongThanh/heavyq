@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/LysCongThanh/heavyq/internal/history"
+	"github.com/LysCongThanh/heavyq/internal/lease"
 )
 
 // Block is a stretch during which a lane's agent waited on a person.
@@ -27,32 +28,74 @@ func (b Block) span(now time.Time) interval {
 	return interval{b.Since, b.Until}
 }
 
-// foldBlocks turns the hook events into blocks, one open at a time per lane.
+// activity is a sign that the agent of a lane or session went on: a ledger run
+// (from when it began waiting for a slot to its end) or a lease taken, renewed
+// or released (an instant).
+type activity struct {
+	Start, End    time.Time
+	Lane, Session string
+}
+
+// activitiesOf are the signs of life in the ledger and the lease log, oldest first.
+func activitiesOf(recs []history.Record, leases []lease.Event) []activity {
+	out := make([]activity, 0, len(recs)+len(leases))
+	for _, r := range recs {
+		out = append(out, activity{Start: runStart(r).Add(-secs(r.WaitSecs)), End: r.End, Lane: r.Lane, Session: r.Session})
+	}
+	for _, e := range leases {
+		out = append(out, activity{Start: e.At, End: e.At, Lane: e.Lane, Session: e.Session})
+	}
+	sort.SliceStable(out, func(i, j int) bool { return out[i].Start.Before(out[j].Start) })
+	return out
+}
+
+// blocks are the blocks of in, folded from the hook events; an open one of a
+// lane whose work tree is gone is closed at once (nobody is there to answer).
+func (in Input) blocks() []Block {
+	out := foldBlocksFrom(in.Hooks, activitiesOf(in.Records, in.Leases), in.Now)
+	for i := range out {
+		if out[i].Open() && in.GoneLanes[out[i].Lane] {
+			out[i].Until = out[i].Since
+		}
+	}
+	return out
+}
+
+// foldBlocks is foldBlocksFrom over ledger runs alone.
+func foldBlocks(events []Event, recs []history.Record, now time.Time) []Block {
+	return foldBlocksFrom(events, activitiesOf(recs, nil), now)
+}
+
+// foldBlocksFrom turns the hook events into blocks, one open at a time per lane.
 //
 //   - A "blocked" event opens a block on its lane, or strengthens the open one:
 //     the strongest class keeps the reason, the first event keeps Since.
-//   - A "cleared" event (the lane's next tool call) closes it.
-//   - So does the lane's next ledger run: a run that ended after the block began
-//     means the agent went on. Until is then when that run started waiting.
+//   - A stop on a usage limit opens none: that is the whole fleet's, one entry
+//     (deriveQuota), not one per lane.
+//   - A "cleared" event (the next tool call of a session) closes its lane's
+//     block and every open block of the same session, whatever lane it was
+//     recorded under: a session that moved between work trees is one agent.
+//   - So does later activity of the lane or of the block's session: a run that
+//     ended after the block began, or a lease taken or renewed, means the agent
+//     went on. Until is then when that activity began (never before the block).
 //   - A block older than blockMaxAge with no answer is dropped: the session
 //     is gone, nobody is being waited on.
-func foldBlocks(events []Event, recs []history.Record, now time.Time) []Block {
+func foldBlocksFrom(events []Event, acts []activity, now time.Time) []Block {
 	evs := append([]Event(nil), events...)
 	sort.SliceStable(evs, func(i, j int) bool { return evs[i].At.Before(evs[j].At) })
 	var all []Block
 	open := map[string]int{} // lane -> index in all
 	for _, e := range evs {
-		if e.Lane == "" {
-			continue
-		}
-		i, isOpen := open[e.Lane]
 		switch e.Kind {
 		case EventBlocked, EventStopFailure:
+			if e.Lane == "" || isQuotaStop(e) {
+				continue
+			}
 			class := e.Class
 			if e.Kind == EventStopFailure {
 				class = ClassStopFailure
 			}
-			if isOpen {
+			if i, isOpen := open[e.Lane]; isOpen {
 				if classRank[class] > classRank[all[i].Class] {
 					all[i].Class, all[i].Reason = class, e.Reason
 				}
@@ -61,17 +104,19 @@ func foldBlocks(events []Event, recs []history.Record, now time.Time) []Block {
 			open[e.Lane] = len(all)
 			all = append(all, Block{Lane: e.Lane, Session: e.Session, Class: class, Reason: e.Reason, Since: e.At})
 		case EventCleared:
-			if isOpen {
-				all[i].Until = e.At
-				delete(open, e.Lane)
+			for lane, i := range open {
+				if lane == e.Lane || (e.Session != "" && all[i].Session == e.Session) {
+					all[i].Until = e.At
+					delete(open, lane)
+				}
 			}
 		}
 	}
 	var out []Block
 	for _, b := range all {
 		if b.Open() {
-			if run, ok := firstRunAfter(recs, b.Lane, b.Since); ok {
-				b.Until = run
+			if at, ok := firstActivityAfter(acts, b); ok {
+				b.Until = at
 			} else if now.Sub(b.Since) > blockMaxAge {
 				continue
 			}
@@ -85,18 +130,17 @@ func foldBlocks(events []Event, recs []history.Record, now time.Time) []Block {
 	return out
 }
 
-// firstRunAfter is when the first run of lane that ended after since began
-// waiting (never before since itself).
-func firstRunAfter(recs []history.Record, lane string, since time.Time) (time.Time, bool) {
-	for _, r := range recs {
-		if r.Lane != lane || !r.End.After(since) {
+// firstActivityAfter is when the first sign of life of the block's lane or
+// session that reached past the block's start began (never before it).
+func firstActivityAfter(acts []activity, b Block) (time.Time, bool) {
+	for _, a := range acts {
+		if !a.End.After(b.Since) || (a.Lane != b.Lane && (b.Session == "" || a.Session != b.Session)) {
 			continue
 		}
-		start := runStart(r).Add(-secs(r.WaitSecs))
-		if start.Before(since) {
-			start = since
+		if a.Start.Before(b.Since) {
+			return b.Since, true
 		}
-		return start, true
+		return a.Start, true
 	}
 	return time.Time{}, false
 }

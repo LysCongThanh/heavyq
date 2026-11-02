@@ -12,6 +12,7 @@ import (
 	"github.com/LysCongThanh/heavyq/internal/flow"
 	"github.com/LysCongThanh/heavyq/internal/flowstate"
 	"github.com/LysCongThanh/heavyq/internal/gitutil"
+	"github.com/LysCongThanh/heavyq/internal/hook"
 )
 
 // flowOffEnv turns the automatic flow refresh off for a process (hooks and the
@@ -77,9 +78,16 @@ func defaultConfigLoader() (*config.Config, error) {
 var flowRefreshesOn = map[string]bool{"SessionStart": true, "Stop": true}
 
 // refreshFlowAfterHook is called by the hook runner once a reply is out.
-func refreshFlowAfterHook(name, event, cwd string) {
-	if flowRefreshesOn[event] && cwd != "" {
-		autoRefreshFlow(name, defaultConfigLoader, cwd, false)
+// The same events, and UserPromptSubmit, show an agent is alive: they lift the
+// agent's block and the fleet's usage limit (noteFlowActivity), and then the
+// refresh is forced, since an answer must show at once.
+func refreshFlowAfterHook(name string, in hook.Input) {
+	wrote := noteFlowActivityOfHook(in)
+	for _, common := range wrote {
+		refreshFlowOf(name, common)
+	}
+	if (len(wrote) > 0 || flowRefreshesOn[in.Event]) && in.Cwd != "" {
+		autoRefreshFlow(name, defaultConfigLoader, in.Cwd, len(wrote) > 0)
 	}
 }
 

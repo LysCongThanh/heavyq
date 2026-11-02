@@ -49,14 +49,18 @@ type Switch struct {
 // Meta is the session record. Percentages are 0..100 and nil when the
 // status line carried no such window (non-subscription users, first turn).
 type Meta struct {
-	Schema      int       `json:"schema"`
-	Session     string    `json:"session"`
-	Model       string    `json:"model,omitempty"`
-	Version     string    `json:"version,omitempty"` // agent version, e.g. 2.1.90
-	FiveHourPct *float64  `json:"five_hour_pct,omitempty"`
-	SevenDayPct *float64  `json:"seven_day_pct,omitempty"`
-	Updated     time.Time `json:"updated"`
-	Switches    []Switch  `json:"switches,omitempty"`
+	Schema      int      `json:"schema"`
+	Session     string   `json:"session"`
+	Model       string   `json:"model,omitempty"`
+	Version     string   `json:"version,omitempty"` // agent version, e.g. 2.1.90
+	FiveHourPct *float64 `json:"five_hour_pct,omitempty"`
+	SevenDayPct *float64 `json:"seven_day_pct,omitempty"`
+	// FiveHourResetsAt and SevenDayResetsAt are when each window resets
+	// (status line rate_limits.*.resets_at, Unix seconds); nil when not said.
+	FiveHourResetsAt *time.Time `json:"five_hour_resets_at,omitempty"`
+	SevenDayResetsAt *time.Time `json:"seven_day_resets_at,omitempty"`
+	Updated          time.Time  `json:"updated"`
+	Switches         []Switch   `json:"switches,omitempty"`
 }
 
 // Agent is the ledger's agent field: "claude-code/2.1.90", or "claude-code"

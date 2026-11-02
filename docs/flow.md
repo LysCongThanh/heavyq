@@ -81,6 +81,18 @@ added, never renamed or retyped.
 - `fleet` and `events` were added after the first draft of the contract (additive). `events` holds the newest 10
   stop failures and model switches in the window: `kind` is `stop_failure` (`detail` is Claude Code's `error`:
   `rate_limit`, `overloaded`, ...) or `model_switch` (`detail` is the new model).
+- `quota` is `null`, or the one fleet-level entry a usage-limit stop becomes (additive):
+  `{"since","last_hit","agents","lanes":[...],"window":"five_hour","resets_at":"..."|null}`. A StopFailure `rate_limit`
+  or a Notification `quota_auto_resume_*` opens it; four agents that hit the 5-hour limit within minutes of each
+  other are `agents: 4`, and `needs_you` carries **one** entry for them (`lane: "fleet"`, reason `quota hit at
+  19:20, 4 agents stopped, resets ~23:20`), not one per lane. `window` and `resets_at` come from the status line's
+  `rate_limits` (`resets_at` is null when it never said). It closes on the first of: any session's next tool call, a
+  ledger run or lease past a 2 minute grace after the last stop (`QuotaGrace`; agents mid-turn keep finishing tool calls
+  for a moment), a `quota_auto_resume_*` notice that says agents are resuming, the status line showing the window reset
+  (its reset time passed, or its newest report has every window under 100%), or 24 hours. Quota stops no longer count as
+  `blocked_human` time: nobody is being waited on, the account is.
+- `session` also carries `updated` (when the status line last reported) and `rate_limits.five_hour_resets_at` /
+  `seven_day_resets_at` (additive).
 
 ### When it is written
 
@@ -110,15 +122,22 @@ It appends to `<common>/heavyq/flow/events.jsonl` and fails open like every heav
 |---|---|
 | `PermissionRequest` | the lane is `blocked_human` now, reason `permission_request: Bash(<command>)` |
 | `Notification` `permission_prompt` / `idle_prompt` / `agent_needs_input` | the same, reason `<type>: <message>` (`permission_prompt` follows a `PermissionRequest` about six seconds later and adds no second entry; the stronger reason stays) |
-| other notifications (`auth_success`, `quota_auto_resume_*`, ...) | ignored: nobody is needed |
-| `StopFailure` | an `events` entry, and the lane waits: `stop_failure: rate_limit` |
+| `Notification` `quota_auto_resume_*` | a usage-limit stop (the `quota` entry above); one whose type ends in `_started`, `_resumed`, `_done`, `_complete` or `_succeeded` says agents are resuming and lifts it |
+| other notifications (`auth_success`, ...) | ignored: nobody is needed |
+| `StopFailure` | an `events` entry. `rate_limit` opens the `quota` entry; any other error (`overloaded`, ...) makes the lane wait: `stop_failure: overloaded` |
 | `PostModelSwitch` | a `model_switch` change point, and the session's model is updated |
-| `PostToolUse` | clears the lane's block: the agent is working again |
+| `PostToolUse` | clears the session's block (whatever lane it was recorded under) and, once past the grace, the fleet's `quota`: the agent is working again |
 
-A block also ends at the lane's next ledger run, and one nobody answered for 24 hours is dropped (the session
-is gone). Command lines in reasons go through `internal/redact` and are clipped. `PostToolUse` fires after every tool
-call, so its handler costs one failed `unlink` when nothing is blocked: a flag file per session in heavyq's state
-directory, no git call.
+A block also ends at the next ledger run or lease of its lane **or of its session** (a session that moved between
+work trees is one agent, so a block recorded under one lane clears when it runs under another), and one nobody answered
+for 24 hours is dropped (the session is gone). The `SessionStart`, `UserPromptSubmit` and `Stop` hooks count as activity
+too. A lane whose work tree no longer exists (the newest work tree the ledger or a hook recorded for it is gone from
+disk) drops out of `lanes` and `needs_you`; a lane with no recorded work tree is never dropped. Command lines in reasons go
+through `internal/redact` and are clipped. `PostToolUse` fires after every tool call, so its handler costs two failed
+reads when nothing is blocked and no quota is open: a flag file per session and one for the fleet, in heavyq's state
+directory, no git call. The usage limit is the account's, so its flag is one file for every repository: activity in
+another repository lifts it in all of them. `HEAVYQ_FLOW_QUOTA_GRACE` (a duration, default `2m`) overrides the grace of
+the hooks.
 
 ## Agent and model in the ledger
 

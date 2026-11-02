@@ -49,6 +49,10 @@ func handleFlow(in hook.Input, raw []byte) (hookReply, error) {
 		ev.Kind, ev.Class = flow.EventBlocked, flow.ClassPermissionRequest
 		ev.Reason = flow.ClassPermissionRequest + ": " + p.toolSummary()
 	case "Notification":
+		if kind, ok := quotaNotificationKind(p.NotificationType); ok {
+			ev.Kind, ev.Detail = kind, oneLine(p.NotificationType, 80)
+			break
+		}
 		class, ok := notificationClass(p.NotificationType)
 		if !ok {
 			return hookReply{}, nil
@@ -70,7 +74,7 @@ func handleFlow(in hook.Input, raw []byte) (hookReply, error) {
 	if err != nil {
 		return hookReply{}, nil // not a repository: nothing to keep state in
 	}
-	ev.Lane = itemLane(in.Cwd)
+	ev.Lane, ev.Worktree = flowLane(in.Cwd)
 	if ev.Lane == "" {
 		return hookReply{}, nil
 	}
@@ -82,6 +86,11 @@ func handleFlow(in hook.Input, raw []byte) (hookReply, error) {
 		if err := flowstate.MarkBlocked(in.SessionID, common, ev.Lane); err != nil {
 			hookLog("claude-flow: block mark: %v", err)
 		}
+		if ev.Kind == flow.EventStopFailure && ev.Detail == "rate_limit" {
+			noteQuota(ev, common)
+		}
+	case flow.EventQuota, flow.EventQuotaCleared:
+		noteQuota(ev, common)
 	case flow.EventModelSwitch:
 		if err := sessionmeta.RecordModelSwitch(common, in.SessionID, p.FromModel, p.ToModel, now); err != nil {
 			hookLog("claude-flow: model switch not kept: %v", err)
@@ -92,18 +101,21 @@ func handleFlow(in hook.Input, raw []byte) (hookReply, error) {
 }
 
 // flowCleared handles PostToolUse: the agent is working again, so its lane is
-// not waiting any more. In the common case (nothing blocked) this is one failed
-// unlink and no git call.
+// not waiting any more, and a usage limit that stopped agents, if there was one,
+// is lifted. In the common case (nothing blocked, no quota) this is two failed
+// reads and no git call.
 func flowCleared(in hook.Input, now time.Time) (hookReply, error) {
-	common, lane, ok := flowstate.TakeBlockMark(in.SessionID)
-	if !ok {
-		return hookReply{}, nil
-	}
-	if err := flowstate.AppendEvent(common, flow.Event{At: now, Kind: flow.EventCleared, Lane: lane, Session: in.SessionID}); err != nil {
+	wrote, err := noteFlowActivity(in.SessionID, now)
+	if err != nil || len(wrote) == 0 {
 		return hookReply{}, err
 	}
-	hookLog("claude-flow PostToolUse lane %s session %s: cleared", lane, in.SessionID)
-	return hookReply{After: func() { autoRefreshFlow("claude-flow", defaultConfigLoader, in.Cwd, true) }}, nil
+	hookLog("claude-flow PostToolUse session %s: cleared", in.SessionID)
+	return hookReply{After: func() {
+		for _, common := range wrote {
+			refreshFlowOf("claude-flow", common)
+		}
+		autoRefreshFlow("claude-flow", defaultConfigLoader, in.Cwd, true)
+	}}, nil
 }
 
 func firstNonEmpty(a, b string) string {

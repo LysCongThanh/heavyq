@@ -27,12 +27,13 @@ const (
 
 func eventsPath(common string) string { return filepath.Join(Dir(common), "events.jsonl") }
 
-// AppendEvent records one hook observation. It is one O_APPEND write, so
+// AppendEvent records one hook observation. Every event has a lane except the
+// fleet-level quota_cleared. It is one O_APPEND write, so
 // concurrent hooks never interleave inside a line. The caller has already
 // redacted e.Reason.
 func AppendEvent(common string, e flow.Event) error {
-	if e.Lane == "" || e.Kind == "" {
-		return errors.New("flow event needs a lane and a kind")
+	if e.Kind == "" || (e.Lane == "" && e.Kind != flow.EventQuotaCleared) {
+		return errors.New("flow event needs a lane and a kind (a quota_cleared one, a kind)")
 	}
 	e.At = e.At.UTC()
 	b, err := json.Marshal(e)
@@ -108,7 +109,7 @@ func readTail(path string) ([]flow.Event, error) {
 	var out []flow.Event
 	for _, ln := range lines {
 		var e flow.Event
-		if len(ln) == 0 || json.Unmarshal(ln, &e) != nil || e.Kind == "" || e.Lane == "" {
+		if len(ln) == 0 || json.Unmarshal(ln, &e) != nil || e.Kind == "" || (e.Lane == "" && e.Kind != flow.EventQuotaCleared) {
 			continue
 		}
 		out = append(out, e)

@@ -24,5 +24,6 @@ func recordSessionMeta(common string, in Input, now time.Time) {
 		v := float64(in.SevenDay)
 		m.SevenDayPct = &v
 	}
+	m.FiveHourResetsAt, m.SevenDayResetsAt = in.FiveHourResets, in.SevenDayResets
 	_, _, _ = sessionmeta.RecordIn(common, m, now)
 }

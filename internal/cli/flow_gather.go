@@ -67,6 +67,7 @@ func gatherFlow(cfg *config.Config, dir string, now time.Time) (flow.Input, stri
 	if m := sessionmeta.Latest(common); m != nil {
 		in.Session = sessionInfo(m)
 	}
+	in.GoneLanes = goneLanes(in)
 	gatherFlowExtras(&in, common, root, from)
 	return in, common, nil
 }
@@ -123,8 +124,10 @@ func flowItems(cfg *config.Config, root string, recent []history.Record, now tim
 // sessionInfo is the snapshot's "session" block from a meta record.
 func sessionInfo(m *sessionmeta.Meta) *flow.SessionInfo {
 	si := &flow.SessionInfo{Model: m.Model, AgentVersion: m.Version}
-	if m.FiveHourPct != nil || m.SevenDayPct != nil {
-		si.RateLimits = &flow.RateLimits{FiveHourPct: m.FiveHourPct, SevenDayPct: m.SevenDayPct}
+	si.Updated = m.Updated
+	if m.FiveHourPct != nil || m.SevenDayPct != nil || m.FiveHourResetsAt != nil || m.SevenDayResetsAt != nil {
+		si.RateLimits = &flow.RateLimits{FiveHourPct: m.FiveHourPct, SevenDayPct: m.SevenDayPct,
+			FiveHourResetsAt: m.FiveHourResetsAt, SevenDayResetsAt: m.SevenDayResetsAt}
 	}
 	return si
 }

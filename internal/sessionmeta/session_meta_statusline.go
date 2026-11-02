@@ -32,6 +32,23 @@ type statusline struct {
 
 type window struct {
 	UsedPercentage *float64 `json:"used_percentage"`
+	ResetsAt       *float64 `json:"resets_at"` // Unix seconds
+}
+
+// ResetTime reads a resets_at (Unix seconds); nil when absent or not a time.
+func ResetTime(unix *float64) *time.Time {
+	if unix == nil || *unix <= 0 || *unix > 1e11 {
+		return nil
+	}
+	t := time.Unix(int64(*unix), 0).UTC()
+	return &t
+}
+
+func (w *window) resets() *time.Time {
+	if w == nil {
+		return nil
+	}
+	return ResetTime(w.ResetsAt)
 }
 
 func (w *window) pct() *float64 {
@@ -68,7 +85,8 @@ func ParseStatusline(raw []byte) (Parsed, error) {
 		dir = s.Cwd
 	}
 	return Parsed{Dir: dir, Meta: Meta{Session: s.SessionID, Model: s.Model.ID, Version: s.Version,
-		FiveHourPct: s.RateLimits.FiveHour.pct(), SevenDayPct: s.RateLimits.SevenDay.pct()}}, nil
+		FiveHourPct: s.RateLimits.FiveHour.pct(), SevenDayPct: s.RateLimits.SevenDay.pct(),
+		FiveHourResetsAt: s.RateLimits.FiveHour.resets(), SevenDayResetsAt: s.RateLimits.SevenDay.resets()}}, nil
 }
 
 // RecordStatusline is the one function the status-line hook and the status
@@ -128,7 +146,15 @@ func RecordIn(common string, m Meta, now time.Time) (Meta, bool, error) {
 
 // same: nothing a reader sees differs (percentages compared to whole points).
 func same(a, b *Meta) bool {
-	return a.Model == b.Model && a.Version == b.Version && pctEq(a.FiveHourPct, b.FiveHourPct) && pctEq(a.SevenDayPct, b.SevenDayPct)
+	return a.Model == b.Model && a.Version == b.Version && pctEq(a.FiveHourPct, b.FiveHourPct) && pctEq(a.SevenDayPct, b.SevenDayPct) &&
+		timeEq(a.FiveHourResetsAt, b.FiveHourResetsAt) && timeEq(a.SevenDayResetsAt, b.SevenDayResetsAt)
+}
+
+func timeEq(a, b *time.Time) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return a.Equal(*b)
 }
 
 func pctEq(a, b *float64) bool {

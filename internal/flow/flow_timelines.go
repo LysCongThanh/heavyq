@@ -29,7 +29,7 @@ func derive(in Input) ([]Timeline, map[string]*itemHolds) {
 		facts[f.Status.ID] = f
 	}
 	holds := holdsOf(in.Leases, facts, in.Now)
-	blocks := foldBlocks(in.Hooks, in.Records, in.Now)
+	blocks := in.blocks()
 
 	itemRecs, sessRecs := map[string][]history.Record{}, map[string][]history.Record{}
 	for _, r := range in.Records {

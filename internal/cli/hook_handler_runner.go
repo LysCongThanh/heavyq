@@ -75,6 +75,6 @@ func runHookHandler(name string, budget time.Duration, stdin io.Reader, stdout, 
 	}
 	// The reply is out: bring the flow state up to date (debounced; SessionStart
 	// and Stop only, see flow_refresh.go). Never before the reply, never at PreToolUse.
-	refreshFlowAfterHook(name, in.Event, in.Cwd)
+	refreshFlowAfterHook(name, in)
 	return reply.Exit
 }
