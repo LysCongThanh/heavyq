@@ -1,12 +1,12 @@
-# Goal: v0.5 — long runs that report themselves (visible, self-checking)
+# Goal: v0.6 — trustworthy numbers, collision-free claims
 
 Dogfood: agents claim these with `heavyq item claim <id>` and prove them through the queue on a remote.
 A proof is a named gate in heavyq.toml (same name as the item): a test that must exist and pass (`go test -run` that
 matches nothing would pass, so the gate greps for the test's PASS line). Prove with
 `heavyq item done <id> --run --remote linuxi`, or `heavyq gate run <id> --remote linuxi`; no `sh -c` to type.
 
-- [x] flow-collectors: git/gh collectors, EWMA baseline, flowview on flowstate types (#113)  `proof: gate:flow-collectors`
-- [x] cli-race-fast: internal/cli under -race in ≤ 5 min (#114)  `proof: gate:cli-race-fast`
-- [x] permission-matcher: preflight matcher checked against real decisions; uncertain only warns (#108)  `proof: gate:permission-matcher`
-- [x] size-gate: claims refuse items an agent cannot finish and prove (#96)  `proof: gate:size-gate`
-- [x] proof-remote: proofs and gates run where heavy work is configured to go (#115)  `proof: gate:proof-remote`
+- [ ] proof-scope: a gate can declare the paths its proof depends on; a docs-only commit keeps the proof (#141)  `proof: gate:proof-scope`
+- [ ] recap-accuracy: done+stale labelled as such; throughput counts every proof, not only claim→proof (#141)  `proof: gate:recap-accuracy`
+- [ ] next-claim: `item claim --next` respects `after:`, refuses path overlap with live leases, WIP cap (#97)  `proof: gate:next-claim`
+- [ ] tick-free-done: `done` from a parallel worktree records the event without editing the anchor (#119)  `proof: gate:tick-free-done`
+- [ ] stance-hygiene: stance dirs ignore non-stance files; narrow built-in keywords; holdout arm (#51, #92)  `proof: gate:stance-hygiene`
