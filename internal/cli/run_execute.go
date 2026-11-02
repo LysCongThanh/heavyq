@@ -118,14 +118,13 @@ func (r *run) runRemote(c *claim) int {
 			baseRef = r.opts.BaseRef
 		}
 	}
-	var sibs []string
 	for _, s := range r.pl.siblings {
 		if err := remote.Push(m, s.Path, s.Name, s.SHA, s.SHA[:12], timeout); err != nil {
 			fmt.Fprintln(r.stderr, "heavyq:", err)
 			return ExitRemoteSetup
 		}
-		sibs = append(sibs, s.Name+"@"+s.SHA)
 	}
+	sibs := siblingIDs(r.pl.siblings)
 	select {
 	case s := <-r.sigs:
 		return signalExit(s)

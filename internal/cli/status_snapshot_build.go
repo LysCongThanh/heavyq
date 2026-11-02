@@ -78,7 +78,7 @@ func ticketSnapshot(t *queue.Ticket, now time.Time, cancel bool) snapshot.Ticket
 	return snapshot.Ticket{
 		ID: t.Name, Pid: t.Pid, Lane: t.Lane, Prio: t.Prio, Light: t.Light, Target: t.Target,
 		Candidates: cands, Cmd: redact.Command(t.Cmd), Since: t.Since,
-		WaitS: waitSecs(t, now), CancelRequested: cancel, Needs: t.Needs, Pools: t.Pools,
+		WaitS: waitSecs(t, now), CancelRequested: cancel, Needs: t.Needs, Pools: t.Pools, With: t.With,
 	}
 }
 

@@ -42,6 +42,52 @@ What a remote run sees, and what it doesn't:
   connection drops, the remote stops the command's process group and removes the worktree. Exit 255 means
   the connection was lost.
 
+## Sibling repositories: `--with`
+
+A command that reads `../shared-schema` or `../core-lib` needs those repositories next to the main one. Declare
+them, and every machine the run may go to gets them there:
+
+```bash
+heavyq 3 --with shared-schema --with core-lib@v2.1.0 -- make contract-test
+heavyq 3 --repo ~/work/app --with ~/work/tools/linters@main -- make lint   # a path: its directory name is used
+```
+
+`REPO[@REF]` is a directory name next to the main repository (`--repo`, default the git root of the current
+directory) or a path containing `/`. `REF` is a commit or branch; without it, `HEAD` as it is when you enqueue.
+The ref is resolved to a commit **at enqueue**, so a run is pinned however long it waits. Anything wrong stops
+the run with exit 2 before it is queued: the directory is missing or is not the root of a git repository, the ref
+is unknown, the name has characters outside `A-Za-z0-9._-` (or is `.`/`..`, or starts with `.`/`-`), it is the main
+repository, or two `--with` land on the same name.
+
+- **Remote:** each sibling's commit is pushed the same way the main repository's is, and checked out as a directory
+  next to the main worktree with the same name, so `../shared-schema` resolves. Both are removed with the worktree.
+- **Local:** the command runs in place, so this machine is eligible only when every sibling lives at
+  `../<name>` (next to the main repository), has `HEAD` equal to the pinned commit and a clean work tree, and
+  `--ref`, if given, is the main repository's `HEAD`. It is checked again when the ticket gets a slot, because
+  siblings change while a ticket waits. When local is not eligible, `--remote local` exits 2 naming the sibling
+  that is off; `--remote auto` and default placement use the remotes only (one stderr line says why).
+- **Identity:** each sibling's name and full commit are part of the run id, so the cache and `gate status` never
+  take a result for one sibling commit as a result for another. `--cache` works with `--with`. A local result is
+  not stored (and records no tree) if a sibling changed while the command ran.
+- **Placement:** with `--with`, `../<name>` in the command does not by itself keep default placement local; any other
+  path outside the repository still does.
+- `heavyq status` shows `with: name@sha12` under the ticket, `heavyq history -v` under the run, and the ledger
+  and `status --json` carry it as `with`.
+
+## The GitHub CLI: `--need-gh`
+
+A command that calls `gh` with your login works only on the machine that has it. `--need-gh` keeps the run on this
+machine: the same as `--remote local`, and combined with `--remote <name>` it is a usage error (exit 2; `--remote
+auto` just narrows to local). List repositories whose commands always need it in the user config:
+
+```toml
+[run]
+need_gh_repos = ["app", "billing-api"]   # repository directory names
+```
+
+A run in one of them behaves as if `--need-gh` were given and prints one stderr line saying why. A `[[gate]]` can
+say `need_gh = true` (see [gates](gates.md)).
+
 Remote requirements: `bash`, `git`, `base64`, `awk`, and either Linux with `flock` and `setsid` (util-linux) or
 macOS (below). Nothing is installed. Everything lives under `work_dir` (default `~/.heavyq`).
 

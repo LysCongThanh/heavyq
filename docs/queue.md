@@ -64,6 +64,8 @@ heavyq 4 --max-wait 10m -- cargo test             # exit 75 if not started withi
 heavyq 4 --cache -- npm test                      # same clean commit already tested? reuse that result
 heavyq 4 --session "$ID" --item T-12 -- npm test  # tag the run in history: who ran it, for which work item
 heavyq 4 --needs port:2,pg -- npm run e2e         # hold 2 ports and a database while it runs (docs/pools.md)
+heavyq 4 --with shared-schema -- make contract    # sibling repo ../shared-schema, pinned to its HEAD, shipped with a remote run (docs/remote.md)
+heavyq 4 --need-gh -- ./scripts/open-release-pr   # uses this machine's GitHub CLI login: runs here only (docs/remote.md)
 heavyq 4 --digest -- npm test                     # end with the result digest an agent gets (always on in agent mode)
 
 heavyq status      # what runs, what waits, and why (opens with a short story in plain words)

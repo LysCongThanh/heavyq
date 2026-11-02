@@ -79,6 +79,7 @@ func printStatusText(w io.Writer, cfg *config.Config, q *queue.Dir, probes *prob
 	for _, t := range snap.Running {
 		fmt.Fprintf(w, "  %-12s p%d  %-16s %8s  pid %-7d %s\n", t.Lane, t.Prio, t.Machine+"/"+t.Slot,
 			fmtDur(now.Sub(t.ClaimedAt)), t.Pid, t.Cmd)
+		printWith(w, t.With)
 	}
 	fmt.Fprintln(w, "WAITING (turn order)")
 	if len(snap.Waiting) == 0 {
@@ -91,6 +92,7 @@ func printStatusText(w io.Writer, cfg *config.Config, q *queue.Dir, probes *prob
 		}
 		fmt.Fprintf(w, "  %d. %-10s p%d  %-13s %8s  pid %-7d %s\n", i+1, t.Lane, t.Prio, kind,
 			fmtDur(now.Sub(t.Since)), t.Pid, t.Cmd)
+		printWith(w, t.With)
 	}
 	printCoalesced(w, now)
 

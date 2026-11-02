@@ -134,6 +134,9 @@ func (c *Config) normalize() error {
 			return fmt.Errorf("remote %q: %w", r.Name, err)
 		}
 	}
+	if err := c.Run.normalize(); err != nil {
+		return err
+	}
 	return c.Proof.normalize(c)
 }
 

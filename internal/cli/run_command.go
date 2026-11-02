@@ -89,7 +89,7 @@ func runCommand(cfg *config.Config, args []string, stderr io.Writer) int {
 	r.probes.refresh(cfg, pl.candidates)
 	r.me = &queue.Ticket{
 		Pid: os.Getpid(), Start: start, Lane: o.Lane, Prio: o.Prio, Light: o.Light,
-		Target: pl.target, Candidates: pl.candidates, Since: r.t0, Cmd: queue.TruncateCmd(o.Argv),
+		Target: pl.target, Candidates: pl.candidates, Since: r.t0, Cmd: queue.TruncateCmd(o.Argv), With: siblingLabels(pl.siblings),
 	}
 	if err := r.preparePools(); err != nil {
 		return usageFail(stderr, mode, err)

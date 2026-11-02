@@ -151,7 +151,11 @@ func pickGate(repo *repoconfig.Repo, name string, stderr io.Writer) (repoconfig.
 // directory, the cache.env allowlist read from this process's environment, the
 // configured base ref), so a ledger record only proves the command when it ran
 // under the same environment.
-func subjectOf(cfg *config.Config, root string) proof.Subject {
+func subjectOf(cfg *config.Config, root string) proof.Subject { return subjectOfWith(cfg, root, nil) }
+
+// subjectOfWith is subjectOf for a gate that needs sibling repositories: sibs
+// ("name@sha", see gateSubject) join the run_id of every command.
+func subjectOfWith(cfg *config.Config, root string, sibs []string) proof.Subject {
 	co, err := gitutil.Identify(root)
 	s := proof.Subject{Repo: co.Repo, Tree: co.Tree, Commit: co.Commit, Dirty: co.Dirty,
 		EnvFree: len(cfg.Cache.Env) == 0}
@@ -159,7 +163,7 @@ func subjectOf(cfg *config.Config, root string) proof.Subject {
 		baseSHA := runident.BaseSHA(root, cfg.Queue.BaseRef)
 		s.RunID = func(argv []string) string {
 			return runident.ID(runident.Input{Tree: co.Tree, Argv: argv, EnvNames: cfg.Cache.Env,
-				Getenv: os.LookupEnv, BaseSHA: baseSHA})
+				Getenv: os.LookupEnv, BaseSHA: baseSHA, Siblings: sibs})
 		}
 	}
 	switch {
@@ -177,7 +181,7 @@ func subjectOf(cfg *config.Config, root string) proof.Subject {
 // evaluateGate is the proof state of t's gate on the code in its repository
 // right now, read from the ledger.
 func evaluateGate(cfg *config.Config, t *gateTarget, stderr io.Writer) proof.Gate {
-	subj := subjectOf(cfg, t.repo.Root)
+	subj := gateSubject(cfg, t.repo.Root, t.gate)
 	recs, err := proofRecords(subj)
 	if err != nil {
 		// Fail closed: an unreadable ledger might hide a later failure, so

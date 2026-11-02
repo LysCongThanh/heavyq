@@ -24,6 +24,7 @@ Every key is optional; keys this heavyq does not know are ignored with a warning
 | `remote.git_url` | `"<ssh>:<work_dir>/git"` | where bare repos are pushed |
 | `remote.cache_hook` | `""` | shell run in the worktree before the command; gets `HEAVYQ_CACHE_DIR`, `HEAVYQ_WORKTREE` |
 | `remote.env_path` | `""` | directories put first on the remote command's PATH, `:`-separated, `~/` = remote home. See [a spare Mac](remote.md#a-spare-mac-as-a-remote) |
+| `run.need_gh_repos` | `[]` | `[run]`: repository directory names whose commands call the GitHub CLI with this machine's login; runs there behave as if `--need-gh` were given (this machine only). See [remote](remote.md#the-github-cli---need-gh) |
 | `pool.name` | required | `[[pool]]`: a named resource handed out with `--needs`; `[a-z][a-z0-9_]{0,31}`. See [pools](pools.md) |
 | `pool.values` / `pool.size` | one required | a range `"4100-4199"` or a list of names or integers / a capacity (values `1..size`) |
 | `pool.port` | by name | `true` = TCP ports (probed, never in the ephemeral range); default: the pool is called `port` or ends in `_port` |

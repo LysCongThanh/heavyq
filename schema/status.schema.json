@@ -508,6 +508,13 @@
           "type": "object",
           "description": "Pools are the values a running ticket holds, by pool."
         },
+        "with": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "With are the pinned --with sibling repositories (\"name@sha12\"); absent without any."
+        },
         "wait_s": {
           "type": "number"
         },
@@ -718,6 +725,13 @@
           },
           "type": "object",
           "description": "Pools are the values a running ticket holds, by pool."
+        },
+        "with": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "With are the pinned --with sibling repositories (\"name@sha12\"); absent without any."
         },
         "wait_s": {
           "type": "number"

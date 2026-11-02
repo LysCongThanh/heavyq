@@ -31,6 +31,8 @@ type Ticket struct {
 	// the values it holds once running, by pool, in the order they are exported.
 	Needs []string            `json:"needs,omitempty"`
 	Pools map[string][]string `json:"pools,omitempty"`
+	// With are the pinned --with sibling repositories, "name@sha12".
+	With []string `json:"with,omitempty"`
 
 	Machine   string    `json:"machine,omitempty"`
 	Slot      string    `json:"slot,omitempty"`

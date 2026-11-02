@@ -140,7 +140,7 @@ func worktreeGate(cfg *config.Config, worktree string, src proofSource) snapshot
 	if !ok {
 		return skip("no gate to check: name one \"" + defaultGate + "\" in heavyq.toml")
 	}
-	subj := subjectOf(cfg, repo.Root)
+	subj := gateSubject(cfg, repo.Root, gate)
 	recs, err := src(subj)
 	if err != nil {
 		return skip("ledger unreadable: " + err.Error())

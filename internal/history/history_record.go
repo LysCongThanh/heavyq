@@ -50,6 +50,9 @@ type Record struct {
 	// Record stays comparable. Added within v2: older lines have neither.
 	Needs string `json:"needs,omitempty"`
 	Pools string `json:"pools,omitempty"`
+	// With are the pinned --with sibling repositories, "name@sha12" comma-separated
+	// (the run_id covers the full commits). Added within v2: older lines have none.
+	With string `json:"with,omitempty"`
 	// The machine as it was when the run was admitted (local: metrics.Local,
 	// remote: the probe placement used), with the limits the resource gate
 	// applied to it. All of it is absent when the machine could not be

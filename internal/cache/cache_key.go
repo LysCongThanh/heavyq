@@ -19,6 +19,7 @@ type KeyInput struct {
 	EnvNames []string // allowlisted variables whose values are part of the key
 	Version  string   // heavyq version
 	BaseRef  string   // --base-ref (remote/branch): its commit joins the key
+	Siblings []string // pinned --with repositories as "name@sha": they join the key
 	Getenv   func(string) (string, bool)
 }
 
@@ -63,7 +64,7 @@ func KeyAndTree(in KeyInput) (key, tree, why string) {
 		return "", "", "cannot resolve the subdirectory"
 	}
 	id := runident.ID(runident.Input{Tree: tree, Argv: in.Argv, Subdir: sub, EnvNames: in.EnvNames,
-		Getenv: in.Getenv, BaseSHA: runident.BaseSHA(top, in.BaseRef)})
+		Getenv: in.Getenv, BaseSHA: runident.BaseSHA(top, in.BaseRef), Siblings: in.Siblings})
 	b, err := json.Marshal(keyDoc{Schema: 3, RunID: id, Version: in.Version})
 	if err != nil {
 		return "", "", "cannot encode the key"

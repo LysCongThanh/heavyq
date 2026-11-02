@@ -33,7 +33,7 @@ func gateWhyLine(cfg *config.Config, stderr io.Writer) string {
 	if !ok {
 		return ""
 	}
-	subj := subjectOf(cfg, repo.Root)
+	subj := gateSubject(cfg, repo.Root, g)
 	recs, err := proofRecords(subj)
 	if err != nil {
 		fmt.Fprintln(stderr, "heavyq: ledger unreadable, so nothing can be proven:", err)

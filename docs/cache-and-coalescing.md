@@ -36,4 +36,5 @@ heavyq 4 --cache -- npm test
 - With `--cache`, the command's stdout and stderr are pipes, not your terminal, so tools may turn colours
   off. The order of output between stdout and stderr is kept as heavyq received it, not more precisely.
 - Results are per machine and per user. Entries aren't shared between machines.
-- Not with `--ref` other than HEAD or with `--with` (skipped, with the reason).
+- Not with `--ref` other than HEAD (skipped, with the reason). With `--with`, the pinned commit of each sibling is
+  part of the key, and a local result is not stored if a sibling changed while the command ran.
