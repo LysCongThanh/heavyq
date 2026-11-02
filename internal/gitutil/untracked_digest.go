@@ -57,14 +57,11 @@ type untrackedResult struct {
 // (bookkeeping, see bookkeepingPaths). repo must be the work tree root:
 // ls-files reports paths relative to where it runs.
 //
-// A nested repository (an untracked directory holding its own .git) is listed
-// by git as "dir/" and its contents are not visible from here, so it makes the
-// result unknown.
+// A nested repository or linked work tree (an untracked directory holding its
+// own .git) is listed by git as "dir/"; it is left out (see isNestedRepo), as
+// is everything in NestedWorkTreeDirs.
 func untrackedDigest(repo string, exclude ...string) (untrackedResult, error) {
-	args := []string{"ls-files", "--others", "--exclude-standard", "-z"}
-	if len(exclude) > 0 {
-		args = append(args, excludeSpecs(exclude)...)
-	}
+	args := append([]string{"ls-files", "--others", "--exclude-standard", "-z"}, untrackedSpecs(exclude)...)
 	list, err := gitRaw(repo, args...)
 	if err != nil {
 		return untrackedResult{}, err
@@ -76,9 +73,12 @@ func untrackedDigest(repo string, exclude ...string) (untrackedResult, error) {
 		if name == "" {
 			continue
 		}
+		if isNestedRepo(repo, name) {
+			continue // another repository, or a linked work tree: not part of this tree
+		}
 		res.files++
 		if strings.HasSuffix(name, "/") {
-			res.unknown = true
+			res.unknown = true // an opaque directory that is not a repository: cannot be read
 			return res, nil
 		}
 		kind, sum := digestEntry(inner, buf, &budget, filepath.Join(repo, filepath.FromSlash(name)))

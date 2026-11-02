@@ -82,6 +82,9 @@ func initCommand(args []string, stdout, stderr io.Writer) int {
 	default:
 		g := detected.Gates[0]
 		fmt.Fprintf(stdout, "wrote %s\n  gate %s, detected from %s: %s\n", path, g.Name, strings.Join(g.Sources, ", "), strings.Join(g.Run, ", "))
+		if hint := nestedWorkTreesHint(root); hint != "" {
+			fmt.Fprintln(stdout, hint)
+		}
 		fmt.Fprintf(stdout, "next: heavyq gate run %s\n", g.Name)
 	}
 	if *agentsMD && !updateAgentDocs(root, stdout, stderr) {
