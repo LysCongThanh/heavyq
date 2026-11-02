@@ -8,6 +8,8 @@
 #         HEAVYQ_BASE_REF / HEAVYQ_BASE_SHA   recreate refs/remotes/<ref>
 #         HEAVYQ_HOOK_B64    optional dependency-cache hook (shell, base64)
 #         HEAVYQ_WATCH_STDIN=1  stdin is a lifeline: EOF means heavyq died
+#         HEAVYQ_ENV_PATH    directories put first on PATH ("~/" = $HOME; the remote's env_path)
+# Portable: runs on Linux (flock, setsid) and on stock macOS (bash 3.2, Perl instead of flock/setsid).
 # Exit: the command's code (97/98 from the command become 96);
 #       97 = slot busy, 98 = setup failed (nothing was run).
 set -uo pipefail
@@ -16,9 +18,37 @@ case "$W" in /*) ;; *) W="$HOME/$W" ;; esac
 safe() { [[ "$1" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; }
 fail() { echo "heavyq-job: $*" >&2; exit 98; }
 safe "$REPO" && [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] && safe "$LABEL" && safe "$SLOT" || fail "bad arguments"
+
+# PATH. macOS: a non-interactive ssh command gets a bare PATH, so ask the user's login shell for theirs
+# (a hung profile is cut off after 10 s). Both: HEAVYQ_ENV_PATH (the remote's env_path) goes first; "~/" is $HOME.
+if [[ "$(uname -s 2> /dev/null)" == Darwin ]]; then
+  _sh="${SHELL:-/bin/zsh}"; case "${_sh##*/}" in zsh | bash) ;; *) _sh=/bin/zsh ;; esac
+  _lp="$({ command -v perl > /dev/null 2>&1 && perl -e 'alarm 10; exec @ARGV' "$_sh" -lc 'printf "\nheavyq-path:%s\n" "$PATH"'; } 2> /dev/null < /dev/null | sed -n 's/^heavyq-path://p' | tail -n 1)"
+  [[ -z "$_lp" ]] || PATH="$_lp:$PATH"
+fi
+if [[ -n "${HEAVYQ_ENV_PATH:-}" ]]; then
+  _pre=""; IFS=: read -r -a _eps <<< "$HEAVYQ_ENV_PATH"
+  for _d in ${_eps[@]+"${_eps[@]}"}; do
+    [[ -n "$_d" ]] || continue
+    case "$_d" in "~") _d="$HOME" ;; "~/"*) _d="$HOME/${_d#"~/"}" ;; esac
+    _pre="$_pre$_d:"
+  done
+  PATH="$_pre$PATH"
+fi
+export PATH
+
 mkdir -p "$W/git" "$W/wt" "$W/slots" "$W/cache" || fail "cannot create $W"
 exec 9> "$W/slots/$SLOT.lock" || fail "cannot open slot lock"
-flock -w 5 9 || { echo "heavyq-job: slot $SLOT is busy (used outside the queue?)" >&2; exit 97; }
+# Slot lock: flock(1) where it exists (Linux). macOS has none, but Perl ships with it and its flock() is the
+# same flock(2) on the same open file description, so Linux and macOS slots behave identically.
+lock_slot() {
+  if command -v flock > /dev/null 2>&1; then flock -w 5 9; return; fi
+  command -v perl > /dev/null 2>&1 || fail "need flock or perl for the slot lock"
+  perl -MFcntl=:flock -e 'open(my $f, ">&=", 9) or exit 2; my $t = time + 5;
+    while (!flock($f, LOCK_EX | LOCK_NB)) { exit 1 if time >= $t; select(undef, undef, undef, 0.1) } exit 0'
+}
+lock_slot || { echo "heavyq-job: slot $SLOT is busy (used outside the queue?)" >&2; exit 97; }
+B64D=-d; printf QQ== | base64 -d > /dev/null 2>&1 || B64D=-D # BSD base64 before macOS 13 spells it -D
 
 ID="${SHA:0:8}-$$"
 BARE="$W/git/$REPO.git"
@@ -94,13 +124,20 @@ cd "$WT/$SUB" || fail "cannot enter worktree"
 echo "heavyq-job: $(hostname 2> /dev/null || echo remote): $REPO@${SHA:0:12}, lane $LABEL, slot $SLOT" >&2
 export HEAVYQ_JOB_ID="$ID" HEAVYQ_WORKTREE="$WT" HEAVYQ_CACHE_DIR="$W/cache"
 if [[ -n "${HEAVYQ_HOOK_B64:-}" ]]; then
-  HOOK="$(printf '%s' "$HEAVYQ_HOOK_B64" | base64 -d)" || fail "cannot decode cache hook"
+  HOOK="$(printf '%s' "$HEAVYQ_HOOK_B64" | base64 "$B64D")" || fail "cannot decode cache hook"
   bash -c "$HOOK" 9>&- || fail "cache hook failed"
 fi
-CMD="$(printf '%s' "${HEAVYQ_CMD_B64:-}" | base64 -d)" || fail "cannot decode command"
+CMD="$(printf '%s' "${HEAVYQ_CMD_B64:-}" | base64 "$B64D")" || fail "cannot decode command"
 [[ -n "$CMD" ]] || fail "empty command"
 # 9>&-: the command never inherits the slot lock, so daemons it leaves behind cannot pin the slot.
-setsid bash -c "$CMD" 9>&- &
+# Own session and process group: setsid(1) on Linux; macOS has none, so Perl calls setsid(2) and execs bash
+# (same pid, so $! is still the group id that kill_group signals).
+if command -v setsid > /dev/null 2>&1; then
+  setsid bash -c "$CMD" 9>&- &
+else
+  command -v perl > /dev/null 2>&1 || fail "need setsid or perl to isolate the command"
+  perl -MPOSIX -e 'POSIX::setsid() >= 0 or die "heavyq-job: setsid: $!\n"; exec @ARGV or die "heavyq-job: exec: $!\n"' bash -c "$CMD" 9>&- &
+fi
 CHILD=$!
 wait "$CHILD"; rc=$?
 kill_group "$CHILD"; CHILD=""

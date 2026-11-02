@@ -65,6 +65,9 @@ func StartJob(s JobSpec) (*Started, error) {
 	if s.BaseRef != "" {
 		env = append(env, "HEAVYQ_BASE_REF="+s.BaseRef, "HEAVYQ_BASE_SHA="+s.BaseSHA)
 	}
+	if s.Machine.EnvPath != "" {
+		env = append(env, "HEAVYQ_ENV_PATH="+s.Machine.EnvPath)
+	}
 	if s.Machine.CacheHook != "" {
 		env = append(env, "HEAVYQ_HOOK_B64="+b64(s.Machine.CacheHook))
 	}

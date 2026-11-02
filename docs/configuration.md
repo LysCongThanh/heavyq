@@ -23,6 +23,7 @@ Every key is optional. [`examples/config.toml`](../examples/config.toml) has eve
 | `remote.work_dir` | `".heavyq"` | remote directory (relative to the remote home) |
 | `remote.git_url` | `"<ssh>:<work_dir>/git"` | where bare repos are pushed |
 | `remote.cache_hook` | `""` | shell run in the worktree before the command; gets `HEAVYQ_CACHE_DIR`, `HEAVYQ_WORKTREE` |
+| `remote.env_path` | `""` | directories put first on the remote command's PATH, `:`-separated, `~/` = remote home. See [a spare Mac](remote.md#a-spare-mac-as-a-remote) |
 | `pool.name` | required | `[[pool]]`: a named resource handed out with `--needs`; `[a-z][a-z0-9_]{0,31}`. See [pools](pools.md) |
 | `pool.values` / `pool.size` | one required | a range `"4100-4199"` or a list of names or integers / a capacity (values `1..size`) |
 | `pool.port` | by name | `true` = TCP ports (probed, never in the ephemeral range); default: the pool is called `port` or ends in `_port` |

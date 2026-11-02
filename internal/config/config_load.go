@@ -174,6 +174,9 @@ func (m *MachineConfig) normalizeRemote() error {
 	if strings.ContainsAny(m.WorkDir, "'\"`$\\\n ") || strings.Contains(m.WorkDir, "..") {
 		return fmt.Errorf("work_dir %q contains unsafe characters", m.WorkDir)
 	}
+	if err := validateEnvPath(m.EnvPath); err != nil {
+		return err
+	}
 	if len(m.Transport) == 0 {
 		if m.SSH == "" {
 			return errors.New("set ssh (an ssh alias) or transport")
