@@ -1,9 +1,7 @@
 package cli
 
 import (
-	"bytes"
 	"encoding/json"
-	"io"
 	"os"
 	"path/filepath"
 
@@ -73,15 +71,10 @@ func hookRewriter(cfg *config.Config, root string) preflight.Rewriter {
 	return func(cmd string) (string, bool, bool) {
 		raw, err := json.Marshal(map[string]any{"hook_event_name": "PreToolUse", "tool_name": "Bash", "cwd": root,
 			"tool_input": map[string]any{"command": cmd}})
-		if err != nil {
+		if err != nil || len(raw) > maxHookInput { // the hook never reads more than this from its stdin either
 			return cmd, false, false
 		}
-		// Read back through the bound the hook's own stdin has (maxHookInput).
-		in, err := io.ReadAll(io.LimitReader(bytes.NewReader(raw), maxHookInput))
-		if err != nil {
-			return cmd, false, false
-		}
-		out, _, err := hook.Decide(in, opts)
+		out, _, err := hook.Decide(raw, opts)
 		if err != nil || out == nil {
 			return cmd, false, false
 		}
