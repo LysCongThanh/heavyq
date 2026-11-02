@@ -81,7 +81,20 @@ type rig struct {
 	env  []string
 }
 
+// newRig is a rig whose test runs in parallel with the other tests of the package: it owns its queue, ledger,
+// cache, state and config directories (all under its own temp dir) and starts its own processes, so nothing
+// is shared but the heavyq binary. Under -race the end-to-end tests are about 90% of the package's time and
+// mostly waiting on processes, which is what makes the package fit the 5 minutes of the cli-race-fast gate.
+// A test that changes the environment or working directory of the test process (t.Setenv, t.Chdir) must use
+// newSerialRig instead: t.Setenv panics in a parallel test.
 func newRig(t *testing.T, config string) *rig {
+	t.Helper()
+	t.Parallel()
+	return newSerialRig(t, config)
+}
+
+// newSerialRig is newRig for a test that must not run in parallel (see newRig).
+func newSerialRig(t *testing.T, config string) *rig {
 	t.Helper()
 	root := realTempDir(t)
 	cfg := filepath.Join(root, "config.toml")
@@ -98,6 +111,10 @@ func newRig(t *testing.T, config string) *rig {
 			env = append(env, e)
 		}
 	}
+	// State the user's account would share (hook log, trust list, top mode, stances) lives in the rig, so
+	// parallel rigs never meet; a test that wants its own location appends it later and wins.
+	env = append(env, "XDG_STATE_HOME="+filepath.Join(root, "state"), "XDG_CONFIG_HOME="+filepath.Join(root, "xdg-config"),
+		"XDG_DATA_HOME="+filepath.Join(root, "xdg-data"))
 	env = append(env, "HEAVYQ_DIR="+filepath.Join(root, "q"), "HEAVYQ_CONFIG="+cfg,
 		"HEAVYQ_HISTORY="+filepath.Join(root, "history.jsonl"), "HEAVYQ_FLOW=off", "XDG_CACHE_HOME="+filepath.Join(root, "cache"),
 		"GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@example.com", "GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@example.com")
