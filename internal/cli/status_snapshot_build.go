@@ -42,7 +42,7 @@ func buildSnapshot(cfg *config.Config, probes *probeCache, cpuInterval time.Dura
 			PollS: cfg.Queue.Poll.Seconds(), RemoteDownMaxS: cfg.Queue.RemoteDownMax.Seconds(),
 		},
 		Machines: []snapshot.Machine{}, Running: []snapshot.Running{}, Waiting: []snapshot.Waiting{},
-		Coalesced: []snapshot.Group{}, Gates: []snapshot.LaneGate{}, Exceptions: []snapshot.Exception{}, Pools: []snapshot.Pool{}, CPU: snapshot.CPU{Lanes: []snapshot.Usage{}, Outside: []snapshot.Usage{}},
+		Coalesced: []snapshot.Group{}, Gates: []snapshot.LaneGate{}, Items: []snapshot.LaneItems{}, Exceptions: []snapshot.Exception{}, Pools: []snapshot.Pool{}, CPU: snapshot.CPU{Lanes: []snapshot.Usage{}, Outside: []snapshot.Usage{}},
 	}
 	set := displayPoolSet(cfg)
 	s.Pools = poolSnapshots(set, qs)

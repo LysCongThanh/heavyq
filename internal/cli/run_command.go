@@ -59,6 +59,9 @@ func runCommand(cfg *config.Config, args []string, stderr io.Writer) int {
 	if err != nil {
 		return usageFail(stderr, mode, err)
 	}
+
+	defer renewLaneLeases(o.Lane) // a run in a lane keeps that lane's item claims alive (fail-open)
+
 	if o.Session == "" { // explicit flag and $HEAVYQ_SESSION win over the hook's file
 		o.Session = q.ReadSession(o.Lane, time.Now(), history.ValidTag)
 	}

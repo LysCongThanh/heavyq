@@ -3,8 +3,9 @@
 Parallel agents, each in its own worktree of one repository, must never work on the same item. A **lease** is
 the claim an agent holds on an item while it works on it.
 
-> Status: this page describes the lease store (`internal/lease`). The `heavyq item claim|release` commands
-> and the hooks that renew leases are not released yet; today only the Go package exists.
+> Status: this page describes the lease store (`internal/lease`). `heavyq item claim|release|done|block`
+> ([items.md](items.md)) use it, and every heavyq run in a lane renews that lane's leases when it ends. The
+> hook-based renewal (PostToolUse) is not released yet.
 
 ## Where leases live
 
@@ -73,8 +74,11 @@ One JSON object per line, written with a single `O_APPEND` write:
 {"at":"2026-11-02T00:36:50.1Z","op":"claim","item":"task-1","lane":"api","session":"s1"}
 ```
 
-`op` is `claim`, `renew`, `release` or `reclaim`. Reclaims add `reason`, `prev_lane`, `prev_session`;
-forced releases add `forced`. If only the log append fails, the operation still happened: the call returns
+`op` is `claim`, `renew`, `release`, `reclaim`, `block` or `done`. Reclaims add `reason`, `prev_lane`,
+`prev_session`; forced releases add `forced`; `block` adds `needs` and `done` adds `commit`. The last two are
+written by `Finish`, which under one lock checks the holder, runs a callback (the checkbox tick), appends the
+event and removes the lease; `RenewLane` extends every lease of a lane and writes no event; `Events` reads the
+tail of the log. If only the log append fails, the operation still happened: the call returns
 the lease together with an error wrapping `ErrEventLog`.
 
 ## Concurrency
