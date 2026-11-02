@@ -41,7 +41,8 @@ usage:
   heavyq history [-n N] [-v]
   heavyq [--config FILE] cache ls|stats|clear
   heavyq [--config FILE] hook claude-pretooluse | install claude | uninstall claude
-  heavyq stance ls | show <name> [--json]
+  heavyq stance ls | show <name> | enter <name> | exit | off | status | stats
+  heavyq trust [--list|--revoke]
   heavyq doctor [--reindex]
   heavyq help [agents]
   heavyq version
@@ -107,6 +108,8 @@ func Main(args []string, stdout, stderr io.Writer) int {
 		return historyCommand(args[1:], stdout, stderr)
 	case "stance":
 		return stanceCommand(args[1:], stdout, stderr)
+	case "trust":
+		return trustCommand(args[1:], stdout, stderr)
 	case "doctor":
 		return doctorCommand(args[1:], stdout, stderr)
 	case "hook":
@@ -137,7 +140,7 @@ func Main(args []string, stdout, stderr io.Writer) int {
 		return controlCommand(cfg, args[0], args[1:], stdout, stderr)
 	}
 	if p, err := strconv.Atoi(args[0]); err != nil || p < 1 || p > 9 {
-		fmt.Fprintf(stderr, "heavyq: first argument must be a priority 1-9 or a command (status, why, gate, item, init, dash, history, cache, hook, stance, doctor, cancel, reprio, pause, resume, version)\n\n%s", usage)
+		fmt.Fprintf(stderr, "heavyq: first argument must be a priority 1-9 or a command (status, why, gate, item, init, dash, history, cache, hook, stance, trust, doctor, cancel, reprio, pause, resume, version)\n\n%s", usage)
 		return ExitUsage
 	}
 	return runCommand(cfg, args, stderr)

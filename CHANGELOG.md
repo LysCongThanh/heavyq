@@ -17,6 +17,25 @@ versions follow [Semantic Versioning](https://semver.org/).
   macOS, and the new per-remote **`env_path`** key puts extra directories first (`~/` is the remote home), for
   toolchains the login shell does not set, such as `~/.local/go-sdk/bin`. Linux remotes behave as before.
 
+- **Stances: evidence triggers, lane state, trust and decision records** (`internal/stance`,
+  [docs/stances.md](docs/stances.md)). Triggers are pure rules over facts, never over elapsed time:
+  `same_failure_class_across_trees` (the same command failing the same way on N trees of a lane, read from
+  the ledger index), `churn_reverts` (revert commits and redone file sets since the lane's last proof, read
+  from git) and the `keywords` of a stance in the user's prompt (case-insensitive whole words, any script,
+  so a personal stance with "đột phá" works). A lane's stance state and events live in the git common dir
+  (`heavyq/stance/`), with each stance's cooldown and at most 3 activations per stance per
+  session. New: `heavyq stance enter|exit|off|status|stats`, `heavyq trust [--list|--revoke]` and the hook
+  `heavyq hook claude-userpromptsubmit`, which injects the compact stance as `additionalContext` once, when a
+  keyword (or the lane's evidence) enters it. `HEAVYQ_STANCES=off` turns it all off. A stance with
+  `exit.decision_record` ends when `.heavyq/decisions/<item>.md` has the right structure (clean-slate answer,
+  an options table with at least 3 rows including the status quo and one marked radical, constraints
+  classified REAL or INERTIA, a choice and a migration; structure only, never quality) or its time box runs
+  out; `stance exit --force` leaves anyway and is logged. `stance stats` shows the time and runs to the first
+  proof after entering, against the lane's own baseline. **Trust:** stances from a repository's
+  `.heavyq/stances` are listed but never injected until you run `heavyq trust` (a content hash per
+  repository, like `direnv allow`; any edit asks again; refused under a coding agent). The Go function
+  `stance.ActiveFor(lane)` returns the compact render of a lane's active stance for the SessionStart brief
+  to re-inject after compaction. New helpers: `ledgerindex.LaneRuns`, `gitutil.RecentCommits`.
 - **Named pools: ports, databases and browsers handed out to parallel agents** (`internal/pools`,
   [docs/pools.md](docs/pools.md)). `[[pool]]` tables (`name`, `values` as a range `"4100-4199"` or a list, or
   `size`) in the user config and in `heavyq.toml` (the repository's pool replaces the user's of the same name).

@@ -39,7 +39,12 @@ func DefaultDirs(cwd string) Dirs {
 // file (and line), and all of them are reported at once: a broken override
 // never silently falls back to the built-in one it was meant to replace.
 // A missing directory is normal.
-func Load(d Dirs) ([]Stance, error) {
+func Load(d Dirs) ([]Stance, error) { return loadLayers(d, true) }
+
+// loadLayers is Load with the repo layer optional: without it (a repo whose
+// stances are not trusted) the repo's files are not even read, and the
+// stances of the lower layers stand.
+func loadLayers(d Dirs, withRepo bool) ([]Stance, error) {
 	builtins, err := Builtins()
 	if err != nil {
 		return nil, err
@@ -53,6 +58,9 @@ func Load(d Dirs) ([]Stance, error) {
 		dir string
 		src Source
 	}{{d.User, SourceUser}, {d.Repo, SourceRepo}} { // later layers win
+		if layer.src == SourceRepo && !withRepo {
+			continue
+		}
 		found, err := loadDir(layer.dir, layer.src)
 		errs = append(errs, err)
 		for _, s := range found {
