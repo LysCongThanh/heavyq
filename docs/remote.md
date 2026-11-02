@@ -41,5 +41,45 @@ What a remote run sees, and what it doesn't:
   connection drops, the remote stops the command's process group and removes the worktree. Exit 255 means
   the connection was lost.
 
-Remote requirements: Linux with `bash`, `git`, `flock`, `setsid` (util-linux), `base64`, `awk`. Nothing is
-installed. Everything lives under `work_dir` (default `~/.heavyq`).
+Remote requirements: `bash`, `git`, `base64`, `awk`, and either Linux with `flock` and `setsid` (util-linux) or
+macOS (below). Nothing is installed. Everything lives under `work_dir` (default `~/.heavyq`).
+
+## A spare Mac as a remote
+
+A stock Mac works as a remote with nothing installed: no `flock`, no `setsid`, no Homebrew. The remote script
+notices what is missing and uses Perl, which ships with macOS, instead. Linux remotes run exactly the code
+they always did.
+
+```toml
+[[remote]]
+name = "mac"
+ssh = "mac"                              # an alias from ~/.ssh/config
+heavy_slots = 2
+env_path = "~/.local/go-sdk/bin"         # where the toolchain lives, if the login shell does not put it on PATH
+```
+
+```bash
+heavyq status                            # probes the Mac: cores, load, available RAM, busy slots
+heavyq 4 --remote mac -- go test ./...
+```
+
+How each Linux-only piece is replaced:
+
+| Needed | Linux | macOS |
+| --- | --- | --- |
+| Slot lock | `flock -w 5` | Perl `flock()`: the same `flock(2)` on the same lock file, so a held slot looks busy to the probe and to the next job exactly as on Linux, and the kernel drops it when the job dies. A mkdir lock with a pid file would need stale-lock recovery; this does not. |
+| Own process group | `setsid` | Perl `POSIX::setsid()` then `exec bash -c`: same pid, so the whole group is still stopped on teardown. |
+| Teardown on lost connection | stdin lifeline | unchanged: EOF on stdin stops the group and removes the worktree. |
+| Probe metrics | `/proc/meminfo`, `/proc/loadavg` | `sysctl` and `vm_stat`, parsed by the same code and formulas as the local macOS sampler (available = free + inactive + purgeable + speculative pages, capped at installed RAM). |
+
+**PATH.** A non-interactive `ssh` command gets a bare PATH (`/usr/bin:/bin:/usr/sbin:/sbin`), so user-local
+toolchains are not found. On macOS the job script asks your login shell (`zsh -l`, or `bash -l` if that is your
+shell) for its PATH, so whatever `~/.zprofile` and `~/.bash_profile` set is visible to the command (a profile
+that hangs is cut off after 10 s). `~/.zshrc` is not read by a login shell that is not interactive, so for
+anything set only there use `env_path`: colon-separated directories put first on the command's PATH, with a
+leading `~/` meaning the remote home. It works on Linux remotes too. Quotes, `$`, backticks and control
+characters are refused when the config loads.
+
+macOS ships bash 3.2, which runs the job script and the `cache_hook`: avoid bash 4 features (`mapfile`,
+associative arrays) and GNU-only flags (`cp -al`, `mv -T`, `sha256sum`) in hooks. Requirements: `git` and Perl
+(both present on a stock Mac; `git` comes with the Xcode command line tools).

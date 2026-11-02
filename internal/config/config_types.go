@@ -85,6 +85,7 @@ type MachineConfig struct {
 	WorkDir   string   `toml:"work_dir"`   // remote dir holding git/, wt/, slots/, cache/
 	GitURL    string   `toml:"git_url"`    // where bare repos live, as seen by `git push`
 	CacheHook string   `toml:"cache_hook"` // shell snippet run in the worktree before the command
+	EnvPath   string   `toml:"env_path"`   // directories put first on the remote command's PATH ("~/" = remote home)
 }
 
 // IsLocal reports whether the machine is the local workstation.

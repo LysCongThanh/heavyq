@@ -7,6 +7,16 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **macOS remotes: run heavy jobs on a spare Mac** ([docs/remote.md](docs/remote.md#a-spare-mac-as-a-remote)).
+  A stock Mac (no `flock`, no `setsid`, no Homebrew) is now a valid `[[remote]]`. Where util-linux is missing the
+  remote script uses Perl, which ships with macOS: `flock()` for the slot lock (the same `flock(2)` on the same
+  lock files, so busy slots look the same to the probe) and `POSIX::setsid()` for the command's process group.
+  The stdin lifeline teardown is unchanged and was checked against a real Mac for cancel, heavyq dying and a
+  hard disconnect, with no process left behind. The probe reads `sysctl` and `vm_stat` through the same parser
+  and formulas as the local macOS sampler (`metrics.ParseDarwin`). Remote commands get the login shell's PATH on
+  macOS, and the new per-remote **`env_path`** key puts extra directories first (`~/` is the remote home), for
+  toolchains the login shell does not set, such as `~/.local/go-sdk/bin`. Linux remotes behave as before.
+
 - **Named pools: ports, databases and browsers handed out to parallel agents** (`internal/pools`,
   [docs/pools.md](docs/pools.md)). `[[pool]]` tables (`name`, `values` as a range `"4100-4199"` or a list, or
   `size`) in the user config and in `heavyq.toml` (the repository's pool replaces the user's of the same name).

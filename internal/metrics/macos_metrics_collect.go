@@ -31,17 +31,28 @@ func localMacOS() Metrics {
 	if err != nil {
 		return unknown
 	}
-	memBytes, ncpu, load1, err := parseSysctl(sysOut)
-	if err != nil {
-		return unknown
-	}
 	vmOut, err := run("vm_stat")
 	if err != nil {
 		return unknown
 	}
-	avail, err := parseVMStat(vmOut)
+	m, err := ParseDarwin(sysOut, vmOut)
 	if err != nil {
 		return unknown
+	}
+	return m
+}
+
+// ParseDarwin turns the raw output of `sysctl -n hw.memsize hw.ncpu
+// vm.loadavg` and of `vm_stat` into Metrics. The local sampler and the remote
+// probe (a Mac reached over ssh) share it, so both use the same formulas.
+func ParseDarwin(sysctlOut, vmStatOut string) (Metrics, error) {
+	memBytes, ncpu, load1, err := parseSysctl(sysctlOut)
+	if err != nil {
+		return Metrics{}, err
+	}
+	avail, err := parseVMStat(vmStatOut)
+	if err != nil {
+		return Metrics{}, err
 	}
 	if avail > memBytes {
 		avail = memBytes // the estimate can overlap itself; never exceed the RAM installed
@@ -52,7 +63,7 @@ func localMacOS() Metrics {
 		Load1:   load1,
 		Cores:   ncpu,
 		Known:   true,
-	}
+	}, nil
 }
 
 // run executes a command with a fixed C locale and returns its stdout.
