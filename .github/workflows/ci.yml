@@ -52,6 +52,26 @@ jobs:
       - name: macOS subset
         run: go test -race -count=1 ./internal/metrics/... ./internal/procinfo/... ./internal/cli/... -run 'Metrics|Breakdown|Descendants|Cancel|Status|PS|Parse|Host|StartTime|Local'
 
+  # install.sh (attached to every release) on both platforms it supports: against a local fake release
+  # (checksum match, mismatch, tampering, --verify plumbing) and against the real v0.3.0 and latest releases.
+  install-script:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: shellcheck
+        if: runner.os == 'Linux'
+        run: shellcheck scripts/*.sh
+      - name: install.sh tests
+        env:
+          HEAVYQ_TEST_NETWORK: "1"
+        run: sh scripts/test-install.sh
+
   lint:
     runs-on: ubuntu-latest
     steps:
