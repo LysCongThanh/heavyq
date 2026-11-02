@@ -63,7 +63,11 @@ def main() -> int:
                 if re.match(r"^[a-z][a-z0-9+.-]*:", target):  # http:, https:, mailto:
                     continue
                 file_part, _, frag = target.partition("#")
-                dest = md if file_part == "" else (md.parent / file_part).resolve()
+                # Changelog fragments are folded into the root CHANGELOG.md, so
+                # their links are written relative to the repo root.
+                fragment = md.parent.name == "changelog.d" and md.name != "README.md"
+                base = root if fragment else md.parent
+                dest = md if file_part == "" else (base / file_part).resolve()
                 if not dest.exists():
                     bad.append(f"{md.relative_to(root)}:{n}: missing file {target}")
                 elif frag and dest.suffix == ".md" and frag.lower() not in anchors(dest, cache):
