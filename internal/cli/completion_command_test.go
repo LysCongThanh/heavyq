@@ -95,7 +95,7 @@ func TestBashCompletionCandidates(t *testing.T) {
 		{[]string{"heavyq", "--config", "c.toml", "status", "--j"}, "--json"},
 		{[]string{"heavyq", "gate", "run", "--k"}, "--keep-going"},
 		{[]string{"heavyq", "history", "-"}, "-n -v"},
-		{[]string{"heavyq", "item", "claim", "--"}, "--json --next"},
+		{[]string{"heavyq", "item", "claim", "--"}, "--force --json --next"},
 		{[]string{"heavyq", "nosuch", ""}, ""},
 	}
 	for _, c := range cases {

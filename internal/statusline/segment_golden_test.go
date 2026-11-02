@@ -7,7 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/LysCongThanh/heavyq/internal/flowview"
+	"github.com/LysCongThanh/heavyq/internal/flow"
+	"github.com/LysCongThanh/heavyq/internal/flowstate"
 	"github.com/LysCongThanh/heavyq/internal/tui/render"
 	"github.com/LysCongThanh/heavyq/internal/tui/width"
 )
@@ -23,7 +24,7 @@ var themes = []struct {
 	{"ascii", Theme{Level: render.LevelMono, ASCII: true}},
 }
 
-func readFixture(t *testing.T, state string) *flowview.State {
+func readFixture(t *testing.T, state string) *flow.Snapshot {
 	t.Helper()
 	if state == "" {
 		return nil
@@ -32,7 +33,7 @@ func readFixture(t *testing.T, state string) *flowview.State {
 	if err := os.WriteFile(p, []byte(state), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	st, err := flowview.Read(p)
+	st, err := flowstate.ReadFile(p)
 	if err != nil {
 		t.Fatal(err)
 	}

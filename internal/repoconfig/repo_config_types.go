@@ -34,6 +34,8 @@ type Repo struct {
 	// Proof says where proofs run by default; its Remote is "" when the
 	// file has no [proof] remote (the user's config, then local, decide).
 	Proof Proof
+	// Items are the [items] limits of the claim size gate; defaults when absent.
+	Items Items
 	// Pools are the [[pool]] tables of the file; they replace pools of the
 	// same name in the user's config.
 	Pools []pools.Pool
@@ -72,6 +74,37 @@ type Proof struct {
 	Remote string // "local" | "auto" | <remote name>; "" when not set
 }
 
+// Defaults of the [items] section.
+const (
+	DefaultMaxProofShare = 1.0 // the whole lease may be spent on proof runs
+	DefaultIterations    = 3   // proof runs an item is expected to take before it passes
+	MaxIterations        = 20
+)
+
+// Items is the [items] section: the limits `heavyq item claim` holds an item to.
+type Items struct {
+	// MaxProofShare is the share of the lease budget (30 min) that the expected
+	// proof time may use, in (0, 1].
+	MaxProofShare float64
+	// Iterations is how many proof runs an item is expected to need; the
+	// expected proof time is the proof's p50 duration times this.
+	Iterations int
+}
+
+// DefaultItems are the limits when [items] is absent or leaves a key out.
+func DefaultItems() Items {
+	return Items{MaxProofShare: DefaultMaxProofShare, Iterations: DefaultIterations}
+}
+
+// ItemLimits is the [items] limits of r, the defaults when r is nil (no
+// heavyq.toml in the repository).
+func (r *Repo) ItemLimits() Items {
+	if r == nil || r.Items.Iterations == 0 {
+		return DefaultItems()
+	}
+	return r.Items
+}
+
 // Gate returns the gate called name.
 func (r *Repo) Gate(name string) (Gate, bool) {
 	for _, g := range r.Gates {
@@ -98,10 +131,17 @@ type rawFile struct {
 	Pool   []pools.Spec `toml:"pool"`
 	Anchor *rawAnchor   `toml:"anchor"`
 	Proof  *rawProof    `toml:"proof"`
+	Items  *rawItems    `toml:"items"`
 }
 
 type rawProof struct {
 	Remote string `toml:"remote"`
+}
+
+// rawItems mirrors [items]; pointers tell "absent" (the default) from an invalid 0.
+type rawItems struct {
+	MaxProofShare *float64 `toml:"max_proof_share"`
+	Iterations    *int     `toml:"iterations"`
 }
 
 type rawGate struct {

@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/LysCongThanh/heavyq/internal/config"
+	"github.com/LysCongThanh/heavyq/internal/flow"
+	"github.com/LysCongThanh/heavyq/internal/flowstate"
 	"github.com/LysCongThanh/heavyq/internal/flowview"
 	"github.com/LysCongThanh/heavyq/internal/gitutil"
 	"github.com/LysCongThanh/heavyq/internal/notify"
@@ -93,7 +95,7 @@ func recapCommand(cfg *config.Config, args []string, stdout, stderr io.Writer) i
 	}
 	if !*noNotify && state != nil && common != "" {
 		env, goos := notify.SystemEnv()
-		notify.Check(common, state.NotifyFacts(now), notify.Options{Budget: notify.BudgetFromEnv(env),
+		notify.Check(common, flowview.NotifyFacts(state, now), notify.Options{Budget: notify.BudgetFromEnv(env),
 			Channels: func() []notify.Channel { return notify.DefaultChannels(env, goos) }})
 	}
 	return 0
@@ -101,15 +103,15 @@ func recapCommand(cfg *config.Config, args []string, stdout, stderr io.Writer) i
 
 // readFlowState reads the materialised state; nil when there is none. A state
 // that is there but unreadable is reported, since the recap is not a hot path.
-func readFlowState(common string, stderr io.Writer) *flowview.State {
+func readFlowState(common string, stderr io.Writer) *flow.Snapshot {
 	if common == "" {
 		return nil
 	}
-	st, err := flowview.Read(flowview.Path(common))
+	st, err := flowstate.ReadFile(flowstate.StatePath(common))
 	switch {
 	case err == nil:
 		return st
-	case !errors.Is(err, flowview.ErrNoState):
+	case !errors.Is(err, flowstate.ErrNoState):
 		fmt.Fprintln(stderr, "heavyq: ignoring the flow state:", err)
 	}
 	return nil
@@ -117,7 +119,7 @@ func readFlowState(common string, stderr io.Writer) *flowview.State {
 
 // recapSince resolves the start of the window: --since, else --run's start,
 // else the declared run's start, else defaultRecapWindow back.
-func recapSince(sinceArg, runID string, st *flowview.State, now time.Time, stderr io.Writer) (time.Time, int) {
+func recapSince(sinceArg, runID string, st *flow.Snapshot, now time.Time, stderr io.Writer) (time.Time, int) {
 	if sinceArg != "" {
 		d, err := time.ParseDuration(sinceArg)
 		if err != nil || d <= 0 {
@@ -126,7 +128,7 @@ func recapSince(sinceArg, runID string, st *flowview.State, now time.Time, stder
 		}
 		return now.Add(-d), 0
 	}
-	var run *flowview.Run
+	var run *flow.RunInfo
 	if st != nil {
 		run = st.RunInfo()
 	}

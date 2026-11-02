@@ -124,14 +124,14 @@ func TestSessionKeyFallsBackToLane(t *testing.T) {
 
 func TestConstraintIsTheLargestNonWorkingShareAndSignificantAtThirtyPercent(t *testing.T) {
 	f := Fleet{LeadS: 100, ByStateS: map[State]float64{Working: 60, Queued: 29, Rework: 11}}
-	if c := constraintOf(f); c.State != Queued || c.Significant || c.Share != 0.29 {
+	if c := constraintOf(f, nil); c.State != Queued || c.Significant || c.Share != 0.29 {
 		t.Errorf("working is never the constraint, and 29%% is not news: %+v", c)
 	}
 	f = Fleet{LeadS: 100, ByStateS: map[State]float64{Working: 40, CIWait: 30, Queued: 30}}
-	if c := constraintOf(f); c.State != CIWait || !c.Significant {
+	if c := constraintOf(f, nil); c.State != CIWait || !c.Significant {
 		t.Errorf("a tie goes to the state of higher priority; 30%% is significant: %+v", c)
 	}
-	if c := constraintOf(Fleet{}); c.State != "" || c.Significant {
+	if c := constraintOf(Fleet{}, nil); c.State != "" || c.Significant {
 		t.Errorf("no lead time, no constraint: %+v", c)
 	}
 }

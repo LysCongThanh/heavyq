@@ -95,7 +95,7 @@ func TestE2EItemClaimNextNeverDuplicatesAcrossWorktrees(t *testing.T) {
 	var b strings.Builder
 	b.WriteString("# Goal: many items\n")
 	for i := 1; i <= 6; i++ {
-		fmt.Fprintf(&b, "- [ ] item-%d: work %d\n", i, i)
+		fmt.Fprintf(&b, "- [ ] item-%d: work %d `proof: true`\n", i, i)
 	}
 	app, laneB := itemRepo(t, h, b.String(), "", nil)
 

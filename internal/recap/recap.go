@@ -8,7 +8,7 @@ package recap
 import (
 	"time"
 
-	"github.com/LysCongThanh/heavyq/internal/flowview"
+	"github.com/LysCongThanh/heavyq/internal/flow"
 	"github.com/LysCongThanh/heavyq/internal/history"
 	"github.com/LysCongThanh/heavyq/internal/itemstatus"
 )
@@ -30,8 +30,8 @@ type Facts struct {
 	Items      []Item
 	// Records are the ledger records of this repository; Build keeps those in the window.
 	Records []history.Record
-	Session string          // when set, only this session's items and runs
-	State   *flowview.State // the materialised flow state; nil when there is none
+	Session string         // when set, only this session's items and runs
+	State   *flow.Snapshot // the materialised flow state; nil when there is none
 	// Merged says whether a proven commit is reachable from MergeRef (the
 	// default branch). nil when that cannot be told: every proven item is then
 	// just "proven". A squash merge is not reachable, so false means "not on
@@ -158,7 +158,7 @@ func Build(f Facts) Recap {
 	r.Best = best(r, firstOpen)
 	if f.State != nil {
 		for _, l := range f.State.Lanes {
-			row := LaneRow{Lane: l.Lane, State: l.State, Item: l.Item}
+			row := LaneRow{Lane: l.Lane, State: string(l.State), Item: l.Item}
 			if !l.Since.IsZero() {
 				t := l.Since
 				row.Since = &t

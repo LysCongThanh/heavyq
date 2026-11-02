@@ -5,6 +5,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/LysCongThanh/heavyq/internal/flow"
 	"github.com/LysCongThanh/heavyq/internal/forecast"
 	"github.com/LysCongThanh/heavyq/internal/notify"
 	"github.com/LysCongThanh/heavyq/internal/redact"
@@ -16,8 +17,8 @@ const maxNeedText = 100
 // NotifyFacts turns a state into what the notifier compares: the needs with a
 // key that stays the same while the need is open, the forecast verdict and
 // whether everything is proven. A reason may quote a command, so it is redacted.
-func (s *State) NotifyFacts(now time.Time) notify.Facts {
-	fc := s.Forecast(now)
+func NotifyFacts(s *flow.Snapshot, now time.Time) notify.Facts {
+	fc := Forecast(s, now)
 	f := notify.Facts{
 		Now: now, Updated: s.Updated,
 		AtRisk: fc.Status == forecast.AtRisk, AtRiskWhy: fc.Reason, ETA: fc.ETA,

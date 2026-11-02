@@ -60,7 +60,7 @@ parsers use, so a key cannot be in one and not the other; CI fails when `schema/
 
 | Schema | Describes | Used for |
 |---|---|---|
-| [`schema/heavyq.schema.json`](../schema/heavyq.schema.json) | `heavyq.toml` at the repository root: `[[gate]]`, `[[pool]]`, `[anchor]` | completion, hover help and errors for gates (name shape, `prio` 1-9, non-empty `run`) |
+| [`schema/heavyq.schema.json`](../schema/heavyq.schema.json) | `heavyq.toml` at the repository root: `[[gate]]`, `[[pool]]`, `[anchor]`, `[items]` | completion, hover help and errors for gates (name shape, `prio` 1-9, non-empty `run`) |
 | [`schema/config.schema.json`](../schema/config.schema.json) | the user config, `~/.config/heavyq/config.toml` | the same for slots, budgets, `[[remote]]`, `[[hook.rule]]`, `[cache]`, durations like `"15m"` |
 | [`schema/status.schema.json`](../schema/status.schema.json) | the output of `heavyq status --json` (schema 1) | typed clients; extra fields are allowed, because fields are added within schema 1 |
 

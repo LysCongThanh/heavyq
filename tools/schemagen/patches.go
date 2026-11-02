@@ -68,6 +68,19 @@ func patchRepoFile(root *jsonschema.Schema) {
 	prop(anchor, "file").Description = "Checklist file, relative to the repository root (default .heavyq/anchor.md)."
 	prop(anchor, "extra").Description = "Extra read-only sources, as globs relative to the repository root."
 
+	items := def(root, "rawItems")
+	items.Description = "Limits of the claim size gate: `heavyq item claim` refuses an item whose proof is expected to outlast the lease."
+	share := prop(items, "max_proof_share")
+	share.Description = "Share of the 30 minute lease budget the expected proof time (p50 x iterations) may use."
+	share.ExclusiveMinimum = json.Number("0")
+	share.Maximum = json.Number("1")
+	share.Default = repoconfig.DefaultMaxProofShare
+	iter := prop(items, "iterations")
+	iter.Description = "Proof runs an item is expected to need before it passes; the expected proof time is the proof's p50 duration times this."
+	iter.Minimum = json.Number("1")
+	iter.Maximum = json.Number(strconv.Itoa(repoconfig.MaxIterations))
+	iter.Default = repoconfig.DefaultIterations
+
 	patchPoolSpec(root)
 }
 

@@ -24,8 +24,8 @@ type Snapshot struct {
 	Repo    string    `json:"repo"`
 	Updated time.Time `json:"updated"`
 	Goal    string    `json:"goal"`
-	// Run is the span of the current preflighted run; null until the preflight
-	// writes <common>/heavyq/runs/ and Build learns to read it.
+	// Run is the open run span (RunInfo), null when no run is declared. Kept raw
+	// so that a shape of another version never makes the state unreadable.
 	Run        json.RawMessage `json:"run"`
 	Items      ItemCounts      `json:"items"`
 	NeedsYou   []NeedsYou      `json:"needs_you"`
@@ -37,6 +37,9 @@ type Snapshot struct {
 	// ignore them.
 	Fleet  Fleet       `json:"fleet"`
 	Events []EventNote `json:"events"`
+	// Baseline is what the constraint finder has learned is normal, as of this
+	// computation: the next refresh reads it back (Input.Baseline).
+	Baseline *Baseline `json:"baseline,omitempty"`
 }
 
 // ItemCounts say where the anchor's items stand.
@@ -82,9 +85,10 @@ func Build(in Input) Snapshot {
 	fleet, constraint, tp := aggregate(in, tls, holds)
 	blocks := foldBlocks(in.Hooks, in.Records, in.Now)
 	snap := Snapshot{
-		Schema: SchemaVersion, Repo: in.Repo, Updated: in.Now.UTC(), Goal: in.Goal, Run: json.RawMessage("null"),
+		Schema: SchemaVersion, Repo: in.Repo, Updated: in.Now.UTC(), Goal: in.Goal, Run: runJSON(in.Run),
 		Items: countItems(in.Items), NeedsYou: needsYou(in, blocks), Constraint: constraint, Throughput: tp,
 		Lanes: lanesNow(in, tls, blocks), Session: in.Session, Fleet: fleet, Events: recentEvents(in),
+		Baseline: NextBaseline(in.Baseline, fleet, in.Now),
 	}
 	return snap
 }
