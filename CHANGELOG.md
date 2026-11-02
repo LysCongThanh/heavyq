@@ -17,6 +17,15 @@ versions follow [Semantic Versioning](https://semver.org/).
   macOS, and the new per-remote **`env_path`** key puts extra directories first (`~/` is the remote home), for
   toolchains the login shell does not set, such as `~/.local/go-sdk/bin`. Linux remotes behave as before.
 
+- **`heavyq receipts [--day|--week|--month] [--share] [--json]`: a shareable, privacy-rounded summary**
+  (`internal/receipts`, [docs/receipts.md](docs/receipts.md)). Counts from the ledger window: heavy runs,
+  duplicate runs avoided (cache hits plus coalesced), runs held back in the queue, flaky and under-load
+  failures flagged, remote runs and machines, pool values handed out, wait p50/p95 and agents (lanes) served.
+  Each metric counts only what the ledger proves; "freezes avoided" is left out because admission records
+  cannot show it. `--share` rounds into ranges ("~40 runs/day", "about 1 in 8 runs"), drops every lane,
+  repository, command, path and machine name, adds the heavyq version and the window, and prints a compact
+  box-drawing card of at most 12 lines. The dashboard gets a "Receipts" panel (week/month toggle, "Copy to
+  share") fed by the new token-protected `GET /api/v1/receipts?window=day|week|month`.
 - **Named pools: ports, databases and browsers handed out to parallel agents** (`internal/pools`,
   [docs/pools.md](docs/pools.md)). `[[pool]]` tables (`name`, `values` as a range `"4100-4199"` or a list, or
   `size`) in the user config and in `heavyq.toml` (the repository's pool replaces the user's of the same name).

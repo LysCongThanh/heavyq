@@ -134,6 +134,8 @@ main{max-width:1320px;margin:0 auto;padding:28px 16px 64px;container-type:inline
 .sec{display:flex;align-items:center;gap:12px;margin:44px 0 12px;flex-wrap:wrap}
 .sec h2{margin:0;font:500 15px/22px var(--font)}
 .sec .spacer{flex:1}
+.rcard{margin:0;padding:14px 16px;border-radius:var(--r-card);box-shadow:var(--sh-card);background:var(--bg);font:13px/20px var(--mono);overflow:auto;user-select:all}
+.rexact{margin:8px 2px 0;color:var(--ink-3);font-size:12px}
 .seg{display:inline-flex;padding:2px;border-radius:8px;background:var(--line-2);gap:2px}
 .seg button{border:0;background:transparent;height:24px;padding:0 9px;border-radius:6px;cursor:pointer;color:var(--ink-3);font-size:12px}
 .seg button[aria-pressed=true]{background:var(--bg);color:var(--ink);box-shadow:var(--sh-card)}
@@ -263,7 +265,7 @@ const hm=t=>{const d=new Date(t);return String(d.getHours()).padStart(2,"0")+":"
 /* ───────── state ───────── */
 const WINS={"30m":1800,"1h":3600,"6h":21600,"24h":86400};
 const INS={"30m":"1h","1h":"1h","6h":"6h","24h":"24h"};
-const S={token:null,demo:false,meta:null,snap:null,at:0,ins:null,hist:[],win:WINS[store.get("hq.flow")]?store.get("hq.flow"):"30m",laneFilter:"",confirm:null,live:false,histOpen:false};
+const S={token:null,demo:false,meta:null,snap:null,at:0,ins:null,hist:[],win:WINS[store.get("hq.flow")]?store.get("hq.flow"):"30m",laneFilter:"",rw:store.get("hq.rcp")==="month"?"month":"week",rcp:null,confirm:null,live:false,histOpen:false};
 const app=$("#app");
 
 (function(){const t=store.get("hq.theme");if(t)document.documentElement.dataset.theme=t;
@@ -286,6 +288,7 @@ async function stream(){for(let delay=1000;;delay=Math.min(delay*2,10000)){
      if(name==="snapshot"&&data){try{onSnap(JSON.parse(data))}catch(e){}}}}}catch(e){if(e.message==="401")return}
   setLive(false);await new Promise(r=>setTimeout(r,delay))}}
 async function loadInsights(){if(S.demo)return;try{const r=await api("insights?window="+INS[S.win]);if(r.ok){S.ins=await r.json();render()}}catch(e){}}
+async function loadReceipts(){if(S.demo)return;try{const r=await api("receipts?window="+S.rw);if(r.ok){S.rcp=await r.json();render()}}catch(e){}}
 async function loadHistory(){if(S.demo)return;try{const r=await api("history?n=1000");if(r.ok){S.hist=(await r.json()).records;render()}}catch(e){}}
 function onSnap(s){S.snap=s;S.at=Date.now();render()}
 function setLive(on){S.live=on;document.body.classList.toggle("stale",!on&&!!S.snap);renderLive()}
@@ -433,6 +436,14 @@ function poolChips(s){const ps=s.pools||[];if(!ps.length)return "";
  return `<div class="pools" aria-label="pools">${ps.map(p=>{const full=p.capacity>0&&p.held>=p.capacity,who=p.holders.map(h=>h.lane+": "+h.value).join("\n");
   return `<span class="chip${full?" warn":""}" title="${esc(who||"nothing held")}"><span class="mono">${esc(p.name)}</span><b class="num">${p.held}/${p.capacity}</b>${p.holders.slice(0,6).map(h=>`<i style="background:${laneColor(h.lane)}"></i>`).join("")}</span>`}).join("")}</div>`}
 
+/* ───────── receipts: the shareable card (rounded, no names) and the exact counts behind it ───────── */
+function receiptsPanel(){const r=S.rcp;if(!r||r.window!==S.rw)return "";const x=r.receipts;
+ return `<div class="sec"><h2>Receipts</h2><span class="label">what heavyq did for you</span><span class="spacer"></span>
+ <div class="seg" role="group" aria-label="Receipts window">${["week","month"].map(w=>`<button data-rw="${w}" aria-pressed="${S.rw===w}">${w}</button>`).join("")}</div>
+ <button class="btn sm" data-act="copyshare">Copy to share</button></div>
+ <pre class="rcard" aria-label="Shareable receipts card">${esc(r.share.text)}</pre>
+ <div class="rexact">Exact, for you only: ${x.runs} runs · ${x.duplicates_avoided} duplicates avoided · ${x.held_back} held back · ${x.flaky} flaky · ${x.under_load} under load · ${x.remote_runs} remote. The card above is rounded and has no names: that is the part to share.</div>`}
+
 /* ───────── history ───────── */
 function historyBlock(){const h=S.hist;if(!h.length)return "";const ls=[...new Set(h.map(r=>r.lane))].sort();
  const rows=h.slice().reverse().filter(r=>!S.laneFilter||r.lane===S.laneFilter).slice(0,100).map(r=>{
@@ -450,15 +461,17 @@ function render(){const s=S.snap;if(!s)return;renderLive();
  const mc=$("#modechip");mc.hidden=false;
  if(S.demo){mc.className="chip warn";mc.textContent="demo"}else if(S.meta&&S.meta.control){mc.className="chip ok";mc.textContent="control"}else{mc.className="chip";mc.innerHTML=`read-only<span class="hide-sm" style="color:var(--ink-4)"> · <span class="mono">--control</span> to act</span>`}
  const focus=document.activeElement&&document.activeElement.id,sc=[...document.querySelectorAll(".scroll")].map(x=>x.scrollTop);
- app.innerHTML=`<main>${tower(s)}${story(s)}${flow(s)}${capacity(s)}${historyBlock()}</main>`;
+ app.innerHTML=`<main>${tower(s)}${story(s)}${flow(s)}${capacity(s)}${receiptsPanel()}${historyBlock()}</main>`;
  document.querySelectorAll(".scroll").forEach((x,i)=>x.scrollTop=sc[i]||0);if(focus){const f=document.getElementById(focus);if(f)f.focus()}}
 
 /* ───────── events ───────── */
 document.addEventListener("click",ev=>{
  const w=ev.target.closest("[data-win]");if(w){S.win=w.dataset.win;store.set("hq.flow",S.win);if(!S.demo)loadInsights();render();return}
+ const rw=ev.target.closest("[data-rw]");if(rw){S.rw=rw.dataset.rw;store.set("hq.rcp",S.rw);if(S.demo)S.rcp=DEMO.receipts[S.rw];else loadReceipts();render();return}
  const b=ev.target.closest("[data-act]");if(!b)return;const a=b.dataset.act;ev.preventDefault();
  if(a==="snooze"||a==="unsnooze"){snooze(b.dataset.id,a==="snooze");render();return}
  if(a==="copy"){const c=b.dataset.cmd;(navigator.clipboard?navigator.clipboard.writeText(c):Promise.reject()).then(()=>toast("Copied: "+c),()=>toast("Copy is blocked here: select the command and copy it",true));return}
+ if(a==="copyshare"){const c=S.rcp&&S.rcp.share.text;if(!c)return;(navigator.clipboard?navigator.clipboard.writeText(c):Promise.reject()).then(()=>toast("Receipts copied: rounded, no lane, repo or command names"),()=>toast("Copy is blocked here: select the card and copy it",true));return}
  if(a==="confirm"){S.confirm=b.dataset.id;render();const y=$("#cf-yes");if(y)y.focus();return}
  if(a==="noconfirm"){S.confirm=null;render();return}
  if(a==="cancel"){S.confirm=null;const t=[...S.snap.running,...S.snap.waiting].find(x=>x.id===b.dataset.id);if(t)t.cancel_requested=true;render();act("tickets/"+encodeURIComponent(b.dataset.id)+"/cancel",null,"Cancel requested: the job stops within a few seconds");return}
@@ -513,7 +526,11 @@ const DEMO=(()=>{const now=Date.now(),iso=s=>new Date(now-s*1000).toISOString();
    history.push(rec);t=end+rec.run_s+wait+30+rnd()*240}}
  history.sort((a,b)=>Date.parse(a.end)-Date.parse(b.end));
  const insights={runs:86,failed:9,gave_up:4,cancelled:1,interrupted:3,forced:2,cache_hits:17,coalesced:6,wait_p50_s:18,wait_p95_s:404,wait_max_s:911,run_s:7420,cpu_s:51210,lanes:[],buckets:[]};
- return {snap,insights,history}})();
+ const boxed=(t,f,ls)=>{const n=Math.max(t.length,f.length)+4,m=Math.max(n,...ls.map(x=>x.length+2)),b=(a,z,x)=>a+"─ "+x+" "+"─".repeat(m-x.length-3)+z;return [b("┌","┐",t),...ls.map(x=>"│ "+x+" ".repeat(m-x.length-1)+"│"),b("└","┘",f)].join("\n")+"\n"};
+ const card=(w,l)=>({window:w,receipts:{runs:412,duplicates_avoided:61,cache_hits:49,coalesced:12,held_back:58,flaky:2,under_load:3,remote_runs:40,remote_machines:2,pool_values:17,wait_p50_s:3,wait_p95_s:130,lanes:5},
+  share:{version:"demo",window:l,lines:[],text:boxed("heavyq receipts · "+l,"heavyq demo",["~60 runs/day through the queue","~60 duplicate runs avoided","about 1 in 8 runs waited their turn","wait p50 ~3s · p95 ~2m","flagged: 2 flaky, 3 under load","~40 runs offloaded to 2 machines","~15 pool values handed out","5 agents served"])}});
+ const receipts={week:card("week","last 7 days"),month:card("month","last 30 days")};
+ return {snap,insights,history,receipts}})();
 function demoAct(path,body){const s=S.snap,m=path.match(/^machines\/([^/]+)\/(pause|resume)$/);
  if(m){const x=s.machines.find(y=>y.name===decodeURIComponent(m[1]));if(x)x.paused=m[2]==="pause"}
  const p=path.match(/^tickets\/([^/]+)\/prio$/);if(p){const id=decodeURIComponent(p[1]),t=s.waiting.find(y=>y.id===id);if(t)t.prio=body.prio;s.exceptions=s.exceptions.filter(e=>!(e.action&&e.action.target===id))}
@@ -521,7 +538,7 @@ function demoAct(path,body){const s=S.snap,m=path.match(/^machines\/([^/]+)\/(pa
   if(t)S.hist.push({end:new Date().toISOString(),machine:t.machine||"",lane:t.lane,prio:t.prio,wait_s:t.wait_s,run_s:t.run_s||0,exit:78,cmd:t.cmd,result:"cancelled"});
   s.running=s.running.filter(y=>y.id!==id);s.waiting=s.waiting.filter(y=>y.id!==id).map((y,i)=>({...y,position:i+1}));render()},1500)}
  render()}
-function startDemo(){S.meta={control:true};S.hist=DEMO.history;S.ins=DEMO.insights;onSnap(DEMO.snap);
+function startDemo(){S.meta={control:true};S.hist=DEMO.history;S.ins=DEMO.insights;S.rcp=DEMO.receipts[S.rw];onSnap(DEMO.snap);
  setInterval(()=>{const s=S.snap;for(const t of s.running)if(t.machine==="local")t.cpu_pct=Math.max(20,t.cpu_pct*(.9+Math.random()*.2));
   const lm=s.machines[0];lm.load1=Math.max(6,Math.min(16,lm.load1+(Math.random()-.5)*.6))},2000);
  setTimeout(()=>{const s=S.snap,h=s.waiting.shift();if(!h)return;const e=el(),nowIso=new Date().toISOString();
@@ -533,7 +550,7 @@ function startDemo(){S.meta={control:true};S.hist=DEMO.history;S.ins=DEMO.insigh
 (async()=>{if(S.demo)return startDemo();
  if(!S.token)return gate("Open the dashboard link","Run <code>heavyq dash</code> and open the link it prints: it carries the access token.");
  try{const r=await api("meta");if(!r.ok)return gate("Dashboard unavailable","The server answered "+r.status+".");S.meta=await r.json()}catch(e){if(e.message!=="401")gate("Cannot reach heavyq","Is <code>heavyq dash</code> still running?");return}
- loadInsights();loadHistory();setInterval(loadInsights,30000);setInterval(loadHistory,15000);stream()})();
+ loadInsights();loadHistory();loadReceipts();setInterval(loadReceipts,60000);setInterval(loadInsights,30000);setInterval(loadHistory,15000);stream()})();
 </script>
 </body>
 </html>
