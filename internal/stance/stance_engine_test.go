@@ -257,7 +257,9 @@ func TestLeaveNeedsTheDecisionRecord(t *testing.T) {
 		t.Error("leaving a lane that is in no stance must be an error")
 	}
 	// Forcing is logged as such.
-	r.env.EnterManual(r.repo, "wt", "s", "item-2", "breakthrough", "")
+	if _, err := r.env.EnterManual(r.repo, "wt", "s", "item-2", "breakthrough", ""); err != nil {
+		t.Fatal(err)
+	}
 	if res, _ = r.env.Leave(r.repo, "wt", "", true); !res.Left || res.Reason != ExitForced {
 		t.Fatalf("forced: %+v", res)
 	}

@@ -208,15 +208,6 @@ func TestE2ETrustGatesRepoStances(t *testing.T) {
 	}
 }
 
-func mustRead(t *testing.T, path string) string {
-	t.Helper()
-	b, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return string(b)
-}
-
 func TestE2EStanceLaneUsageErrors(t *testing.T) {
 	h := newStanceRig(t)
 	for _, args := range [][]string{{"stance", "enter"}, {"stance", "enter", "a", "b"}, {"stance", "off", "x"}, {"trust", "--list", "--revoke"}, {"trust", "extra"}} {

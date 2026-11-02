@@ -50,7 +50,7 @@ func TestDecisionRecordProblems(t *testing.T) {
 		{"clean-slate empty", strings.Replace(validRecord, "From scratch I would not retry the token refresh at all: issue short-lived tokens and drop the refresh path.", "<!-- todo -->", 1), "section is empty: clean-slate answer"},
 		{"no options section", strings.Replace(validRecord, "## Options", "## Ideas", 1), "missing section: options"},
 		{"two options", strings.Replace(validRecord, "| 2 | Incremental: back off the retries | fewer 401s | S |\n", "", 1), "at least 3 options, found 2"},
-		{"options as a list, not a table", strings.Replace(validRecord, "| 1 |", "- 1 |", 1), "found 2"},
+		{"options as a list, not a table", strings.Replace(validRecord, "| 1 |", "- 1 |", 1), "at least 3 options"},
 		{"no status quo", strings.Replace(validRecord, "Status quo: keep retrying refresh", "Keep retrying refresh", 1), "no row names the status quo"},
 		{"no radical", strings.Replace(validRecord, "Radical: short-lived", "Short-lived", 1), "no radical option"},
 		{"the status quo row is not the radical one", strings.NewReplacer("Status quo: keep retrying refresh", "Status quo (radical to drop)", "Radical: short-lived", "Short-lived").Replace(validRecord), "no radical option"},
