@@ -87,8 +87,6 @@ func newCtx(s snapshot.Snapshot, v View, th Theme) *ctx {
 // seg is text in a style, made safe for the theme.
 func (c *ctx) seg(st Style, text string) Seg { return Seg{c.th.txt(text), st} }
 
-func (c *ctx) glyph(g glyph, st Style) Seg { return Seg{c.th.g(g), st} }
-
 // mark is a status glyph and the space after it: text never touches a glyph.
 func (c *ctx) mark(g glyph, st Style) Seg { return Seg{c.th.g(g) + " ", st} }
 

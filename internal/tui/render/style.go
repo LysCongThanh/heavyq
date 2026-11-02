@@ -8,7 +8,6 @@
 package render
 
 import (
-	"strconv"
 	"strings"
 
 	"github.com/LysCongThanh/heavyq/internal/tui/width"
@@ -207,5 +206,3 @@ func StripSGR(s string) string {
 	}
 	return b.String()
 }
-
-func itoa(n int) string { return strconv.Itoa(n) }

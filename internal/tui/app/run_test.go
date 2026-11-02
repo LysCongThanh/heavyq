@@ -46,8 +46,16 @@ func (f *fakeScreen) text() string {
 // typed is a terminal's input: the test writes keys, Run reads them.
 func typed(t *testing.T) (*io.PipeWriter, io.Reader) {
 	r, w := io.Pipe()
-	t.Cleanup(func() { w.Close() })
+	t.Cleanup(func() { _ = w.Close() })
 	return w, r
+}
+
+// press is the user pressing keys.
+func press(t *testing.T, w io.Writer, keys string) {
+	t.Helper()
+	if _, err := w.Write([]byte(keys)); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func waitText(t *testing.T, s *fakeScreen, want string) {
@@ -95,13 +103,13 @@ func TestRunDrawsHandlesKeysAndRemembersTheMode(t *testing.T) {
 	done := runLoop(t, cfg, in, scr)
 	waitText(t, scr, "waiting for the first snapshot")
 	waitText(t, scr, "NEEDS YOU (3)")
-	w.Write([]byte("m")) // focus mode
+	press(t, w, "m") // focus mode
 	waitText(t, scr, "mode focus")
-	w.Write([]byte("?"))
+	press(t, w, "?")
 	waitText(t, scr, "KEYS")
-	w.Write([]byte("\x1b")) // lone Esc closes help once the timeout resolves it
+	press(t, w, "\x1b") // lone Esc closes help once the timeout resolves it
 	waitText(t, scr, "mode focus")
-	w.Write([]byte("q"))
+	press(t, w, "q")
 	waitDone(t, done)
 	mu.Lock()
 	defer mu.Unlock()
@@ -122,11 +130,11 @@ func TestRunActsWithControlThroughTheMailbox(t *testing.T) {
 	done := runLoop(t, Config{Source: func() (snapshot.Snapshot, error) { return s, nil }, Interval: time.Second,
 		Control: rec, Theme: render.Theme{Level: render.LevelNone}}, in, scr)
 	waitText(t, scr, "NEEDS YOU (3)")
-	w.Write([]byte("\tjc"))
+	press(t, w, "\tjc")
 	waitText(t, scr, "cancel docs")
-	w.Write([]byte("y"))
+	press(t, w, "y")
 	waitText(t, scr, "cancel requested for docs")
-	w.Write([]byte("q"))
+	press(t, w, "q")
 	waitDone(t, done)
 	if got := rec.got(); len(got) != 1 || !strings.HasPrefix(got[0], "cancel 5-") {
 		t.Fatalf("calls %v", got)
@@ -152,7 +160,7 @@ func TestRunShowsStaleAndErrorWhenBuildsFail(t *testing.T) {
 	done := runLoop(t, Config{Source: src, Interval: 250 * time.Millisecond, Theme: render.Theme{Level: render.LevelNone}}, in, scr)
 	waitText(t, scr, "NEEDS YOU (3)")
 	waitText(t, scr, "SNAPSHOT FAILED")
-	w.Write([]byte("q"))
+	press(t, w, "q")
 	waitDone(t, done)
 }
 
@@ -181,6 +189,6 @@ func TestRunEndsOnQuitSignalResizeRepaintsAndInputCloseQuits(t *testing.T) {
 	scr2 := newScreen(100, 30)
 	done2 := runLoop(t, cfg, in2, scr2)
 	waitText(t, scr2, "NEEDS YOU (3)")
-	w2.Close() // the terminal went away
+	_ = w2.Close() // the terminal went away
 	waitDone(t, done2)
 }
