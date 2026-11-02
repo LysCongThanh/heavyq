@@ -1,0 +1,339 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/LysCongThanh/heavyq/main/schema/config.schema.json",
+  "definitions": {
+    "CacheConfig": {
+      "properties": {
+        "ttl": {
+          "type": "string",
+          "pattern": "^([0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h))+$",
+          "examples": [
+            "2s",
+            "15m"
+          ]
+        },
+        "max_size_mb": {
+          "type": "integer"
+        },
+        "max_entry_mb": {
+          "type": "integer"
+        },
+        "cache_failures": {
+          "type": "boolean"
+        },
+        "env": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "Env lists variable names whose values are part of the cache key."
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "description": "CacheConfig is the [cache] section for --cache result reuse."
+    },
+    "HookConfig": {
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enabled turns the hook off when false (it then never rewrites)."
+        },
+        "default_rules": {
+          "type": "boolean",
+          "description": "DefaultRules appends the built-in rules after the user's (default true)."
+        },
+        "permission": {
+          "type": "string",
+          "enum": [
+            "",
+            "allow"
+          ],
+          "description": "Permission is \"\" (the rewritten command goes through Claude Code's\nnormal permission flow) or \"allow\" (auto-approve rewritten commands)."
+        },
+        "max_wait": {
+          "type": "string",
+          "pattern": "^([0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h))+$",
+          "description": "MaxWait is passed as --max-wait and added to the Bash tool timeout.",
+          "examples": [
+            "2s",
+            "15m"
+          ]
+        },
+        "binary": {
+          "type": "string",
+          "description": "Binary is how the rewritten command calls heavyq (\"\" = \"heavyq\" when it\nis on PATH, else the absolute path of the running binary)."
+        },
+        "rule": {
+          "items": {
+            "$ref": "#/definitions/HookRule"
+          },
+          "type": "array"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "description": "HookConfig is the [hook] section: how `heavyq hook claude-pretooluse` rewrites agent commands."
+    },
+    "HookRule": {
+      "properties": {
+        "match": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "minItems": 1,
+          "description": "word prefixes, e.g. \"npm run test\""
+        },
+        "priority": {
+          "type": "integer",
+          "maximum": 9,
+          "minimum": 1,
+          "description": "1-9, default 4"
+        },
+        "light": {
+          "type": "boolean"
+        },
+        "lane": {
+          "type": "string",
+          "description": "fixed lane (\"\" = $HEAVYQ_LANE, else worktree name)"
+        },
+        "cache": {
+          "type": "boolean",
+          "description": "add --cache"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "match"
+      ],
+      "description": "HookRule wraps commands whose words start with one of Match."
+    },
+    "MachineConfig": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+        },
+        "heavy_slots": {
+          "type": "integer"
+        },
+        "light_slots": {
+          "type": "integer"
+        },
+        "max_load_ratio": {
+          "type": "number"
+        },
+        "job_mb": {
+          "type": "integer"
+        },
+        "light_mb": {
+          "type": "integer"
+        },
+        "reserve_mb": {
+          "type": "integer"
+        },
+        "legacy_lock_files": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "Local only: lock files shared with legacy `flock \u003cfile\u003e cmd` users.\nWhen set they replace the generated heavy slot files."
+        },
+        "ssh": {
+          "type": "string",
+          "description": "Remote only."
+        },
+        "transport": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "argv prefix; the remote script is appended as ONE argument"
+        },
+        "work_dir": {
+          "type": "string",
+          "description": "remote dir holding git/, wt/, slots/, cache/"
+        },
+        "git_url": {
+          "type": "string",
+          "description": "where bare repos live, as seen by `git push`"
+        },
+        "cache_hook": {
+          "type": "string",
+          "description": "shell snippet run in the worktree before the command"
+        },
+        "env_path": {
+          "type": "string",
+          "description": "directories put first on the remote command's PATH (\"~/\" = remote home)"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "description": "MachineConfig describes the local machine or one remote."
+    },
+    "QueueConfig": {
+      "properties": {
+        "poll": {
+          "type": "string",
+          "pattern": "^([0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h))+$",
+          "description": "Poll is the delay between two scheduling attempts of a waiting ticket.",
+          "examples": [
+            "2s",
+            "15m"
+          ]
+        },
+        "force_after": {
+          "type": "string",
+          "pattern": "^([0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h))+$",
+          "description": "ForceAfter: a head-of-line ticket waiting longer than this bypasses the\nresource gate (anti-starvation). It still needs a free slot.",
+          "examples": [
+            "2s",
+            "15m"
+          ]
+        },
+        "resource_gate": {
+          "type": "boolean",
+          "description": "ResourceGate disables RAM/load checks when false (slots only)."
+        },
+        "auto": {
+          "type": "boolean",
+          "description": "Auto enables score-based placement for tickets without --remote."
+        },
+        "load_weight_mb": {
+          "type": "integer",
+          "description": "LoadWeightMB is k in score = free_mb - k * load1."
+        },
+        "remote_down_max": {
+          "type": "string",
+          "pattern": "^([0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h))+$",
+          "description": "RemoteDownMax: a remote-only ticket exits 76 after its remotes have been\nunreachable this long.",
+          "examples": [
+            "2s",
+            "15m"
+          ]
+        },
+        "hold_for": {
+          "type": "string",
+          "pattern": "^([0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h))+$",
+          "description": "HoldFor: a freshly claimed job reserves its RAM budget for this long,\nbecause a starting job has not grown yet.",
+          "examples": [
+            "2s",
+            "15m"
+          ]
+        },
+        "probe_timeout": {
+          "type": "string",
+          "pattern": "^([0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h))+$",
+          "description": "ProbeTimeout bounds one remote metrics probe.",
+          "examples": [
+            "2s",
+            "15m"
+          ]
+        },
+        "base_ref": {
+          "type": "string",
+          "description": "BaseRef is the default --base-ref (\"\" = none)."
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "description": "QueueConfig holds queue-wide behaviour."
+    },
+    "Pool": {
+      "oneOf": [
+        {
+          "required": [
+            "values"
+          ]
+        },
+        {
+          "required": [
+            "size"
+          ]
+        }
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,31}$",
+          "description": "Pool name; becomes part of the environment variable HEAVYQ_\u003cNAME\u003e."
+        },
+        "values": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^\\s*\\d+\\s*-\\s*\\d+\\s*$"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                  },
+                  {
+                    "type": "integer"
+                  }
+                ]
+              },
+              "type": "array",
+              "maxItems": 65535,
+              "minItems": 1
+            }
+          ],
+          "description": "A range \"4100-4199\", or a list of names or integers."
+        },
+        "size": {
+          "type": "integer",
+          "maximum": 1024,
+          "minimum": 1,
+          "description": "A capacity-only pool: the values are 1..size."
+        },
+        "port": {
+          "type": "boolean",
+          "description": "true: the values are TCP ports, probed before they are handed out. Absent: a pool called \"port\" or ending in \"_port\" is a port pool."
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "description": "A named pool of values handed out with --needs: ports, database names, browser seats."
+    }
+  },
+  "properties": {
+    "queue": {
+      "$ref": "#/definitions/QueueConfig"
+    },
+    "local": {
+      "$ref": "#/definitions/MachineConfig"
+    },
+    "remote": {
+      "items": {
+        "$ref": "#/definitions/MachineConfig"
+      },
+      "type": "array"
+    },
+    "hook": {
+      "$ref": "#/definitions/HookConfig"
+    },
+    "cache": {
+      "$ref": "#/definitions/CacheConfig"
+    },
+    "pool": {
+      "items": {
+        "$ref": "#/definitions/Pool"
+      },
+      "type": "array",
+      "description": "PoolSpecs are the [[pool]] tables as written; normalize validates them\ninto Pools. A pool of the same name in heavyq.toml replaces the user's."
+    }
+  },
+  "additionalProperties": false,
+  "type": "object",
+  "title": "heavyq user config",
+  "description": "heavyq's user configuration, ~/.config/heavyq/config.toml: slots, RAM budgets, remotes, hook rules, cache and pools. Every key is optional."
+}
+
