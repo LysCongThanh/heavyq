@@ -52,7 +52,13 @@ func Run(o Options) int {
 
 	var segment string
 	var after func()
-	if common, ok := flowview.CommonDirOf(in.Dir()); ok {
+	// An empty directory means "unknown", never "wherever this process runs":
+	// git would otherwise resolve it against the process's own directory.
+	common, ok := "", false
+	if dir := in.Dir(); dir != "" {
+		common, ok = flowview.CommonDirOf(dir)
+	}
+	if ok {
 		st, err := flowview.Read(flowview.Path(common))
 		if err != nil {
 			st = nil // no state, a bad one or another schema: say nothing
