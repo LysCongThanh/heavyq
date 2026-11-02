@@ -48,6 +48,16 @@ func BenchmarkTreeIdentity(b *testing.B) {
 
 	b.Run("clean", func(b *testing.B) { run(b, workTree) })
 	b.Run("clean-identify", func(b *testing.B) { run(b, identify) })
+	// A repository that keeps heavyq's bookkeeping: the committed tree is
+	// re-hashed on two levels, and a ticked item leaves the tree "clean".
+	write(b, filepath.Join(dir, ".heavyq", "anchor.md"), "- [ ] item\n")
+	write(b, filepath.Join(dir, ".heavyq", "decisions", "d1.md"), "chose A\n")
+	gitIn(b, dir, "add", ".")
+	gitIn(b, dir, "commit", "-q", "-m", "bookkeeping")
+	b.Run("clean-bookkeeping", func(b *testing.B) { run(b, workTree) })
+	write(b, filepath.Join(dir, ".heavyq", "anchor.md"), "- [x] item\n")
+	b.Run("clean-bookkeeping-ticked", func(b *testing.B) { run(b, identify) })
+	gitIn(b, dir, "checkout", "-q", "--", ".heavyq/anchor.md")
 	for i := 0; i < 5; i++ {
 		write(b, filepath.Join(dir, "pkg000", fmt.Sprintf("file%05d.txt", i*100)), "edited\n")
 		write(b, filepath.Join(dir, "scratch", fmt.Sprintf("note%d.txt", i)), "untracked\n")

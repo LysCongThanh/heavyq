@@ -47,6 +47,18 @@ versions follow [Semantic Versioning](https://semver.org/).
 - `heavyq hook install claude` refuses (exit 2, with a `next:` line) when the user, project or local settings
   enable `heavyq@heavyq`, because the plugin already runs the same hook and two rewriting hooks have no defined
   winner. `--force` installs anyway; `--print` and `uninstall` are never refused.
+### Fixed
+
+- **The tree id ignores heavyq's own bookkeeping files.** `heavyq item done` ticks a box in the anchor file, which
+  changed the tree id, so the proof behind `done` read as stale at once (and committing the tick changed it
+  again). The anchor file (`[anchor] file`, default `.heavyq/anchor.md`), `.heavyq/decisions/` and
+  `.heavyq/stances/` are now left out of the identity: the edits' diff and untracked listing skip them, and
+  the committed part is `HEAD`'s tree with those entries removed (only the root and `.heavyq/` levels are read
+  and re-hashed, nothing is written to the repository). `heavyq.toml` and any other file still count. **One-time
+  cache miss:** the run identity schema (`run_id`) and the cache key schema are bumped, and dirty ids use a new
+  digest prefix, so proofs and cached results from older versions miss once and gates run again. See
+  `docs/gates.md`, "What the tree id ignores".
+
 ### Changed
 
 - **README is a short hero** (tagline, a 14-second proof GIF recorded from real runs, install, Run / Prove / Steer).

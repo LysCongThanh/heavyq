@@ -21,10 +21,15 @@ var shaRe = regexp.MustCompile(`^[0-9a-f]{40}([0-9a-f]{24})?$`)
 // data: a concurrent `git add` or `git commit` (the user's, or another agent's
 // in the same work tree) never fails with "index.lock exists" because of us.
 func gitTo(w io.Writer, dir string, args ...string) error {
+	return gitWithInput(w, nil, dir, args...)
+}
+
+// gitWithInput is gitTo with git's standard input read from in (nil: none).
+func gitWithInput(w io.Writer, in io.Reader, dir string, args ...string) error {
 	cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
 	cmd.Env = append(os.Environ(), "GIT_OPTIONAL_LOCKS=0")
 	var errb bytes.Buffer
-	cmd.Stdout, cmd.Stderr = w, &errb
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = in, w, &errb
 	if err := cmd.Run(); err != nil {
 		msg := strings.TrimSpace(errb.String())
 		if msg == "" {
@@ -88,10 +93,18 @@ func IsClean(repo string) bool {
 	return err == nil && clean
 }
 
-func workTreeClean(repo string) (bool, error) {
+func workTreeClean(repo string) (bool, error) { return workTreeCleanExcept(repo, nil) }
+
+// workTreeCleanExcept is workTreeClean that does not count changes to the
+// paths in exclude (the bookkeeping paths, see bookkeepingPaths).
+func workTreeCleanExcept(repo string, exclude []string) (bool, error) {
 	// Submodules are never ignored, whatever submodule.<name>.ignore or
 	// diff.ignoreSubmodules say: a changed submodule is a changed tree.
-	out, err := git(repo, "status", "--porcelain", "--untracked-files=normal", "--ignore-submodules=none")
+	args := []string{"status", "--porcelain", "--untracked-files=normal", "--ignore-submodules=none"}
+	if len(exclude) > 0 {
+		args = append(args, excludeSpecs(exclude)...)
+	}
+	out, err := git(repo, args...)
 	return out == "", err
 }
 

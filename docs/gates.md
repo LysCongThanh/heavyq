@@ -132,14 +132,36 @@ Proof is derived from the run ledger (`heavyq history`); there is no separate st
 is a run of the command when all of these hold:
 
 - same repository (all work trees of a clone share one id), and the same **tree id**: `HEAD`'s tree when the
-  work tree is clean, `<HEAD tree>+<digest of the edits>` when it is dirty. Any edit changes the id and
-  undoing it restores the old one, so a revert is proven again at once;
+  work tree is clean, `<HEAD tree>+<digest of the edits>` when it is dirty, both without heavyq's own
+  bookkeeping files (see **What the tree id ignores**). Any other edit changes the id and undoing it restores
+  the old one, so a revert is proven again at once;
 - it is a run of the same command in the same environment, see **Run identity** below: the exact
   `sh -c '<command>'` from the repository root, with the same values of the `cache.env` variables and the
   same base ref;
 - it ran to its end: runs that gave up, were cancelled or were interrupted are inconclusive and neither prove
   nor fail anything. Exit 0 passes; any other exit code is a failure. A `--cache` hit or a run that reused an
   identical in-flight run counts, because the ledger only gives those the tree they proved.
+
+### What the tree id ignores
+
+heavyq writes to the work tree itself: `heavyq item done` ticks a box in the anchor file. If that changed the
+tree id, the proof that justified `done` would read as stale the moment it was recorded. So the tree id leaves
+out a fixed set of bookkeeping paths, in the committed tree and in the edits alike:
+
+- the anchor file (`[anchor] file` in `heavyq.toml`, default `.heavyq/anchor.md`);
+- `.heavyq/decisions/` and `.heavyq/stances/`.
+
+Ticking an item, adding a decision or committing either one does not change the id, and an uncommitted change
+to these paths alone does not make the tree dirty (the result cache can still answer). Everything else counts,
+`heavyq.toml` included: changing a gate must void its proof. Other files under `.heavyq/` count too.
+
+How the committed part is computed: a repository without those paths keeps `HEAD`'s tree id as is. Otherwise
+heavyq reads only the tree levels on the way to them (the root and `.heavyq/`, a handful of entries) and
+hashes the listing without the excluded entries; unchanged subtrees keep their own ids, so the cost does not
+grow with the number of files. The result is the id git would give that tree, so a commit that differs from
+another only in bookkeeping files has the same id as it, but it is a heavyq identity, not a promise that the
+object exists: nothing is written to the repository. The edits part leaves the same paths out of the diff and
+of the untracked listing.
 
 ### Run identity
 
@@ -148,7 +170,7 @@ flaky detection and the Tower's loop detection share (`internal/runident`). It i
 
 | Component | Notes |
 |---|---|
-| tree id | `HEAD`'s tree, or `<tree>+<digest of the edits>` when dirty |
+| tree id | `HEAD`'s tree, or `<tree>+<digest of the edits>` when dirty, without bookkeeping files (above) |
 | exact argv | NUL-joined, before redaction and truncation (this is `cmd_hash`) |
 | subdirectory | relative to the repository root; gate commands run from the root |
 | `cache.env` | for each listed variable its value, or "unset" (set-but-empty differs from unset) |

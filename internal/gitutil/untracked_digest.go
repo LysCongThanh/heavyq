@@ -53,14 +53,19 @@ type untrackedResult struct {
 }
 
 // untrackedDigest hashes the names and contents of the untracked files that
-// are not ignored, in the order git lists them. repo must be the work tree
-// root: ls-files reports paths relative to where it runs.
+// are not ignored, in the order git lists them, except the paths in exclude
+// (bookkeeping, see bookkeepingPaths). repo must be the work tree root:
+// ls-files reports paths relative to where it runs.
 //
 // A nested repository (an untracked directory holding its own .git) is listed
 // by git as "dir/" and its contents are not visible from here, so it makes the
 // result unknown.
-func untrackedDigest(repo string) (untrackedResult, error) {
-	list, err := gitRaw(repo, "ls-files", "--others", "--exclude-standard", "-z")
+func untrackedDigest(repo string, exclude ...string) (untrackedResult, error) {
+	args := []string{"ls-files", "--others", "--exclude-standard", "-z"}
+	if len(exclude) > 0 {
+		args = append(args, excludeSpecs(exclude)...)
+	}
+	list, err := gitRaw(repo, args...)
 	if err != nil {
 		return untrackedResult{}, err
 	}

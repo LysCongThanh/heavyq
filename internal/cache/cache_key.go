@@ -26,7 +26,8 @@ type KeyInput struct {
 // run_id (internal/runident, the one definition of "the same run"); the
 // heavyq version is added because a new version may store results differently.
 // Changing keyDoc invalidates old entries, which is safe (they simply miss):
-// schema 2 replaced the schema 1 fields by the run_id.
+// schema 2 replaced the schema 1 fields by the run_id, schema 3 came with run
+// identity schema 2 (the tree id leaves out heavyq's own bookkeeping files).
 type keyDoc struct {
 	Schema  int    `json:"schema"`
 	RunID   string `json:"run_id"`
@@ -63,7 +64,7 @@ func KeyAndTree(in KeyInput) (key, tree, why string) {
 	}
 	id := runident.ID(runident.Input{Tree: tree, Argv: in.Argv, Subdir: sub, EnvNames: in.EnvNames,
 		Getenv: in.Getenv, BaseSHA: runident.BaseSHA(top, in.BaseRef)})
-	b, err := json.Marshal(keyDoc{Schema: 2, RunID: id, Version: in.Version})
+	b, err := json.Marshal(keyDoc{Schema: 3, RunID: id, Version: in.Version})
 	if err != nil {
 		return "", "", "cannot encode the key"
 	}
