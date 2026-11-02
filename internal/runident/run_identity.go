@@ -23,8 +23,9 @@ import (
 
 // schema versions the encoding below. Changing the encoding changes every
 // run_id; bump it so old ids simply never match (they fall back, see the
-// proof package).
-const schema = 1
+// proof package). Schema 2: the tree id ignores heavyq's bookkeeping files
+// (anchor file, decisions, stances), see gitutil.effectiveTreeOf.
+const schema = 2
 
 // Input is everything that makes two runs the same run.
 type Input struct {

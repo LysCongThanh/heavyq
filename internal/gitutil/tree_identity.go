@@ -10,30 +10,33 @@ import (
 // never cached, only identified (see WorkTree).
 var ErrDirty = errors.New("work tree has uncommitted or untracked files")
 
-// CleanTree returns the id of HEAD's tree when the work tree matches it
-// exactly, else an error wrapping ErrDirty. It is the identity the result
-// cache keys on, and the id WorkTree reports for a clean tree.
+// CleanTree returns the id of HEAD's effective tree (HEAD's tree without
+// heavyq's own bookkeeping files, see effectiveTreeOf) when the work tree
+// matches it exactly, else an error wrapping ErrDirty. Changes to the
+// bookkeeping files alone (a ticked item, a new decision) do not make the
+// work tree dirty. It is the identity the result cache keys on, and the id
+// WorkTree reports for a clean tree.
 func CleanTree(repo string) (string, error) {
 	head, err := ResolveCommit(repo, "HEAD")
 	if err != nil {
 		return "", err
 	}
-	return cleanTreeAt(repo, head)
+	return cleanTreeAt(repo, head, bookkeepingPaths(repo, ""))
 }
 
 // cleanTreeAt is CleanTree for a HEAD already resolved to head. Every part of
 // the answer refers to that commit: the tree comes from head, and if HEAD has
 // moved by the time the status check is done, the answer is "not clean"
 // instead of a mix of two commits.
-func cleanTreeAt(repo, head string) (string, error) {
-	clean, err := workTreeClean(repo)
+func cleanTreeAt(repo, head string, exclude []string) (string, error) {
+	clean, err := workTreeCleanExcept(repo, exclude)
 	switch {
 	case err != nil:
 		return "", fmt.Errorf("%w (%v)", ErrDirty, err)
 	case !clean:
 		return "", ErrDirty
 	}
-	tree, err := TreeOf(repo, head)
+	tree, err := effectiveTreeOf(repo, head, exclude)
 	if err != nil {
 		return "", err
 	}
@@ -54,8 +57,8 @@ func headStill(repo, head string) error {
 
 // TreeID identifies the exact files of a work tree.
 type TreeID struct {
-	// ID is HEAD's tree id for a clean tree (what CleanTree returns), and
-	// "<HEAD tree id>+<32 hex>" for a dirty one: the same edits give the same
+	// ID is HEAD's effective tree id for a clean tree (what CleanTree
+	// returns), and "<effective tree id>+<32 hex>" for a dirty one: the same edits give the same
 	// id, any edit changes it, and undoing them restores the clean id.
 	//
 	// ID is "" (with Dirty set) when the tree cannot be identified reliably:
@@ -77,12 +80,13 @@ func WorkTree(repo string) (TreeID, error) {
 }
 
 func workTreeAt(repo, head string) (TreeID, error) {
-	tree, err := cleanTreeAt(repo, head)
+	exclude := bookkeepingPaths(repo, "")
+	tree, err := cleanTreeAt(repo, head, exclude)
 	if err == nil {
 		return TreeID{ID: tree}, nil
 	}
 	if !errors.Is(err, ErrDirty) {
 		return TreeID{}, err
 	}
-	return dirtyTreeAt(repo, head)
+	return dirtyTreeAt(repo, head, exclude)
 }

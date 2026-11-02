@@ -15,7 +15,7 @@ type Checkout struct {
 	Worktree string // absolute path of the work tree root
 	Subdir   string // the directory relative to Worktree ("" at the root)
 	Commit   string // HEAD ("" before the first commit)
-	Tree     string // exact files: see TreeID.ID ("" = unknown, never proof)
+	Tree     string // exact files, minus heavyq's bookkeeping: see TreeID.ID ("" = unknown, never proof)
 	Dirty    bool
 }
 
@@ -74,7 +74,7 @@ func Identify(dir string) (Checkout, error) {
 }
 
 // Pinned is Locate for a run of commit sha (a remote run ships exactly that
-// commit): Commit is sha, Tree is its tree and the checkout is never dirty,
+// commit): Commit is sha, Tree is its effective tree and the checkout is never dirty,
 // whatever the local work tree looks like.
 func Pinned(dir, sha string) (Checkout, error) {
 	co, err := Locate(dir)
@@ -84,6 +84,6 @@ func Pinned(dir, sha string) (Checkout, error) {
 	if co.Commit, err = ResolveCommit(co.Worktree, sha); err != nil {
 		return co, err
 	}
-	co.Tree, err = TreeOf(co.Worktree, co.Commit)
+	co.Tree, err = effectiveTreeOf(co.Worktree, co.Commit, bookkeepingPaths(co.Worktree, co.Commit))
 	return co, err
 }
