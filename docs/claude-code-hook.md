@@ -57,6 +57,9 @@ go test ./... 2>&1 | tail -30
 - The hook was verified with Claude Code 2.1.316 (`claude -p`: the agent ran `go test ./...`, heavyq queued
   it, and the second call was a cache hit).
 
+**A second, optional hook** (`heavyq hook claude-posttooluse`, on `PostToolUse` and `PostToolUseFailure`) adds one
+short note after a repeated identical failure and measures whether it helps: see [mentor.md](mentor.md).
+
 **Without the hook**, you can still put a rule in `CLAUDE.md` ("run heavy commands as
 `heavyq <prio> --lane <worktree> --max-wait 9m -- <command>`"), or block unwrapped commands with
 [`examples/claude-code/require-heavyq.sh`](../examples/claude-code/require-heavyq.sh), which makes the agent
