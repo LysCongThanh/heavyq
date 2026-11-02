@@ -63,6 +63,18 @@ type Shortfall struct {
 // under the queue mutex, so two runs never take parts of each other's needs.
 // A pool the set does not know is an error (Validate catches it earlier).
 func (s *Set) Acquire(needs []Need) (*Lease, *Shortfall, error) {
+	for _, n := range needs {
+		if _, ok := s.pools[n.Pool]; !ok {
+			return nil, nil, fmt.Errorf("unknown pool %q", n.Pool)
+		}
+	}
+	// Look before taking: a shortfall visible without locking returns at once,
+	// so a waiting ticket never holds (or probes) values of other pools round
+	// after round. Only a race between this check and the take below can still
+	// make Acquire take and release, and the queue mutex makes that rare.
+	if sf := s.Check(needs); sf != nil {
+		return nil, sf, nil
+	}
 	l := &Lease{needs: needs, values: map[string][]string{}}
 	for _, n := range needs {
 		p, ok := s.pools[n.Pool]
