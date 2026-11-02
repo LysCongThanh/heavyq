@@ -43,6 +43,9 @@ this exact code is proven). CI runs the same gate.
 - **Dashboard security model** (`docs/dashboard.md`): loopback only, token, `Host`/`Origin` checks, CSP
   `default-src 'none'`. Do not loosen any of these. Keep the page free of external resources.
 - **Redaction**: anything that shows command lines goes through `internal/redact`.
+- **One command table**: a new command, subcommand or flag goes into `internal/cli/command_table_*.go` (it feeds
+  `--help`, completions and the man page) and into `usage`; drift tests fail otherwise. A change to a config key,
+  a validation rule or the status snapshot needs `cd tools/schemagen && go run .`, with `schema/` committed.
 - **Docs move with behaviour**: flags, config keys and exit codes change in README.md, docs/ (configuration.md, exit-codes.md) and CHANGELOG.md
   (Keep a Changelog) in the same PR.
 
