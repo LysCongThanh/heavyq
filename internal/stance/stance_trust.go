@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 	"time"
 )
 
@@ -44,22 +43,16 @@ type trustFile struct {
 // reads (regular, non-dot "*.md"): names and bytes, so a rename counts. A
 // missing or empty directory has no files and the empty hash.
 func ContentHash(dir string) (hash string, names []string, err error) {
-	entries, err := os.ReadDir(dir)
-	if errors.Is(err, fs.ErrNotExist) {
-		return "", nil, nil
-	}
+	files, _, err := scanDir(dir) // only what the loader reads: an ignored README is no part of the trust
 	if err != nil {
 		return "", nil, err
 	}
 	h := sha256.New()
-	for _, e := range entries { // ReadDir sorts by name
-		name := e.Name()
-		if strings.HasPrefix(name, ".") || !strings.HasSuffix(name, ".md") || e.IsDir() {
-			continue
-		}
-		data, err := readBounded(filepath.Join(dir, name))
+	for _, path := range files {
+		name := filepath.Base(path)
+		data, err := readBounded(path)
 		if err != nil {
-			return "", nil, fmt.Errorf("%s: %w", filepath.Join(dir, name), err)
+			return "", nil, fmt.Errorf("%s: %w", path, err)
 		}
 		fmt.Fprintf(h, "%s\x00%d\x00", name, len(data))
 		h.Write(data)

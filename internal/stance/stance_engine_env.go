@@ -50,6 +50,9 @@ var ErrNoRepo = errors.New("stance: not inside a git repository")
 type Set struct {
 	// All is every stance by precedence (Load); `stance ls` and `show` use it.
 	All []Stance
+	// Warnings are the "*.md" files of the stance directories that are not
+	// stances and were ignored (`stance ls` lists them).
+	Warnings []Warning
 	// Injectable is All without the repo's stances when the repo is not
 	// trusted: the only stances that may enter a lane or be injected.
 	Injectable []Stance
@@ -68,11 +71,11 @@ func (set Set) Untrusted(s Stance) bool { return s.Source == SourceRepo && !set.
 // LoadSet loads the stances for cwd and decides which may be injected. Invalid
 // stance files are an error, as in Load.
 func (e Env) LoadSet(cwd string) (Set, error) {
-	all, err := Load(e.Dirs)
+	all, warns, err := LoadReport(e.Dirs)
 	if err != nil {
 		return Set{}, err
 	}
-	set := Set{All: all, Injectable: all, RepoTrusted: true}
+	set := Set{All: all, Injectable: all, RepoTrusted: true, Warnings: warns}
 	if common, err := gitutil.CommonDir(cwd); err == nil {
 		set.Common = common
 	}
@@ -88,7 +91,7 @@ func (e Env) LoadSet(cwd string) (Set, error) {
 		return set, nil
 	}
 	set.RepoTrusted = false
-	if set.Injectable, err = loadLayers(e.Dirs, false); err != nil {
+	if set.Injectable, _, err = loadLayers(e.Dirs, false); err != nil {
 		return Set{}, err
 	}
 	return set, nil
