@@ -47,11 +47,21 @@ this exact code is proven). CI runs the same gate.
 - **Dashboard security model** (`docs/dashboard.md`): loopback only, token, `Host`/`Origin` checks, CSP
   `default-src 'none'`. Do not loosen any of these. Keep the page free of external resources.
 - **Redaction**: anything that shows command lines goes through `internal/redact`.
-- **One command table**: a new command, subcommand or flag goes into `internal/cli/command_table_*.go` (it feeds
-  `--help`, completions and the man page) and into `usage`; drift tests fail otherwise. A change to a config key,
-  a validation rule or the status snapshot needs `cd tools/schemagen && go run .`, with `schema/` committed.
-- **Docs move with behaviour**: flags, config keys and exit codes change in README.md, docs/ (configuration.md, exit-codes.md) and CHANGELOG.md
-  (Keep a Changelog) in the same PR.
+- **One command table, one file per command**: a new command is `<name>_command.go` plus
+  `<name>_command_spec.go`, whose `init()` calls `registerCommand` with the table entry (`Order` places it in the
+  usage) and a `Run` adapter. Nothing else lists commands: the usage text, `--help`, completions, the man page and
+  the dispatch in `Main` are generated from the table, so never edit `app.go` or add a usage line. A new
+  subcommand or flag is an edit to the spec file; drift tests fail otherwise. A change to a config key, a
+  validation rule or the status snapshot needs `cd tools/schemagen && go run .`, with `schema/` committed.
+- **Docs move with behaviour**: flags, config keys and exit codes change in README.md and docs/ (configuration.md,
+  exit-codes.md) in the same PR.
+- **Never edit `CHANGELOG.md`** (every parallel PR would conflict on it). Add `changelog.d/<pr-or-slug>.<kind>.md`,
+  `kind` being `added`, `changed`, `fixed` or `security`, with the release-notes entry as its text
+  (`changelog.d/README.md`). CI fails a PR that touches `internal/` or `cmd/` without one, unless it carries the
+  label `no-changelog`. The maintainer folds them at release: `go run ./tools/changelog release <version>`.
+- **CI is tiered.** A PR runs the fast tier (`test` = gate `fast`, lint, schemas, gitleaks, changelog, short fuzz of
+  touched packages; under 5 minutes); the race suite (gate `ready`), macOS, the release snapshot and the rest run on
+  `main` and nightly. Label a PR `ci:full` to run them on it. A docs-only PR skips the Go jobs.
 
 ## Commits and PRs
 

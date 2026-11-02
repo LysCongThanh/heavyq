@@ -37,7 +37,7 @@ func TestCompletionScriptsHoldTheTable(t *testing.T) {
 				t.Errorf("%s: command %q missing", shell, name)
 			}
 		}
-		for _, c := range commandTable {
+		for _, c := range commandTable() {
 			flags := append([]flagSpec{}, c.Flags...)
 			for _, s := range c.Subs {
 				flags = append(flags, s.Flags...)

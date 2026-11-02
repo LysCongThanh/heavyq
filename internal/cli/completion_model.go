@@ -16,7 +16,7 @@ type compRow struct {
 // completionRows derives every row from the command table.
 func completionRows() []compRow {
 	top := []compWord{}
-	for _, c := range commandTable {
+	for _, c := range commandTable() {
 		if c.Name != "run" {
 			top = append(top, compWord{c.Name, c.Summary})
 		}
@@ -24,7 +24,7 @@ func completionRows() []compRow {
 	top = append(top,
 		compWord{"--config", configFlag.Help}, compWord{"--help", "show the usage"}, compWord{"--version", "print the version"})
 	rows := []compRow{{Cmd: "", Sub: "*", Words: top}}
-	for _, c := range commandTable {
+	for _, c := range commandTable() {
 		if len(c.Subs) == 0 {
 			words := nextWords(c)
 			words = append(words, flagWords(c.Flags)...)
@@ -96,7 +96,7 @@ func valueFlags() []valueFlag {
 		}
 	}
 	add(configFlag)
-	for _, c := range commandTable {
+	for _, c := range commandTable() {
 		for _, f := range c.Flags {
 			add(f)
 		}

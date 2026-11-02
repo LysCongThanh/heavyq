@@ -16,7 +16,7 @@ func runMain(t *testing.T, args ...string) (rc int, out, errOut string) {
 // Every command answers --help with its own usage block on stdout and exit 0, without a config.
 func TestEveryCommandHasHelp(t *testing.T) {
 	t.Setenv("HEAVYQ_CONFIG", "/nonexistent/heavyq.toml") // a missing config must not matter
-	for _, c := range commandTable {
+	for _, c := range commandTable() {
 		args := []string{c.Name, "--help"}
 		if c.Name == "run" {
 			args = []string{"4", "--help"}

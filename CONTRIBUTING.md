@@ -9,7 +9,7 @@ Contributions that keep it that way are the easiest to merge.
 git clone https://github.com/LysCongThanh/heavyq && cd heavyq
 go test -race ./...        # unit + end-to-end tests (real processes, real flock, an sh -c "remote")
 go vet ./... && gofmt -l .
-heavyq gate run ready      # the gate CI runs (gofmt, vet, race tests), if heavyq is installed
+heavyq gate run ready      # the full proof CI runs on main (gofmt, vet, race tests), if heavyq is installed
 golangci-lint run          # v2, config in .golangci.yml (CI pins the version)
 ```
 
@@ -44,7 +44,8 @@ The remote path is tested through a `sh -c` transport, which runs the same code 
 | `internal/steer` | the brief (`Brief`, at most 300 tokens) and the stop gate (`DecideStop`, a pure function of facts and the session record), the claim-vs-ledger phrase matcher, the steering mode and per-session records under the repository's common dir, the delivery canary. See `docs/steer.md` |
 | `internal/repoconfig` | per-repo `heavyq.toml`: named gates, validation (trusted like a Makefile) |
 | `internal/tomlkeys` | strict-key check shared by both config parsers: unknown or upper-case keys, with their line |
-| `internal/cli/command_table_*.go` | the table of commands, subcommands and flags behind `<cmd> --help`, `heavyq completion` and the man page; drift tests tie it to `usage` and to the flag definitions |
+| `internal/cli/*_command_spec.go` | one file per command: its table entry (name, synopsis, flags, subcommands) and its dispatch, registered from `init()` through `command_registry.go`. The table generates `heavyq --help`, `<cmd> --help`, `heavyq completion` and the man page, and `Main` dispatches through it; drift tests tie it to the flag definitions |
+| `tools/changelog` | folds `changelog.d/` fragments into `CHANGELOG.md` at release time; `check` is the PR rule CI applies |
 | `tools/mangen` | writes the man page from that table (run by goreleaser at release) |
 | `tools/schemagen` | separate module (own `go.mod`): writes `schema/*.json` from the config and snapshot types |
 | `schema/` | generated JSON Schemas for `heavyq.toml`, the user config and `status --json`; do not edit by hand |
@@ -87,7 +88,7 @@ The remote path is tested through a `sh -c` transport, which runs the same code 
 
 The parsers that read input heavyq does not control have Go fuzz tests (`Fuzz*` in `*_fuzz_test.go`): the
 hook's shell-command parser and rewrite, `internal/redact`, `internal/anchor`, `heavyq.toml`, the user config, and the
-ledger reader. CI fuzzes each for 20 s on pull requests that touch its package and for 2 minutes every week.
+ledger reader. CI fuzzes each for 20 s on pull requests that touch its package and for 2 minutes every night.
 
 ```bash
 go test ./internal/anchor -run '^$' -fuzz '^FuzzSetChecked$' -fuzztime 30s   # one target at a time
@@ -109,12 +110,36 @@ people don't do the same work.
 - One topic per PR, with a test that fails without the change.
 - The PR title is a conventional commit (`feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `ci:`, `build:`);
   a check enforces it, and it becomes the squash commit.
-- A new command, subcommand or flag goes into the command table (`internal/cli/command_table_data.go`,
-  `command_table_more.go`) and the `usage` text; `go test ./internal/cli` says what is missing. A change to a
-  config key, a validation rule or the status snapshot needs `cd tools/schemagen && go run .` and the updated
-  `schema/` committed (CI checks).
-- If you change behaviour, update the docs (README, docs/queue.md, docs/configuration.md, docs/exit-codes.md) and the `Unreleased`
-  section of `CHANGELOG.md` in the same PR. The changelog section becomes the release notes.
+- A new command is two new files and no edit to an existing one: `<name>_command.go` (the handler) and
+  `<name>_command_spec.go` (an `init()` calling `registerCommand` with its table entry, an `Order` that places it
+  in the usage, and a `Run` adapter; copy a small one such as `trust_command_spec.go`). There is no usage text,
+  dispatch switch or command list to edit: they are generated from the table. A new subcommand or flag is an edit
+  to its command's spec file; `go test ./internal/cli` says what is missing. A change to a config key, a
+  validation rule or the status snapshot needs `cd tools/schemagen && go run .` and the updated `schema/`
+  committed (CI checks).
+- If you change behaviour, update the docs (README, docs/queue.md, docs/configuration.md, docs/exit-codes.md) in
+  the same PR, and add a **changelog fragment**: `changelog.d/<pr-or-slug>.<kind>.md` with `kind` one of `added`,
+  `changed`, `fixed`, `security` and the release-notes entry as its text (see `changelog.d/README.md`). Do not
+  edit `CHANGELOG.md`: that file is what every parallel PR would conflict on. A PR that touches `internal/` or
+  `cmd/` code without a fragment fails the `changelog` check unless it carries the label `no-changelog`.
+  At release time the maintainer runs `go run ./tools/changelog release <version>`, which folds the fragments
+  into `CHANGELOG.md` and deletes them; the section becomes the release notes.
+
+## CI tiers
+
+Every pull request runs the **fast tier** (under 5 minutes, `.github/workflows/ci.yml`): `test` (the required
+check: gofmt, vet, build, the ledger latency gate and every unit and end-to-end test through the gate `fast` in
+`heavyq.toml`, without `-race`), `lint`, `schemas`, `gitleaks`, a 20-second fuzz of the packages the PR touched
+(`.github/fuzz-targets.txt`), and the `changelog` and PR-title checks. A PR that changes only documentation skips
+the Go jobs, and `test` still reports. The **full tier** (`ci-full.yml`: the whole suite under `-race`, macOS,
+the release snapshot, `install.sh` on both platforms, govulncheck, the 2-minute fuzz of every target, doc links)
+runs on every push to `main`, nightly, and on a PR that carries the label `ci:full`. Label a PR `ci:full` when it
+touches locks, process handling, the queue or anything macOS-specific, and before a release. Pushes to a PR
+cancel its running jobs.
+
+The end-to-end tests drive a heavyq binary that `TestMain` builds with `-race`; that is what makes them take about
+9 minutes. `HEAVYQ_TEST_NORACE=1` builds it without (about 85 seconds), which is what the fast tier sets. Locally,
+leave it unset when you touch concurrency.
 
 ## Reporting security issues
 

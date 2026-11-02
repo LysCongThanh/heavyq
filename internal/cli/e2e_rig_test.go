@@ -27,7 +27,13 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 	binPath = filepath.Join(dir, "heavyq")
-	if out, err := exec.Command("go", "build", "-race", "-o", binPath, "../..").CombinedOutput(); err != nil {
+	// The binary the end-to-end tests run is built with the race detector, so every real run is also a race
+	// test. The fast CI tier sets HEAVYQ_TEST_NORACE=1 to skip it (the full tier and local gates keep it).
+	build := []string{"build", "-o", binPath, "../.."}
+	if os.Getenv("HEAVYQ_TEST_NORACE") != "1" {
+		build = append([]string{"build", "-race"}, build[1:]...)
+	}
+	if out, err := exec.Command("go", build...).CombinedOutput(); err != nil {
 		fmt.Fprintf(os.Stderr, "build heavyq: %v\n%s", err, out)
 		os.Exit(1)
 	}

@@ -4,24 +4,27 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"sort"
 	"strings"
 	"testing"
 )
 
-// These tests keep the command table (which feeds --help, completions and the man page) in step with the
-// code and the usage text. When one fails, update command_table_data.go / command_table_more.go.
+// These tests keep the command table (the usage, --help, completions, the man page and the dispatch are all
+// generated from it) in step with the flag parsers and subcommand switches in the command files. The table is the
+// only source of the command list, so there is no usage text to compare it with. When one fails, update the
+// command's <name>_command_spec.go.
 
 // tableFix tells a contributor what to do when a drift test fails.
-const tableFix = "\nTo fix: add or update the command, subcommand or flag in the command table " +
-	"(internal/cli/command_table_data.go for queue/gate/item commands, command_table_more.go for the rest: " +
-	"Name, Summary, Synopsis, Flags, Subs) and in the `usage` text in internal/cli/app.go, " +
-	"then run `go test ./internal/cli -run 'Table|Completion|Help|Man'`. " +
+const tableFix = "\nTo fix: add or update the command, subcommand or flag in the command's table entry " +
+	"(internal/cli/<name>_command_spec.go: Name, Summary, Synopsis, Flags, Subs), " +
+	"then run `go test ./internal/cli -run 'Table|Completion|Help|Man|Usage'`. " +
 	"If the change touches a config key or the status snapshot, also run `cd tools/schemagen && go run .` and commit schema/."
 
 // generatedSources are the files that describe commands for the table; their literals do not count as code.
 func isTableOrGeneratedFile(name string) bool {
-	for _, p := range []string{"command_table", "command_help", "completion", "man_page"} {
+	if strings.HasSuffix(name, "_spec.go") {
+		return true
+	}
+	for _, p := range []string{"command_table", "command_help", "command_registry", "usage_text", "completion", "man_page"} {
 		if strings.HasPrefix(name, p) {
 			return true
 		}
@@ -50,58 +53,13 @@ func cliSources(t *testing.T) map[string]string {
 	return out
 }
 
-func sortedKeys(m map[string]bool) []string {
-	out := make([]string, 0, len(m))
-	for k := range m {
-		out = append(out, k)
-	}
-	sort.Strings(out)
-	return out
-}
-
-// TestTableCommandsMatchUsage: the commands of the usage text and of the table are the same set.
-func TestTableCommandsMatchUsage(t *testing.T) {
-	fromUsage := map[string]bool{}
-	for _, line := range strings.Split(usage, "\n") {
-		rest, ok := strings.CutPrefix(line, "  heavyq ")
-		if !ok {
-			continue
-		}
-		rest = strings.TrimPrefix(rest, "[--config FILE] ")
-		first := strings.Fields(rest)[0]
-		if strings.HasPrefix(first, "<prio") {
-			first = "run"
-		}
-		for _, n := range strings.Split(first, "|") {
-			fromUsage[n] = true
-		}
-	}
-	fromTable := map[string]bool{}
-	for _, c := range commandTable {
-		fromTable[c.Name] = true
-	}
-	if a, b := strings.Join(sortedKeys(fromUsage), " "), strings.Join(sortedKeys(fromTable), " "); a != b {
-		t.Errorf("usage lists:  %s\ntable lists:  %s%s", a, b, tableFix)
-	}
-}
-
-// TestTableCommandsAreDispatched: every table command is a case of Main (run is the numeric fallthrough).
-func TestTableCommandsAreDispatched(t *testing.T) {
-	src := cliSources(t)["app.go"]
-	for _, c := range commandTable {
-		if c.Name != "run" && !strings.Contains(src, `"`+c.Name+`"`) {
-			t.Errorf("command %q is in the table but Main does not dispatch it%s", c.Name, tableFix)
-		}
-	}
-}
-
 // TestTableSubcommandsExist: a subcommand is named in its synopsis and in the code that dispatches it.
 func TestTableSubcommandsExist(t *testing.T) {
 	all := ""
 	for _, s := range cliSources(t) {
 		all += s
 	}
-	for _, c := range commandTable {
+	for _, c := range commandTable() {
 		for _, s := range c.Subs {
 			if !strings.Contains(strings.Join(c.Synopsis, "\n"), s.Name) {
 				t.Errorf("%s %s: not in the synopsis%s", c.Name, s.Name, tableFix)
@@ -142,7 +100,7 @@ func TestTableFlagsMatchCode(t *testing.T) {
 			}
 		}
 	}
-	for _, c := range commandTable {
+	for _, c := range commandTable() {
 		add(c.Flags)
 		for _, s := range c.Subs {
 			add(s.Flags)
@@ -160,16 +118,6 @@ func TestTableFlagsMatchCode(t *testing.T) {
 	}
 }
 
-// TestUsageMentionsEveryRunFlag: the run flags of the table appear in the usage text's flag list.
-func TestUsageMentionsEveryRunFlag(t *testing.T) {
-	run, _ := commandByName("run")
-	for _, f := range run.Flags {
-		if f.Long != "" && !strings.Contains(usage, "--"+f.Long) {
-			t.Errorf("usage does not mention --%s%s", f.Long, tableFix)
-		}
-	}
-}
-
 // TestTableIsWellFormed: no empty names, summaries or synopses; flags have a spelling and a help line.
 func TestTableIsWellFormed(t *testing.T) {
 	seen := map[string]bool{}
@@ -183,7 +131,7 @@ func TestTableIsWellFormed(t *testing.T) {
 			}
 		}
 	}
-	for _, c := range commandTable {
+	for _, c := range commandTable() {
 		if c.Name == "" || c.Summary == "" || len(c.Synopsis) == 0 {
 			t.Errorf("command %q: name, summary and synopsis are required", c.Name)
 		}

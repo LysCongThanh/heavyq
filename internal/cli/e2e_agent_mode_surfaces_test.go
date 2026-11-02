@@ -155,7 +155,7 @@ func TestHelpAgentsCardFitsItsBudget(t *testing.T) {
 	if rc, out := h.run("help", "nonsense"); rc != ExitUsage || !strings.Contains(out, "no help topic") {
 		t.Fatalf("rc=%d\n%s", rc, out)
 	}
-	if rc, out := h.run("help"); rc != 0 || !strings.Contains(out, "heavyq help [agents]") {
+	if rc, out := h.run("help"); rc != 0 || !strings.Contains(out, "heavyq help [agents|<command>]") {
 		t.Fatalf("plain help rc=%d\n%s", rc, out)
 	}
 }

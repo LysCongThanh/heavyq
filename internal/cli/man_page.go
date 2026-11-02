@@ -35,7 +35,7 @@ func WriteManPage(w io.Writer, version, date string) {
 	fmt.Fprintf(&b, ".TH HEAVYQ 1 %q %q %q\n", date, "heavyq "+version, "User Commands")
 	b.WriteString(".SH NAME\nheavyq \\- a priority, resource\\-aware queue for heavy commands\n")
 	b.WriteString(".SH SYNOPSIS\n.nf\n")
-	for _, c := range commandTable {
+	for _, c := range commandTable() {
 		for _, line := range c.Synopsis {
 			b.WriteString(roff(line) + "\n")
 		}
@@ -46,7 +46,7 @@ other machines over SSH by exact commit, caches results by git tree, and says wh
 passed its gate. There is no daemon: the queue is a directory of ticket files and flock(2) slot files.`) + "\n")
 	b.WriteString(".PP\n" + roffLines("Lower priority numbers run first; equal priorities are first in, first out.") + "\n")
 	b.WriteString(".SH COMMANDS\n")
-	for _, c := range commandTable {
+	for _, c := range commandTable() {
 		writeManCommand(&b, c)
 	}
 	b.WriteString(".SH ENVIRONMENT\n")

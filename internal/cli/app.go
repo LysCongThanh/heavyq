@@ -26,82 +26,16 @@ const (
 	ExitConnLost    = 255
 )
 
-const usage = `heavyq - a priority, resource-aware queue for heavy commands
-
-usage:
-  heavyq [--config FILE] <prio 1-9> [flags] -- <command...>
-  heavyq [--config FILE] status [--json]
-  heavyq [--config FILE] why [lane]
-  heavyq [--config FILE] gate status [name] [--json] | run [name] [--parallel] [--keep-going] [--lane NAME]
-  heavyq [--config FILE] item ls [--all] | claim <id>|--next | release <id> | done <id> [--run] | block <id> "needs: ..."
-  heavyq [--config FILE] brief [--json]
-  heavyq steer [off|guard|destroy] [--apply]
-  heavyq init [--agents-md] [--force] [--print]
-  heavyq [--config FILE] dash [--control] [--addr 127.0.0.1:0] [--open]
-  heavyq [--config FILE] top [--control] [--mode full|focus|lanes|machines|line] [--interval 2s] [--line] [--once]
-  heavyq cancel <ticket|pid>
-  heavyq reprio <ticket|pid> <1-9>
-  heavyq [--config FILE] pause|resume <machine>
-  heavyq history [-n N] [-v]
-  heavyq receipts [--day|--week|--month] [--share] [--json]
-  heavyq [--config FILE] cache ls|stats|clear
-  heavyq [--config FILE] hook claude-pretooluse | claude-posttooluse | claude-sessionstart | claude-stop | claude-userpromptsubmit | install claude [--features queue,brief,stop,stance] | uninstall claude
-  heavyq stance ls | show <name> | enter <name> | exit | off | status | stats
-  heavyq trust [--list|--revoke]
-  heavyq [--config FILE] mentor stats [--json] | mute <rule> | unmute <rule>
-  heavyq doctor [--reindex]
-  heavyq completion bash|zsh|fish
-  heavyq help [agents]
-  heavyq version
-
-Every command has its own usage: heavyq <command> --help (also heavyq help <command>).
-
-run flags:
-  --lane NAME          label shown in status (default: $HEAVYQ_LANE or cwd name)
-  --light              light job: may use light slots and jump ahead into them
-  --max-wait DUR       give up after DUR in the queue (exit 75); "90", "90s", "5m"
-  --remote WHERE       local | auto | <remote name> (default: auto when safe)
-  --needs-ram          place by free RAM only (ignore load)
-  --repo DIR           repository to ship for remote runs (default: git root of cwd)
-  --ref REF            commit to run remotely (default: HEAD)
-  --base-ref R/B       also recreate refs/remotes/R/B remotely (e.g. origin/main)
-  --with REPO[@REF]    sibling repo needed next to the main one (repeatable)
-  --needs POOL[:N],..  hold N values of named pools ([[pool]] in the config or heavyq.toml)
-                       while it runs, all or none; exported as HEAVYQ_<POOL>[_N]; local only
-  --cache              reuse the result of an identical run on the same clean
-                       commit, or wait for one that is running right now
-  --session ID         who ran it, recorded in history (default: $HEAVYQ_SESSION,
-                       else the Claude Code hook's session for this lane)
-  --item ID            which work item it belongs to (default: $HEAVYQ_ITEM)
-  --gate NAME          which gate it is part of
-                       (ids: 1-80 characters from A-Za-z0-9._:-)
-  --digest             end with a result digest (always on for agents)
-  -v, --verbose        explain cache decisions
-
-agent mode (on when CLAUDECODE, GEMINI_CLI, ... is set; HEAVYQ_OUTPUT=agent|human|json
-overrides, HEAVYQ_AGENT=0|1 too): at most a queued line, a running line and a digest
-(PASS|FAIL|REUSED|NOT RUN, failure lines, one "next:" line). See "heavyq help agents".
-
-gate: ` + "`gate status`" + ` says whether this exact code passed every command of a gate from heavyq.toml
-(exit 0 proven, 1 not, 2 usage); ` + "`gate run`" + ` runs the unproven ones through the queue with --cache.
-Without a heavyq.toml, the gate "ready" is detected from go.mod, package.json, pytest config or
-Cargo.toml and shown as "ready (detected)". ` + "`init`" + ` writes it to heavyq.toml (never overwrites without
---force); --agents-md adds a "run heavyq gate run ready before saying done" section to AGENTS.md.
-
-Lower priority numbers run first; equal priorities are FIFO.
-Exit codes: the command's own; 2 usage; 75 max-wait; 76 remote unreachable
-too long; 77 remote setup failed; 78 cancelled by an operator; 255
-connection to the remote lost.
-`
-
 // Main runs heavyq with args (without the program name) and returns the exit code.
+// Commands are found through the registry (command_registry.go); there is no
+// list of them here.
 func Main(args []string, stdout, stderr io.Writer) int {
 	cfgPath, explicit := config.DefaultPath(), os.Getenv("HEAVYQ_CONFIG") != ""
 	if len(args) >= 2 && args[0] == "--config" {
 		cfgPath, explicit, args = args[1], true, args[2:]
 	}
 	if len(args) == 0 {
-		fmt.Fprint(stderr, usage)
+		fmt.Fprint(stderr, usageText())
 		return ExitUsage
 	}
 	// heavyq <command> --help: the command's own usage block, before any config is read.
@@ -109,67 +43,18 @@ func Main(args []string, stdout, stderr io.Writer) int {
 		writeCommandHelp(stdout, c)
 		return 0
 	}
-	switch args[0] {
-	case "-h", "--help":
-		fmt.Fprint(stdout, usage)
-		return 0
-	case "help":
-		return helpCommand(args[1:], stdout, stderr)
-	case "version", "--version":
-		fmt.Fprintln(stdout, "heavyq", version())
-		return 0
-	case "history":
-		return historyCommand(args[1:], stdout, stderr)
-	case "receipts":
-		return receiptsCommand(args[1:], stdout, stderr)
-	case "stance":
-		return stanceCommand(args[1:], stdout, stderr)
-	case "trust":
-		return trustCommand(args[1:], stdout, stderr)
-	case "mentor":
-		return mentorCommand(cfgPath, explicit, args[1:], stdout, stderr)
-	case "steer":
-		return steerCommand(args[1:], stdout, stderr)
-	case "doctor":
-		return doctorCommand(args[1:], stdout, stderr)
-	case "hook":
-		return hookCommand(cfgPath, explicit, args[1:], os.Stdin, stdout, stderr)
-	case "init":
-		return initCommand(args[1:], stdout, stderr)
-	case "completion":
-		return completionCommand(args[1:], stdout, stderr)
-	}
-	cfg, err := config.Load(cfgPath, explicit)
-	if err != nil {
-		fmt.Fprintln(stderr, "heavyq:", err)
+	c, ok := lookupCommand(args[0])
+	if !ok {
+		fmt.Fprint(stderr, unknownCommandMessage())
 		return ExitUsage
 	}
-	if args[0] == "status" || args[0] == "--status" {
-		return statusCommand(cfg, args[1:], stdout, stderr)
-	}
-	switch args[0] {
-	case "cache":
-		return cacheCommand(cfg, args[1:], stdout, stderr)
-	case "dash":
-		return dashCommand(cfg, args[1:], stdout, stderr)
-	case "top":
-		return topCommand(cfg, args[1:], stdout, stderr)
-	case "why":
-		return whyCommand(cfg, args[1:], stdout, stderr)
-	case "gate":
-		return gateCommand(cfg, args[1:], stdout, stderr)
-	case "item":
-		return itemCommand(cfg, args[1:], stdout, stderr)
-	case "brief":
-		return briefCommand(cfg, args[1:], stdout, stderr)
-	case "cancel", "reprio", "pause", "resume":
-		return controlCommand(cfg, args[0], args[1:], stdout, stderr)
-	}
-	if p, err := strconv.Atoi(args[0]); err != nil || p < 1 || p > 9 {
-		fmt.Fprintf(stderr, "heavyq: first argument must be a priority 1-9 or a command (%s)\n\n%s", strings.Join(commandNames(), ", "), usage)
-		return ExitUsage
-	}
-	return runCommand(cfg, args, stderr)
+	return dispatch(c, cfgPath, explicit, args, stdout, stderr)
+}
+
+// versionCommand prints the version: `heavyq version` and `heavyq --version`.
+func versionCommand(stdout io.Writer) int {
+	fmt.Fprintln(stdout, "heavyq", version())
+	return 0
 }
 
 // version is the ldflags Version, else the module version recorded by

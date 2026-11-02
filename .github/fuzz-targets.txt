@@ -1,0 +1,11 @@
+# Go native fuzz targets of the parsers that read untrusted input: <package under internal/> <FuzzName>...
+# A pull request fuzzes (20 s per target) the packages it touched; nightly and `ci:full` fuzz all of them (2 m).
+# A new parser that reads untrusted input gets a Fuzz target and a line here (see CONTRIBUTING.md, "Fuzzing").
+hook FuzzParse FuzzDecideRewrite FuzzDecideStdin FuzzParseInput FuzzMergeEntries
+steer FuzzClaimsDone
+redact FuzzCommand
+anchor FuzzParse FuzzSetChecked
+repoconfig FuzzParse
+config FuzzParse
+history FuzzReadLast FuzzDecodeRecord
+tui/input FuzzParserNeverPanicsAndAlwaysDrains

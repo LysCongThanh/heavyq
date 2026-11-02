@@ -1,11 +1,18 @@
 name: ci
 
+# The fast tier: what every pull request (and every push to main) runs, in about 5 minutes. The slow checks
+# (the whole suite under -race, macOS, the release snapshot, install.sh, govulncheck, the long fuzz, doc links)
+# are in ci-full.yml: pushes to main, nightly, and a PR labelled ci:full. changelog.yml and pr.yml are the other
+# per-PR checks.
+#
+# The required check is `test`. A pull request that changes only documentation must still get it, so the job
+# always runs and always passes, and skips its Go steps (a workflow-level paths filter would leave a required
+# check pending forever). The other Go jobs (schemas, lint, fuzz) wait for `changes` and are skipped the same way.
+
 on:
   push:
     branches: [main]
   pull_request:
-  schedule:
-    - cron: "17 4 * * 1" # weekly: new Go vulnerabilities surface without a code change
   workflow_dispatch:
 
 permissions:
@@ -16,68 +23,73 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # What the pull request touches: go (any change that is not documentation) and fuzz (the packages with fuzz
+  # targets it touched). See .github/scripts/ci-plan.sh.
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      go: ${{ steps.plan.outputs.go }}
+      fuzz: ${{ steps.plan.outputs.fuzz }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: .github
+          persist-credentials: false
+      - id: plan
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: .github/scripts/ci-plan.sh
+
+  # REQUIRED. gofmt, vet, build, the ledger latency gate, then every unit and end-to-end test (real processes,
+  # real locks, an sh -c "remote") without -race: the gate "fast" in heavyq.toml, run through the binary just
+  # built. The same suite under -race runs in ci-full.yml (gate "ready"). It decides for itself whether the pull
+  # request is documentation only, so it never waits for another job and always reports.
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - id: plan
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: .github/scripts/ci-plan.sh
+      - if: steps.plan.outputs.go == 'true'
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: stable
-      - run: go build -o heavyq .
+      - if: steps.plan.outputs.go == 'true'
+        run: go build -o heavyq .
       # Latency gate for hooks: on a generated 100,000-record ledger, the tail read of 2,000 records and the
       # hook path through the ledger index must stay inside their budgets (skipped under -race, so run here).
       - name: ledger latency (tail reader, hook path under 20 ms)
+        if: steps.plan.outputs.go == 'true'
         run: go test -count=1 -run 'Latency|HookPathUnder20ms' ./internal/history ./internal/ledgerindex
-      # heavyq proves itself: the gate in heavyq.toml (gofmt, go vet and `go test -race`, which includes the
-      # end-to-end runs with real processes and an sh -c "remote"), run through the binary just built.
-      # A failing command fails the job, and its output is shown as usual.
-      - name: gate ready (heavyq gate run ready)
-        run: ./heavyq gate run ready
-
-  # macOS parity (no /proc there): local RAM/load from sysctl and vm_stat, processes from ps. Runs the tests
-  # that need neither Linux-only features (subreaper, util-linux, /proc fixtures) nor the full e2e suite: the
-  # metrics and ps parsers, process breakdown/descendants against real processes, and the status/cancel runs.
-  macos:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: stable
-      - run: go build ./... && go vet ./...
-      - name: macOS subset
-        run: go test -race -count=1 ./internal/metrics/... ./internal/procinfo/... ./internal/cli/... -run 'Metrics|Breakdown|Descendants|Cancel|Status|PS|Parse|Host|StartTime|Local'
-      - name: heavyq top (terminal, width, render, input, loop)
-        run: go test -race -count=1 ./internal/tui/...
-
-  # install.sh (attached to every release) on both platforms it supports: against a local fake release
-  # (checksum match, mismatch, tampering, --verify plumbing) and against the real v0.3.0 and latest releases.
-  install-script:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: shellcheck
-        if: runner.os == 'Linux'
-        run: shellcheck scripts/*.sh
-      - name: install.sh tests
-        env:
-          HEAVYQ_TEST_NETWORK: "1"
-        run: sh scripts/test-install.sh
+      - name: gate fast (heavyq gate run fast)
+        if: steps.plan.outputs.go == 'true'
+        run: ./heavyq gate run fast
+      - name: documentation only, nothing to build
+        if: steps.plan.outputs.go != 'true'
+        run: echo "this pull request changes only documentation; the Go checks are skipped"
 
   # JSON Schemas (schema/) are generated from the Go types by tools/schemagen, a separate module that holds
   # the only extra dependencies. Its tests also validate heavyq.toml and examples/config.toml against them;
   # then the files are regenerated and must not differ from what is committed.
   schemas:
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -100,6 +112,8 @@ jobs:
           fi
 
   lint:
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -112,52 +126,30 @@ jobs:
         with:
           version: v2.15.0 # also covers gofmt (see .golangci.yml)
 
-  # Go native fuzzing of the parsers that read untrusted input. A pull request fuzzes a package only when
-  # it touched it (or this workflow), for 20 s per target; the weekly schedule runs every target for 2 m.
-  # A crasher fails the job and is uploaded: commit it under testdata/fuzz as the regression test.
+  # Go native fuzzing of the parsers that read untrusted input, in its short form: a pull request fuzzes the
+  # packages it touched (all of them when it changes the fuzz plumbing) for 20 s per target. The long form, every
+  # target for 2 m, is in ci-full.yml. A crasher fails the job and is uploaded: commit it under testdata/fuzz as
+  # the regression test. The targets are listed in .github/fuzz-targets.txt.
   fuzz:
-    if: github.event_name != 'push'
+    needs: changes
+    if: github.event_name == 'pull_request' && needs.changes.outputs.fuzz != '[]'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - {pkg: hook, targets: "FuzzParse FuzzDecideRewrite FuzzDecideStdin FuzzParseInput FuzzMergeEntries"}
-          - {pkg: steer, targets: "FuzzClaimsDone"}
-          - {pkg: redact, targets: "FuzzCommand"}
-          - {pkg: anchor, targets: "FuzzParse FuzzSetChecked"}
-          - {pkg: repoconfig, targets: "FuzzParse"}
-          - {pkg: config, targets: "FuzzParse"}
-          - {pkg: history, targets: "FuzzReadLast FuzzDecodeRecord"}
-          - {pkg: tui/input, targets: "FuzzParserNeverPanicsAndAlwaysDrains"}
+        include: ${{ fromJSON(needs.changes.outputs.fuzz) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0 # the changed-files check diffs against the base branch
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: stable
       - name: fuzz ${{ matrix.pkg }}
         env:
-          EVENT: ${{ github.event_name }}
-          BASE_REF: ${{ github.base_ref }}
           PKG: ${{ matrix.pkg }}
           TARGETS: ${{ matrix.targets }}
-        run: |
-          fuzztime=2m
-          if [ "$EVENT" = pull_request ]; then
-            fuzztime=20s
-            if ! git diff --name-only "origin/${BASE_REF}...HEAD" | grep -Eq "^(internal/${PKG}/|\.github/workflows/ci\.yml$)"; then
-              echo "internal/${PKG} unchanged: skipping its fuzz targets"
-              exit 0
-            fi
-          fi
-          for target in $TARGETS; do
-            echo "::group::fuzz ${PKG} ${target} (${fuzztime})"
-            go test "./internal/${PKG}" -run '^$' -fuzz "^${target}\$" -fuzztime "$fuzztime" -fuzzminimizetime 10s
-            echo "::endgroup::"
-          done
+        run: .github/scripts/run-fuzz.sh "$PKG" "$TARGETS" 20s
       - name: upload crashers
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -166,37 +158,7 @@ jobs:
           path: internal/${{ matrix.pkg }}/testdata/fuzz
           if-no-files-found: ignore
 
-  # Same goreleaser config as the tag build, minus publishing: cross-builds, archives, SBOMs.
-  release-snapshot:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: stable
-      - uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
-      - uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
-        with:
-          distribution: goreleaser
-          version: "~> v2"
-          args: release --snapshot --clean --skip=sign # signing needs the release job's OIDC token
-      - name: archives hold the man page and the install script is listed in checksums.txt
-        run: |
-          for a in dist/heavyq_*.tar.gz; do
-            tar -tzf "$a" | grep -qx 'man/man1/heavyq.1' || { echo "::error::$a has no man/man1/heavyq.1"; exit 1; }
-          done
-          grep -q ' install.sh$' dist/checksums.txt || { echo "::error::install.sh is not in checksums.txt"; exit 1; }
-
-  govulncheck:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: golang/govulncheck-action@032d45514ae346b1db93c04b0c90b841c370344f # v1.1.0
-        with:
-          go-version-input: stable
-
+  # Secrets can be in documentation too, so this one never skips.
   gitleaks:
     runs-on: ubuntu-latest
     steps:
@@ -209,12 +171,3 @@ jobs:
           docker run --rm -v "$PWD:/repo"
           ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
           git /repo --redact --verbose
-
-  # Intra-repo Markdown links (files and #anchors) must resolve: the README is an index into docs/.
-  doc-links:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - run: python3 -I .github/scripts/check-md-links.py
