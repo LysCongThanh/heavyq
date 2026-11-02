@@ -100,7 +100,7 @@ already holds is renewed, never judged again.
 
 ```
 $ heavyq item claim api
-heavyq: item api is too big for one 30m lease: its proof takes about 12m (p50), times 3 iterations is 35m, over the 30m budget
+heavyq: item api is too big for one 30m lease: its proof takes about 11m40s (p50), times 3 iterations is 35m, over the 30m budget
 next: split api into ≤3 items, each with a faster proof: ${EDITOR:-vi} +4 .heavyq/anchor.md (or `heavyq item claim api --force`)
 ```
 

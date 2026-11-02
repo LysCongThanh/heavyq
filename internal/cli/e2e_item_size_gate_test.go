@@ -54,7 +54,7 @@ func TestE2EClaimRefusesOversizedItem(t *testing.T) {
 	if rc != 1 || out != "" {
 		t.Fatalf("claim big: rc=%d out=%q err=%q, want 1 and nothing on stdout", rc, out, errOut)
 	}
-	for _, want := range []string{"item big is too big for one 30m lease", "about 12m (p50), times 3 iterations is 35m, over the 30m budget",
+	for _, want := range []string{"item big is too big for one 30m lease", "about 11m40s (p50), times 3 iterations is 35m, over the 30m budget",
 		"next: split big into ≤3 items, each with a faster proof: ${EDITOR:-vi} +2 .heavyq/anchor.md", "heavyq item claim big --force"} {
 		if !strings.Contains(errOut, want) {
 			t.Errorf("refusal lacks %q:\n%s", want, errOut)
@@ -144,10 +144,10 @@ func TestE2EClaimSizeGateReadsItemsSection(t *testing.T) {
 		t.Fatalf("iterations = 1: rc=%d\n%s\n%s", rc, out, errOut)
 	}
 
-	// A smaller share of the lease: 60 s x 3 is over a tenth of 30 min.
-	h, app = sizeRepo(t, sizeAnchor, "\n[items]\nmax_proof_share = 0.1\n")
+	// A smaller share of the lease: 60 s x 3 is over 9% of 30 min.
+	h, app = sizeRepo(t, sizeAnchor, "\n[items]\nmax_proof_share = 0.09\n")
 	rc, _, errOut := h.inDir(app, nil, "item", "claim", "small")
-	if rc != 1 || !strings.Contains(errOut, "over the 3m budget") {
-		t.Fatalf("max_proof_share = 0.1: rc=%d\n%s", rc, errOut)
+	if rc != 1 || !strings.Contains(errOut, "over the 2m42s budget") {
+		t.Fatalf("max_proof_share = 0.09: rc=%d\n%s", rc, errOut)
 	}
 }

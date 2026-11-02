@@ -73,9 +73,13 @@ func editAnchorCommand(it anchor.Item) string {
 	return fmt.Sprintf("${EDITOR:-vi} +%d %s", it.Line, it.Source)
 }
 
-// sizeDur shortens a duration for a sentence: seconds under a minute, else minutes.
+// sizeDur writes a duration for a sentence: whole minutes as "30m", under ten
+// minutes to the second ("11m40s"), otherwise to the minute.
 func sizeDur(d time.Duration) string {
-	if d < time.Minute {
+	switch {
+	case d%time.Minute == 0:
+		return fmt.Sprintf("%dm", int(d/time.Minute))
+	case d < 10*time.Minute:
 		return d.Round(time.Second).String()
 	}
 	return fmt.Sprintf("%dm", int(d.Round(time.Minute)/time.Minute))
