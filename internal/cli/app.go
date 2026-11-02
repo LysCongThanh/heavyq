@@ -39,7 +39,8 @@ usage:
   heavyq init [--agents-md] [--force] [--print]
   heavyq [--config FILE] dash [--control] [--addr 127.0.0.1:0] [--open]
   heavyq [--config FILE] top [--control] [--mode full|focus|lanes|machines|line] [--interval 2s] [--line] [--once]
-  heavyq cancel <ticket|pid> | reprio <ticket|pid> <1-9>
+  heavyq cancel <ticket|pid>
+  heavyq reprio <ticket|pid> <1-9>
   heavyq [--config FILE] pause|resume <machine>
   heavyq history [-n N] [-v]
   heavyq receipts [--day|--week|--month] [--share] [--json]
@@ -48,8 +49,11 @@ usage:
   heavyq stance ls | show <name> [--json]
   heavyq [--config FILE] mentor stats [--json] | mute <rule> | unmute <rule>
   heavyq doctor [--reindex]
+  heavyq completion bash|zsh|fish
   heavyq help [agents]
   heavyq version
+
+Every command has its own usage: heavyq <command> --help (also heavyq help <command>).
 
 run flags:
   --lane NAME          label shown in status (default: $HEAVYQ_LANE or cwd name)
@@ -99,6 +103,11 @@ func Main(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprint(stderr, usage)
 		return ExitUsage
 	}
+	// heavyq <command> --help: the command's own usage block, before any config is read.
+	if c, ok := wantsCommandHelp(args); ok {
+		writeCommandHelp(stdout, c)
+		return 0
+	}
 	switch args[0] {
 	case "-h", "--help":
 		fmt.Fprint(stdout, usage)
@@ -124,6 +133,8 @@ func Main(args []string, stdout, stderr io.Writer) int {
 		return hookCommand(cfgPath, explicit, args[1:], os.Stdin, stdout, stderr)
 	case "init":
 		return initCommand(args[1:], stdout, stderr)
+	case "completion":
+		return completionCommand(args[1:], stdout, stderr)
 	}
 	cfg, err := config.Load(cfgPath, explicit)
 	if err != nil {
@@ -152,7 +163,7 @@ func Main(args []string, stdout, stderr io.Writer) int {
 		return controlCommand(cfg, args[0], args[1:], stdout, stderr)
 	}
 	if p, err := strconv.Atoi(args[0]); err != nil || p < 1 || p > 9 {
-		fmt.Fprintf(stderr, "heavyq: first argument must be a priority 1-9 or a command (status, why, gate, item, brief, steer, init, dash, history, receipts, cache, hook, stance, doctor, cancel, reprio, pause, resume, version)\n\n%s", usage)
+		fmt.Fprintf(stderr, "heavyq: first argument must be a priority 1-9 or a command (%s)\n\n%s", strings.Join(commandNames(), ", "), usage)
 		return ExitUsage
 	}
 	return runCommand(cfg, args, stderr)

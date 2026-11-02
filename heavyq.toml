@@ -1,3 +1,4 @@
+#:schema https://raw.githubusercontent.com/LysCongThanh/heavyq/main/schema/heavyq.schema.json
 # What "proven" means for heavyq itself. `heavyq gate status` says whether the
 # code checked out now has passed all of it; `heavyq gate run` runs what has not.
 # CI runs the same gate with the freshly built binary, so a local proof and a CI

@@ -1,0 +1,869 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/LysCongThanh/heavyq/main/schema/status.schema.json",
+  "definitions": {
+    "Action": {
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string",
+          "description": "ticket id, machine name, or gate name"
+        },
+        "value": {
+          "type": "integer",
+          "description": "raise: the priority to ask for"
+        },
+        "command": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "kind",
+        "command"
+      ],
+      "description": "Action is the one thing to do about an exception."
+    },
+    "CPU": {
+      "properties": {
+        "available": {
+          "type": "boolean",
+          "description": "false without /proc"
+        },
+        "interval_ms": {
+          "type": "integer"
+        },
+        "lanes": {
+          "items": {
+            "$ref": "#/definitions/Usage"
+          },
+          "type": "array",
+          "description": "by lane of running tickets"
+        },
+        "outside": {
+          "items": {
+            "$ref": "#/definitions/Usage"
+          },
+          "type": "array",
+          "description": "processes not started by heavyq, by executable"
+        },
+        "outside_total": {
+          "$ref": "#/definitions/Usage"
+        }
+      },
+      "type": "object",
+      "required": [
+        "available",
+        "interval_ms",
+        "lanes",
+        "outside",
+        "outside_total"
+      ],
+      "description": "CPU attributes current CPU and memory to lanes and to processes outside the queue (local machine only)."
+    },
+    "Config": {
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "\"\" when running on defaults"
+        },
+        "resource_gate": {
+          "type": "boolean"
+        },
+        "force_after_s": {
+          "type": "number",
+          "description": "anti-starvation bypass delay"
+        },
+        "hold_for_s": {
+          "type": "number"
+        },
+        "poll_s": {
+          "type": "number"
+        },
+        "remote_down_max_s": {
+          "type": "number"
+        }
+      },
+      "type": "object",
+      "required": [
+        "path",
+        "resource_gate",
+        "force_after_s",
+        "hold_for_s",
+        "poll_s",
+        "remote_down_max_s"
+      ],
+      "description": "Config is the part of the configuration a viewer needs to interpret values."
+    },
+    "Evidence": {
+      "properties": {
+        "at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "when it last happened"
+        },
+        "tree": {
+          "type": "string"
+        },
+        "cmd": {
+          "type": "string",
+          "description": "secrets redacted"
+        },
+        "count": {
+          "type": "integer"
+        },
+        "gate": {
+          "type": "string"
+        },
+        "item": {
+          "type": "string",
+          "description": "the work item a blocked exception is about"
+        },
+        "detail": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "description": "Evidence is what heavyq saw."
+    },
+    "Exception": {
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "ID is stable while the exception lasts and changes when its evidence\ndoes (another tree, more failures), so a dismissal does not hide news."
+        },
+        "kind": {
+          "type": "string"
+        },
+        "severity": {
+          "type": "string"
+        },
+        "lane": {
+          "type": "string"
+        },
+        "machine": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string",
+          "description": "one sentence"
+        },
+        "evidence": {
+          "$ref": "#/definitions/Evidence"
+        },
+        "action": {
+          "$ref": "#/definitions/Action"
+        }
+      },
+      "type": "object",
+      "required": [
+        "id",
+        "kind",
+        "severity",
+        "text",
+        "evidence"
+      ],
+      "description": "Exception is one thing that needs a human, with the evidence and at most one action."
+    },
+    "GateFailure": {
+      "properties": {
+        "cmd": {
+          "type": "string",
+          "description": "secrets redacted"
+        },
+        "at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "count": {
+          "type": "integer",
+          "description": "conclusive failures of it on this tree"
+        },
+        "class": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "cmd",
+        "at",
+        "count"
+      ],
+      "description": "GateFailure is one failed gate command."
+    },
+    "Group": {
+      "properties": {
+        "leader": {
+          "$ref": "#/definitions/Party",
+          "description": "nil: leader not visible (finishing)"
+        },
+        "followers": {
+          "items": {
+            "$ref": "#/definitions/Party"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object",
+      "required": [
+        "leader",
+        "followers"
+      ],
+      "description": "Group is a leader run with the identical runs waiting for its result."
+    },
+    "ItemChip": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "commit": {
+          "type": "string",
+          "description": "proven: the short commit"
+        },
+        "needs": {
+          "type": "string",
+          "description": "blocked: what a human must provide"
+        },
+        "at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "proven: when; blocked: since"
+        }
+      },
+      "type": "object",
+      "required": [
+        "id",
+        "state"
+      ],
+      "description": "ItemChip is one item of a lane."
+    },
+    "LaneGate": {
+      "properties": {
+        "lane": {
+          "type": "string"
+        },
+        "gate": {
+          "type": "string"
+        },
+        "tree": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string",
+          "description": "why it was skipped"
+        },
+        "failed": {
+          "items": {
+            "$ref": "#/definitions/GateFailure"
+          },
+          "type": "array",
+          "description": "Failed lists the gate commands whose latest conclusive run on Tree failed."
+        }
+      },
+      "type": "object",
+      "required": [
+        "lane",
+        "state"
+      ],
+      "description": "LaneGate is the proof state of the main gate of the work tree a lane ran in last."
+    },
+    "LaneItems": {
+      "properties": {
+        "lane": {
+          "type": "string"
+        },
+        "repo": {
+          "type": "string",
+          "description": "name of the repository's directory"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/definitions/ItemChip"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object",
+      "required": [
+        "lane",
+        "items"
+      ],
+      "description": "LaneItems is what one lane holds or waits on in the work items of one repository (`heavyq item`)."
+    },
+    "Machine": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "\"local\" or the remote's name"
+        },
+        "reachable": {
+          "type": "boolean"
+        },
+        "paused": {
+          "type": "boolean",
+          "description": "no new admissions (dashboard / `heavyq pause`)"
+        },
+        "metrics_known": {
+          "type": "boolean",
+          "description": "false: platform cannot be measured"
+        },
+        "cores": {
+          "type": "integer"
+        },
+        "load1": {
+          "type": "number"
+        },
+        "max_load": {
+          "type": "number",
+          "description": "max_load_ratio x cores: the gate's load limit"
+        },
+        "free_mb": {
+          "type": "integer",
+          "description": "MemAvailable"
+        },
+        "total_mb": {
+          "type": "integer",
+          "description": "0 when unknown (remotes)"
+        },
+        "reserved_mb": {
+          "type": "integer",
+          "description": "promised to jobs started \u003c hold_for ago"
+        },
+        "job_mb": {
+          "type": "integer"
+        },
+        "light_mb": {
+          "type": "integer"
+        },
+        "reserve_mb": {
+          "type": "integer"
+        },
+        "slots": {
+          "items": {
+            "$ref": "#/definitions/Slot"
+          },
+          "type": "array"
+        },
+        "admits": {
+          "type": "string",
+          "description": "Admits is \"\" when a heavy job could start here now, else why not."
+        }
+      },
+      "type": "object",
+      "required": [
+        "name",
+        "reachable",
+        "paused",
+        "metrics_known",
+        "cores",
+        "load1",
+        "max_load",
+        "free_mb",
+        "total_mb",
+        "reserved_mb",
+        "job_mb",
+        "light_mb",
+        "reserve_mb",
+        "slots",
+        "admits"
+      ],
+      "description": "Machine is the local workstation or one remote."
+    },
+    "Party": {
+      "properties": {
+        "lane": {
+          "type": "string"
+        },
+        "pid": {
+          "type": "integer"
+        },
+        "cmd": {
+          "type": "string"
+        },
+        "since": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "type": "object",
+      "required": [
+        "lane",
+        "pid",
+        "cmd",
+        "since"
+      ],
+      "description": "Party is one side of a coalesced group."
+    },
+    "Pool": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "capacity": {
+          "type": "integer",
+          "description": "values a run can get (a port pool leaves out the ephemeral range)"
+        },
+        "held": {
+          "type": "integer",
+          "description": "values held by running tickets"
+        },
+        "holders": {
+          "items": {
+            "$ref": "#/definitions/PoolHolder"
+          },
+          "type": "array",
+          "description": "Holders lists the held values, in the pool's order."
+        }
+      },
+      "type": "object",
+      "required": [
+        "name",
+        "capacity",
+        "held",
+        "holders"
+      ],
+      "description": "Pool is a named pool of values that runs hold while they run."
+    },
+    "PoolHolder": {
+      "properties": {
+        "value": {
+          "type": "string"
+        },
+        "lane": {
+          "type": "string"
+        },
+        "ticket": {
+          "type": "string",
+          "description": "ticket id of the holder"
+        }
+      },
+      "type": "object",
+      "required": [
+        "value",
+        "lane",
+        "ticket"
+      ],
+      "description": "PoolHolder is one held pool value."
+    },
+    "Running": {
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "stable for the ticket's life; used by control actions"
+        },
+        "pid": {
+          "type": "integer"
+        },
+        "lane": {
+          "type": "string"
+        },
+        "prio": {
+          "type": "integer",
+          "description": "1 runs first"
+        },
+        "light": {
+          "type": "boolean"
+        },
+        "target": {
+          "type": "string",
+          "description": "local | auto | \u003cremote\u003e"
+        },
+        "candidates": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "cmd": {
+          "type": "string",
+          "description": "secrets redacted"
+        },
+        "since": {
+          "type": "string",
+          "format": "date-time",
+          "description": "enqueued"
+        },
+        "needs": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "Needs are the pool values it asks for (\"pg\", \"port:2\"); absent without any."
+        },
+        "pools": {
+          "additionalProperties": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "object",
+          "description": "Pools are the values a running ticket holds, by pool."
+        },
+        "wait_s": {
+          "type": "number"
+        },
+        "cancel_requested": {
+          "type": "boolean",
+          "description": "CancelRequested: an operator asked to stop it; its process applies\nthe request within about a poll interval."
+        },
+        "machine": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "claimed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "run_s": {
+          "type": "number"
+        },
+        "forced": {
+          "type": "boolean",
+          "description": "admitted by the anti-starvation bypass"
+        },
+        "cpu_pct": {
+          "type": "number",
+          "description": "whole process tree; 100 = one core"
+        },
+        "rss_mb": {
+          "type": "integer",
+          "description": "whole process tree (local only)"
+        }
+      },
+      "type": "object",
+      "required": [
+        "id",
+        "pid",
+        "lane",
+        "prio",
+        "light",
+        "target",
+        "candidates",
+        "cmd",
+        "since",
+        "wait_s",
+        "cancel_requested",
+        "machine",
+        "slot",
+        "claimed_at",
+        "run_s",
+        "forced",
+        "cpu_pct",
+        "rss_mb"
+      ],
+      "description": "Running is a ticket that holds a slot."
+    },
+    "Sentence": {
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "parts": {
+          "items": {
+            "$ref": "#/definitions/Span"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object",
+      "required": [
+        "text",
+        "parts"
+      ],
+      "description": "Sentence is one sentence of the story: the state of the queue in plain words."
+    },
+    "Slot": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "heavy-1, light-1, ..."
+        },
+        "kind": {
+          "type": "string",
+          "description": "heavy | light"
+        },
+        "state": {
+          "type": "string"
+        },
+        "ticket": {
+          "type": "string"
+        },
+        "lane": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "name",
+        "kind",
+        "state"
+      ],
+      "description": "Slot is one heavy or light execution slot."
+    },
+    "Span": {
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "em": {
+          "type": "boolean",
+          "description": "emphasised: the subject or a key value"
+        },
+        "num": {
+          "type": "boolean",
+          "description": "a figure (with Em): render in tabular numerals"
+        },
+        "lane": {
+          "type": "string",
+          "description": "a lane name: render as the lane's coloured chip"
+        },
+        "hot": {
+          "type": "boolean",
+          "description": "a problem: render in the warning colour"
+        }
+      },
+      "type": "object",
+      "required": [
+        "text"
+      ],
+      "description": "Span is a run of text inside a sentence."
+    },
+    "Usage": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "lane or executable name"
+        },
+        "procs": {
+          "type": "integer"
+        },
+        "cpu_pct": {
+          "type": "number"
+        },
+        "rss_mb": {
+          "type": "integer"
+        }
+      },
+      "type": "object",
+      "required": [
+        "name",
+        "procs",
+        "cpu_pct",
+        "rss_mb"
+      ],
+      "description": "Usage is the CPU and memory of a group of processes."
+    },
+    "Waiting": {
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "stable for the ticket's life; used by control actions"
+        },
+        "pid": {
+          "type": "integer"
+        },
+        "lane": {
+          "type": "string"
+        },
+        "prio": {
+          "type": "integer",
+          "description": "1 runs first"
+        },
+        "light": {
+          "type": "boolean"
+        },
+        "target": {
+          "type": "string",
+          "description": "local | auto | \u003cremote\u003e"
+        },
+        "candidates": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "cmd": {
+          "type": "string",
+          "description": "secrets redacted"
+        },
+        "since": {
+          "type": "string",
+          "format": "date-time",
+          "description": "enqueued"
+        },
+        "needs": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "Needs are the pool values it asks for (\"pg\", \"port:2\"); absent without any."
+        },
+        "pools": {
+          "additionalProperties": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "object",
+          "description": "Pools are the values a running ticket holds, by pool."
+        },
+        "wait_s": {
+          "type": "number"
+        },
+        "cancel_requested": {
+          "type": "boolean",
+          "description": "CancelRequested: an operator asked to stop it; its process applies\nthe request within about a poll interval."
+        },
+        "position": {
+          "type": "integer",
+          "description": "1 = head"
+        },
+        "reasons": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object",
+          "description": "Reasons maps each candidate machine to why the ticket cannot start\nthere now (\"\" = nothing blocks it; it starts on its next poll)."
+        },
+        "bypass_in_s": {
+          "type": "number",
+          "description": "BypassInS: seconds until the anti-starvation bypass applies to this\nticket (head of line only; -1 when not applicable)."
+        }
+      },
+      "type": "object",
+      "required": [
+        "id",
+        "pid",
+        "lane",
+        "prio",
+        "light",
+        "target",
+        "candidates",
+        "cmd",
+        "since",
+        "wait_s",
+        "cancel_requested",
+        "position",
+        "reasons",
+        "bypass_in_s"
+      ],
+      "description": "Waiting is a ticket in the queue."
+    }
+  },
+  "properties": {
+    "schema": {
+      "type": "integer"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "version": {
+      "type": "string",
+      "description": "heavyq version"
+    },
+    "host": {
+      "type": "string",
+      "description": "local host name"
+    },
+    "config": {
+      "$ref": "#/definitions/Config"
+    },
+    "machines": {
+      "items": {
+        "$ref": "#/definitions/Machine"
+      },
+      "type": "array"
+    },
+    "running": {
+      "items": {
+        "$ref": "#/definitions/Running"
+      },
+      "type": "array"
+    },
+    "waiting": {
+      "items": {
+        "$ref": "#/definitions/Waiting"
+      },
+      "type": "array",
+      "description": "turn order"
+    },
+    "coalesced": {
+      "items": {
+        "$ref": "#/definitions/Group"
+      },
+      "type": "array",
+      "description": "identical runs sharing one result"
+    },
+    "cpu": {
+      "$ref": "#/definitions/CPU"
+    },
+    "story": {
+      "items": {
+        "$ref": "#/definitions/Sentence"
+      },
+      "type": "array",
+      "description": "Story is the state of the queue as sentences (why agents wait, what\nholds the RAM, when the bypass applies), computed by Story at\nGeneratedAt. Added within schema 1: older readers ignore it."
+    },
+    "gates": {
+      "items": {
+        "$ref": "#/definitions/LaneGate"
+      },
+      "type": "array",
+      "description": "Gates is the proof state of the main gate of each recently active\nlane's work tree, and Exceptions what needs a human right now (see\nComputeExceptions). Both added within schema 1; empty arrays when\nthere is nothing to say."
+    },
+    "exceptions": {
+      "items": {
+        "$ref": "#/definitions/Exception"
+      },
+      "type": "array"
+    },
+    "pools": {
+      "items": {
+        "$ref": "#/definitions/Pool"
+      },
+      "type": "array",
+      "description": "Pools are the named pools (ports, databases, ...) with who holds what;\nan empty array when none is configured. Added within schema 1."
+    },
+    "items": {
+      "items": {
+        "$ref": "#/definitions/LaneItems"
+      },
+      "type": "array",
+      "description": "Items is what each lane holds or waits on in the work items\n(`heavyq item`): claimed, proven (not yet done) and blocked items. Added\nwithin schema 1; an empty array when no lane has any."
+    }
+  },
+  "type": "object",
+  "required": [
+    "schema",
+    "generated_at",
+    "version",
+    "host",
+    "config",
+    "machines",
+    "running",
+    "waiting",
+    "coalesced",
+    "cpu",
+    "story",
+    "gates",
+    "exceptions",
+    "pools",
+    "items"
+  ],
+  "title": "heavyq status --json",
+  "description": "The output of `heavyq status --json` (schema 1). Fields may be added within schema 1; readers should ignore unknown ones."
+}
+
