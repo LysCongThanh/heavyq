@@ -33,30 +33,39 @@ func itemFacts(s *itemSet, rows []itemRow, recs []history.Record) (facts []prefl
 				f.Needs = "(no reason recorded)"
 			}
 		}
-		if it.Proof.Kind != "" {
-			var cmds []string
-			_, cmds, f.ProofProblem = proofCommands(s, it.Proof)
-			f.Proof = redact.Command(proofLabel(it.Proof))
-			var hashes []string
+		var cmds []string
+		f.Proof, f.ProofProblem, f.Est, cmds = proofFacts(s, it, durations)
+		if f.Open() && f.ProofProblem == "" { // a proof that cannot run is already a finding
 			for _, c := range cmds {
-				hashes = append(hashes, history.CmdHash(proof.Argv(c)))
-				if f.ProofProblem == "" {
-					f.ProofProblem = missingProgram(c, s.root)
+				if !seen[c] {
+					seen[c] = true
+					commands = append(commands, c)
 				}
 			}
-			if f.Open() && f.ProofProblem == "" { // a proof that cannot run is already a finding
-				for _, c := range cmds {
-					if !seen[c] {
-						seen[c] = true
-						commands = append(commands, c)
-					}
-				}
-			}
-			f.Est = durations.Estimate(hashes)
 		}
 		facts = append(facts, f)
 	}
 	return facts, commands
+}
+
+// proofFacts is what is known of an item's proof without running it: the proof
+// as written (redacted), why it cannot run at all ("" when it can), its typical
+// duration from the ledger, and the shell commands it stands for. An item with
+// no proof gets zero values. Preflight and the claim size gate share it.
+func proofFacts(s *itemSet, it anchor.Item, durations preflight.Durations) (label, problem string, est preflight.Estimate, cmds []string) {
+	if it.Proof.Kind == "" {
+		return "", "", preflight.Estimate{}, nil
+	}
+	_, cmds, problem = proofCommands(s, it.Proof)
+	label = redact.Command(proofLabel(it.Proof))
+	hashes := make([]string, 0, len(cmds))
+	for _, c := range cmds {
+		hashes = append(hashes, history.CmdHash(proof.Argv(c)))
+		if problem == "" {
+			problem = missingProgram(c, s.root)
+		}
+	}
+	return label, problem, durations.Estimate(hashes), cmds
 }
 
 // sourceLines reads the lines of the markdown files items came from, each once.

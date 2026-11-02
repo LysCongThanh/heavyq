@@ -132,6 +132,27 @@
         "run"
       ],
       "description": "A named list of shell commands that must all pass on the current code (heavyq gate status, heavyq gate run)."
+    },
+    "Items": {
+      "properties": {
+        "max_proof_share": {
+          "type": "number",
+          "maximum": 1,
+          "exclusiveMinimum": 0,
+          "description": "Share of the 30 minute lease budget the expected proof time (p50 x iterations) may use.",
+          "default": 1
+        },
+        "iterations": {
+          "type": "integer",
+          "maximum": 20,
+          "minimum": 1,
+          "description": "Proof runs an item is expected to need before it passes; the expected proof time is the proof's p50 duration times this.",
+          "default": 3
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "description": "Limits of the claim size gate: `heavyq item claim` refuses an item whose proof is expected to outlast the lease."
     }
   },
   "properties": {
@@ -149,6 +170,9 @@
     },
     "anchor": {
       "$ref": "#/definitions/Anchor"
+    },
+    "items": {
+      "$ref": "#/definitions/Items"
     }
   },
   "additionalProperties": false,

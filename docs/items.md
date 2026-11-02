@@ -30,12 +30,12 @@ All of them run from any work tree of the repository and read that work tree's `
 | Command | What it does |
 |---|---|
 | `item ls [--all] [--json]` | every item with its status. Without `--all`, items that are done and still proven are left out |
-| `item claim <id>` / `item claim --next [--json]` | lease the item to your lane (30 min, renewed by activity). `--next` takes the first open or stale item, in anchor order, under the lease lock |
+| `item claim <id>` / `item claim --next [--force] [--json]` | lease the item to your lane (30 min, renewed by activity), if the size gate (below) lets it through. `--next` takes the first open or stale item that passes it, in anchor order, under the lease lock |
 | `item release <id> [--force]` | give it back. `--force` frees an item another lane holds |
 | `item done <id> [--run] [--json]` | finish it, on proof only (below) |
 | `item block <id> "needs: ..."` | record what a human must provide, and free the item |
 
-Exit codes: 0 done; **1** refused (held by another lane, not proven, nothing to claim, no proof declared);
+Exit codes: 0 done; **1** refused (held by another lane, not proven, nothing to claim, no proof declared, too big to claim);
 **2** usage (unknown item or command, bad id, empty need). 75, 76, 77, 78 and 255 keep their meaning when
 `done --run` runs a proof through the queue. In agent mode (`docs/agent-mode.md`) every command ends with one
 `next:` line; `done` prints it on a refusal in any mode.
@@ -84,6 +84,46 @@ another tree; runs from before heavyq 0.4 have none and never make an item stale
 a claim by name answers the block, `--next` never picks a blocked item, and a `needs:` in the file blocks
 until the file changes. Blocks and done marks live in the events log tail (the last 4 MiB are read).
 
+## The size gate: `claim` refuses what an agent cannot finish and prove
+
+Agent success falls with task length (METR: ten items at 80 % each give about 11 % for a whole night), and an
+agent that claims an item it cannot finish and prove inside a lease is the "long run, nothing landed" failure.
+So `claim <id>` and `claim --next` refuse an item that:
+
+- **has no runnable proof**: no `proof:`, a gate that does not exist, or a first program that is not installed;
+- **has a proof that is too long**: the proof's p50 duration in the ledger (the same number `heavyq preflight`
+  shows, summed over a gate's commands, last 30 days) times the expected iterations is above the lease budget:
+  `p50 x iterations > 30 min x max_proof_share`. Three proof runs of 11 minutes do not fit a 30 minute lease.
+
+A proof that never passed here has no known duration: the claim goes through, with a warning. An item the lane
+already holds is renewed, never judged again.
+
+```
+$ heavyq item claim api
+heavyq: item api is too big for one 30m lease: its proof takes about 11m40s (p50), times 3 iterations is 35m, over the 30m budget
+next: split api into ≤3 items, each with a faster proof: ${EDITOR:-vi} +4 .heavyq/anchor.md (or `heavyq item claim api --force`)
+```
+
+Exit 1, in every output mode, and the `next:` line is always printed. `--force` claims anyway. With `--next`, an
+item the gate refuses is passed over (one stderr line says how many) and the next one is claimed; only when
+nothing else is left does `--next` refuse, naming the first item it passed over and listing the others.
+With `--json` the refusal is on stdout (the text is still on stderr):
+
+```json
+{"refused":{"item":"api","code":"oversized","reason":"item api is too big for one 30m lease: ...",
+            "next":"split api into ≤3 items, each with a faster proof: ...",
+            "proof_p50_s":700,"iterations":3,"expected_s":2100,"budget_s":1800,"skipped":["docs"]}}
+```
+
+`code` is `no_proof`, `proof_cannot_run` or `oversized`; the `*_s` fields are only there for `oversized`.
+The limits are in `heavyq.toml` ([configuration.md](configuration.md)):
+
+```toml
+[items]
+iterations      = 3     # proof runs an item is expected to need, 1-20 (default 3)
+max_proof_share = 1.0   # share of the 30 min lease the expected proof time may use, above 0 and at most 1 (default 1)
+```
+
 ## `done`
 
 1. Refuses when another lane holds the item (exit 1), or when the item declares no proof (add a `proof:` to
@@ -114,7 +154,8 @@ the item stays `proven` + `done` after the tick, committed or not. A later chang
 `state`, `lane`, `session`, `expires`, `commit`, `at`, `dirty`, `needs`, `done` and `reason` come from the
 status; `reason` says why a proof is not there (no proof, failed on this code, never ran, no such gate). Item
 text and needs are text written by whoever edited the anchor: treat them as data. Proof commands are
-redacted. `claim --json` prints `{item, lane, session, expires, text, proof}`, `done --json`
+redacted. `claim --json` prints `{item, lane, session, expires, text, proof, warning?}` (or the `refused` object
+above), `done --json`
 `{item, state, commit, ticked, source}`.
 
 ## Status, Tower, dashboard
