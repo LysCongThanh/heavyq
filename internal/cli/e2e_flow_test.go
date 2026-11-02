@@ -117,7 +117,7 @@ func TestE2EFlowReasonIsRedacted(t *testing.T) {
 	}
 }
 
-// StopFailure is an event the state shows: the turn ended on an API error, and the lane waits for someone.
+// StopFailure is an event the state shows: the turn ended on an API error. A usage limit is one fleet-level entry.
 func TestE2EStopFailureAppearsInTheState(t *testing.T) {
 	h := newRig(t, baseConfig)
 	app := steerRepo(t, h)
@@ -129,7 +129,7 @@ func TestE2EStopFailureAppearsInTheState(t *testing.T) {
 	if len(s.Events) != 1 || s.Events[0].Kind != flow.EventStopFailure || s.Events[0].Detail != "rate_limit" || s.Events[0].Lane != "app" {
 		t.Fatalf("events: %+v", s.Events)
 	}
-	if len(s.NeedsYou) != 1 || s.NeedsYou[0].Reason != "stop_failure: rate_limit" {
+	if len(s.NeedsYou) != 1 || s.NeedsYou[0].Lane != "fleet" || !strings.HasPrefix(s.NeedsYou[0].Reason, "quota hit at ") {
 		t.Fatalf("needs_you: %+v", s.NeedsYou)
 	}
 }

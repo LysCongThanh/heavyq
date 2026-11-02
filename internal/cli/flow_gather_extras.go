@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"time"
 
@@ -46,4 +48,34 @@ func gatherFlowExtras(in *flow.Input, common, root string, from time.Time) {
 func runInfoOf(s runspan.Span) *flow.RunInfo {
 	return &flow.RunInfo{ID: s.ID, Started: s.Started.UTC(), ExpectedEnd: s.ExpectedEnd, Goal: oneLine(s.Goal, maxGoalChars),
 		Items: len(s.Items), Parallel: s.Parallel}
+}
+
+// goneLanes are the lanes whose work tree no longer exists: the newest work
+// tree path the ledger or a hook event recorded for the lane is gone from disk
+// (an agent's work tree removed after its pull request merged). A lane with no
+// recorded path is never gone: it may be a name a person chose.
+func goneLanes(in flow.Input) map[string]bool {
+	type seen struct {
+		at   time.Time
+		path string
+	}
+	latest := map[string]seen{}
+	note := func(lane, path string, at time.Time) {
+		if lane != "" && path != "" && !at.Before(latest[lane].at) {
+			latest[lane] = seen{at, path}
+		}
+	}
+	for _, r := range in.Records {
+		note(r.Lane, r.Worktree, r.End)
+	}
+	for _, e := range in.Hooks {
+		note(e.Lane, e.Worktree, e.At)
+	}
+	gone := map[string]bool{}
+	for lane, s := range latest {
+		if _, err := os.Stat(s.path); errors.Is(err, fs.ErrNotExist) {
+			gone[lane] = true
+		}
+	}
+	return gone
 }

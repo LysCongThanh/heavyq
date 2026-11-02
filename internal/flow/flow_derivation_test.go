@@ -58,7 +58,7 @@ func TestAbandonedBlockIsDropped(t *testing.T) {
 }
 
 func TestStopFailureBlocksTheLane(t *testing.T) {
-	evs := []Event{{At: at(0), Kind: EventStopFailure, Lane: "a", Detail: "rate_limit", Reason: "stop_failure: rate_limit"}}
+	evs := []Event{{At: at(0), Kind: EventStopFailure, Lane: "a", Detail: "overloaded", Reason: "stop_failure: overloaded"}}
 	b := foldBlocks(evs, nil, at(1))
 	if len(b) != 1 || b[0].Class != ClassStopFailure || !b[0].Open() {
 		t.Fatalf("%+v", b)

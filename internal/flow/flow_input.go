@@ -41,6 +41,12 @@ const (
 	EventCleared     = "cleared"      // the lane's agent is working again (its next tool call)
 	EventStopFailure = "stop_failure" // the turn ended on an API error (rate_limit, overloaded, ...)
 	EventModelSwitch = "model_switch" // PostModelSwitch: a change point for baselines
+	// EventQuota: a Notification of the usage limit (quota_auto_resume_*) that
+	// says agents are held until the quota returns. Detail is the notification type.
+	EventQuota = "quota"
+	// EventQuotaCleared: some session did something after a usage-limit stop, so
+	// the quota is back. A fleet-level fact: Lane may be empty.
+	EventQuotaCleared = "quota_cleared"
 )
 
 // Classes of a blocked event, strongest first: the reason shown is the one of
@@ -67,6 +73,9 @@ type Event struct {
 	Class   string    `json:"class,omitempty"`  // blocked: one of the Class* values
 	Reason  string    `json:"reason,omitempty"` // blocked: what is being waited on
 	Detail  string    `json:"detail,omitempty"` // stop_failure: the error; model_switch: the new model
+	// Worktree is the work tree the hook ran in, when the lane was named after it:
+	// a lane whose work tree is gone drops out of the state.
+	Worktree string `json:"worktree,omitempty"`
 }
 
 // External is a span some optional collector derived for an item from sources
@@ -93,12 +102,17 @@ type SessionInfo struct {
 	Model        string      `json:"model"`
 	AgentVersion string      `json:"agent_version"`
 	RateLimits   *RateLimits `json:"rate_limits,omitempty"`
+	// Updated is when the status line last said so (additive).
+	Updated time.Time `json:"updated,omitzero"`
 }
 
-// RateLimits are the used percentages (0..100) of the subscription windows.
+// RateLimits are the used percentages (0..100) of the subscription windows,
+// and when each window resets, as far as the status line knew.
 type RateLimits struct {
-	FiveHourPct *float64 `json:"five_hour_pct,omitempty"`
-	SevenDayPct *float64 `json:"seven_day_pct,omitempty"`
+	FiveHourPct      *float64   `json:"five_hour_pct,omitempty"`
+	SevenDayPct      *float64   `json:"seven_day_pct,omitempty"`
+	FiveHourResetsAt *time.Time `json:"five_hour_resets_at,omitempty"`
+	SevenDayResetsAt *time.Time `json:"seven_day_resets_at,omitempty"`
 }
 
 // Input is everything Build looks at. Records are this repository's ledger
@@ -121,6 +135,9 @@ type Input struct {
 	Baseline *Baseline
 	// Run is the open run span of internal/runspan, nil when none is.
 	Run *RunInfo
+	// GoneLanes are the lanes whose work tree no longer exists (a removed
+	// agent work tree): they drop out of the lanes, the needs and the quota.
+	GoneLanes map[string]bool
 }
 
 func (in Input) window() time.Duration {

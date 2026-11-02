@@ -25,6 +25,21 @@ func TestParseStatuslineReadsTheDocumentedFields(t *testing.T) {
 	if m.Agent() != "claude-code/2.1.90" {
 		t.Errorf("agent %q", m.Agent())
 	}
+	if m.FiveHourResetsAt == nil || m.FiveHourResetsAt.Unix() != 1738425600 || m.SevenDayResetsAt != nil {
+		t.Errorf("resets_at is Unix seconds, and only the windows that say it have one: %v %v", m.FiveHourResetsAt, m.SevenDayResetsAt)
+	}
+}
+
+func TestResetTimeRefusesWhatIsNotAUnixTime(t *testing.T) {
+	bad := []float64{0, -5, 1e13}
+	for _, v := range bad {
+		if ResetTime(&v) != nil {
+			t.Errorf("%v is not a reset time", v)
+		}
+	}
+	if ResetTime(nil) != nil {
+		t.Error("nil stays nil")
+	}
 }
 
 func TestParseStatuslineIsLenientAboutEverythingButTheSession(t *testing.T) {
