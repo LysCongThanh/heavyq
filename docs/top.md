@@ -175,3 +175,5 @@ plus `NO_COLOR`, ASCII, `TERM=dumb`, narrow, selection, scrolling, filter, promp
 are plain text, compared after stripping SGR; every line must be no wider than the terminal. After an
 intended change: `go test ./internal/tui/render -update`, then read the diff. The terminal restore is tested on
 a real pty (Linux) in `internal/tui/term`. `golang.org/x/term` (raw mode and size) is the one added dependency.
+
+<!-- ci check -->
