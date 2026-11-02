@@ -74,7 +74,7 @@ handed out again by `claim`.
 named like the lane, else the one its latest ledger run was in): its proof counts where the agent works. Every
 other item is judged on the work tree you ran the command in.
 
-**What proves.** `proof: gate:<name>` needs the whole gate proven (`gate status`, same rules: run_id, flaky,
+**What proves.** `proof: gate:<name>` (the form to prefer, see [gates](gates.md#gates-as-the-proof-of-an-item)) needs the whole gate proven (`gate status`, same rules: run_id, flaky,
 under load). `proof: <cmd>` is the command `sh -c <cmd>` run from the work tree root, with the same run
 identity as a gate command, so `item done --run` and `gate run` share the cache and the ledger. A proof that
 failed on this code is red, not stale. `stale` needs a passing run of the same command (by `cmd_hash`) on

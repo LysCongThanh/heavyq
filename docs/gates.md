@@ -351,9 +351,28 @@ ledger with `gate = <name>`. The lane is `--lane`, else `$HEAVYQ_LANE`, else the
 
 Runs replayed from the cache, and tickets that never ran, carry no machine reading.
 
+## Gates as the proof of an item
+
+`proof: gate:<name>` in the anchor file is the form to prefer over `proof: <shell command>`. The gate's
+commands sit in `heavyq.toml`, where a person or an agent harness can read them before running anything, and
+`heavyq gate run <name> --remote linuxi` (or `heavyq item done <id> --run --remote linuxi`, or `[proof] remote`)
+needs no `sh -c '...'` typed by hand, which a harness that vets commands refuses. "The test must exist and
+pass" is one command: `go test -run` that matches no test exits 0, so pipe it to a check for the test's own
+line:
+
+```toml
+[[gate]]
+name = "size-gate"      # the item's id
+run  = ["go test -count=1 -run '^TestE2EClaimRefusesOversizedItem$' -v ./internal/cli | grep -q -- '--- PASS: TestE2EClaimRefusesOversizedItem'"]
+```
+
+`heavyq preflight` warns about an item whose proof needs a shell and names this form.
+
 ## heavyq proves itself
 
 This repository's [`heavyq.toml`](../heavyq.toml) defines `ready` as `gofmt -l . | (! grep .)`,
 `go vet ./...` and `go test -race -count=1 ./...`. CI builds heavyq and runs `./heavyq gate run ready`, so
 a local proof and the CI proof are the same thing. Locally, `heavyq gate status` after your last edit tells
-you whether the gate has already passed on exactly this code.
+you whether the gate has already passed on exactly this code. The anchor items of the repository
+([`.heavyq/anchor.md`](../.heavyq/anchor.md)) are proven by gates of the same file, one per item with the
+item's name.
