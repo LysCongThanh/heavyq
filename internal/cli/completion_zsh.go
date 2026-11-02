@@ -82,7 +82,7 @@ _heavyq() {
 				plain = append(plain, cw)
 			}
 		}
-		fmt.Fprintf(&b, "        \"%s\") plain=(%s); flags=(%s) ;;\n", rowPattern(r), zshList(plain), zshList(flags))
+		fmt.Fprintf(&b, "        %s) plain=(%s); flags=(%s) ;;\n", rowPattern(r), zshList(plain), zshList(flags))
 	}
 	b.WriteString(`        *) plain=(); flags=() ;;
     esac

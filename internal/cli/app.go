@@ -36,7 +36,8 @@ usage:
   heavyq [--config FILE] item ls [--all] | claim <id>|--next | release <id> | done <id> [--run] | block <id> "needs: ..."
   heavyq init [--agents-md] [--force] [--print]
   heavyq [--config FILE] dash [--control] [--addr 127.0.0.1:0] [--open]
-  heavyq cancel <ticket|pid> | reprio <ticket|pid> <1-9>
+  heavyq cancel <ticket|pid>
+  heavyq reprio <ticket|pid> <1-9>
   heavyq [--config FILE] pause|resume <machine>
   heavyq history [-n N] [-v]
   heavyq receipts [--day|--week|--month] [--share] [--json]
@@ -45,7 +46,7 @@ usage:
   heavyq stance ls | show <name> [--json]
   heavyq doctor [--reindex]
   heavyq completion bash|zsh|fish
-  heavyq help [agents|<command>]
+  heavyq help [agents]
   heavyq version
 
 Every command has its own usage: heavyq <command> --help (also heavyq help <command>).

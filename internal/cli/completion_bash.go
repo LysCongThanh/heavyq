@@ -68,7 +68,7 @@ _heavyq() {
 `)
 	for _, r := range completionRows() {
 		plain, flags := splitWords(r.Words)
-		fmt.Fprintf(&b, "        \"%s\") words=\"%s\"; flags=\"%s\" ;;\n", rowPattern(r), strings.Join(plain, " "), strings.Join(flags, " "))
+		fmt.Fprintf(&b, "        %s) words=\"%s\"; flags=\"%s\" ;;\n", rowPattern(r), strings.Join(plain, " "), strings.Join(flags, " "))
 	}
 	b.WriteString(`        *) words=""; flags="" ;;
     esac
