@@ -23,6 +23,9 @@ var binPath string
 
 func TestMain(m *testing.M) {
 	dir, err := os.MkdirTemp("", "heavyq-bin")
+	if err == nil {
+		dir, err = filepath.EvalSymlinks(dir) // the binary reports its own path resolved (/private/var on macOS)
+	}
 	if err != nil {
 		panic(err)
 	}
@@ -58,6 +61,19 @@ heavy_slots = 1
 light_slots = 1
 ` + calmLimits
 
+// realTempDir is t.TempDir() with symlinks resolved. On macOS the temp directory
+// is /var/folders/..., a link to /private/var/...: git and os.Executable report
+// the resolved path, so a test that compares paths with what a child printed
+// must build them from the resolved one.
+func realTempDir(t *testing.T) string {
+	t.Helper()
+	dir, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
 type rig struct {
 	t    *testing.T
 	root string // scratch dir; also the default cwd
@@ -67,7 +83,7 @@ type rig struct {
 
 func newRig(t *testing.T, config string) *rig {
 	t.Helper()
-	root := t.TempDir()
+	root := realTempDir(t)
 	cfg := filepath.Join(root, "config.toml")
 	if err := os.WriteFile(cfg, []byte(config), 0o600); err != nil {
 		t.Fatal(err)
