@@ -7,17 +7,26 @@ import (
 	"time"
 )
 
-// Event ops written to events.jsonl.
+// Event ops written to events.jsonl. OpBlock and OpDone are written by Finish
+// (`heavyq item block` and `heavyq item done`); the rest by the lease calls.
 const (
-	opClaim   = "claim"
-	opRenew   = "renew"
-	opRelease = "release"
-	opReclaim = "reclaim"
+	OpClaim   = "claim"
+	OpRenew   = "renew"
+	OpRelease = "release"
+	OpReclaim = "reclaim"
+	OpBlock   = "block"
+	OpDone    = "done"
+
+	opClaim   = OpClaim
+	opRenew   = OpRenew
+	opRelease = OpRelease
+	opReclaim = OpReclaim
 )
 
 // Event is one line of events.jsonl. Reclaim events name the previous holder
 // and why the lease was stale (expired, dead, corrupt); release events carry
-// forced when the releaser was not the holder.
+// forced when the releaser was not the holder; block events carry the need
+// and done events the commit the item was proven on.
 type Event struct {
 	At          time.Time `json:"at"`
 	Op          string    `json:"op"`
@@ -28,6 +37,8 @@ type Event struct {
 	Reason      string    `json:"reason,omitempty"`
 	PrevLane    string    `json:"prev_lane,omitempty"`
 	PrevSession string    `json:"prev_session,omitempty"`
+	Needs       string    `json:"needs,omitempty"`
+	Commit      string    `json:"commit,omitempty"`
 }
 
 // appendEvent writes one line with a single O_APPEND write, so concurrent
