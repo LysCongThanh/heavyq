@@ -34,20 +34,26 @@ usage:
   heavyq [--config FILE] why [lane]
   heavyq [--config FILE] gate status [name] [--json] | run [name] [--parallel] [--keep-going] [--lane NAME]
   heavyq [--config FILE] item ls [--all] | claim <id>|--next | release <id> | done <id> [--run] | block <id> "needs: ..."
+  heavyq [--config FILE] brief [--json]
+  heavyq steer [off|guard|destroy] [--apply]
   heavyq init [--agents-md] [--force] [--print]
   heavyq [--config FILE] dash [--control] [--addr 127.0.0.1:0] [--open]
-  heavyq cancel <ticket|pid> | reprio <ticket|pid> <1-9>
+  heavyq cancel <ticket|pid>
+  heavyq reprio <ticket|pid> <1-9>
   heavyq [--config FILE] pause|resume <machine>
   heavyq history [-n N] [-v]
   heavyq receipts [--day|--week|--month] [--share] [--json]
   heavyq [--config FILE] cache ls|stats|clear
-  heavyq [--config FILE] hook claude-pretooluse | claude-posttooluse | claude-userpromptsubmit | install claude | uninstall claude
+  heavyq [--config FILE] hook claude-pretooluse | claude-posttooluse | claude-sessionstart | claude-stop | claude-userpromptsubmit | install claude [--features queue,brief,stop,stance] | uninstall claude
   heavyq stance ls | show <name> | enter <name> | exit | off | status | stats
   heavyq trust [--list|--revoke]
   heavyq [--config FILE] mentor stats [--json] | mute <rule> | unmute <rule>
   heavyq doctor [--reindex]
+  heavyq completion bash|zsh|fish
   heavyq help [agents]
   heavyq version
+
+Every command has its own usage: heavyq <command> --help (also heavyq help <command>).
 
 run flags:
   --lane NAME          label shown in status (default: $HEAVYQ_LANE or cwd name)
@@ -97,6 +103,11 @@ func Main(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprint(stderr, usage)
 		return ExitUsage
 	}
+	// heavyq <command> --help: the command's own usage block, before any config is read.
+	if c, ok := wantsCommandHelp(args); ok {
+		writeCommandHelp(stdout, c)
+		return 0
+	}
 	switch args[0] {
 	case "-h", "--help":
 		fmt.Fprint(stdout, usage)
@@ -116,12 +127,16 @@ func Main(args []string, stdout, stderr io.Writer) int {
 		return trustCommand(args[1:], stdout, stderr)
 	case "mentor":
 		return mentorCommand(cfgPath, explicit, args[1:], stdout, stderr)
+	case "steer":
+		return steerCommand(args[1:], stdout, stderr)
 	case "doctor":
 		return doctorCommand(args[1:], stdout, stderr)
 	case "hook":
 		return hookCommand(cfgPath, explicit, args[1:], os.Stdin, stdout, stderr)
 	case "init":
 		return initCommand(args[1:], stdout, stderr)
+	case "completion":
+		return completionCommand(args[1:], stdout, stderr)
 	}
 	cfg, err := config.Load(cfgPath, explicit)
 	if err != nil {
@@ -142,11 +157,13 @@ func Main(args []string, stdout, stderr io.Writer) int {
 		return gateCommand(cfg, args[1:], stdout, stderr)
 	case "item":
 		return itemCommand(cfg, args[1:], stdout, stderr)
+	case "brief":
+		return briefCommand(cfg, args[1:], stdout, stderr)
 	case "cancel", "reprio", "pause", "resume":
 		return controlCommand(cfg, args[0], args[1:], stdout, stderr)
 	}
 	if p, err := strconv.Atoi(args[0]); err != nil || p < 1 || p > 9 {
-		fmt.Fprintf(stderr, "heavyq: first argument must be a priority 1-9 or a command (status, why, gate, item, init, dash, history, receipts, cache, hook, stance, trust, mentor, doctor, cancel, reprio, pause, resume, version)\n\n%s", usage)
+		fmt.Fprintf(stderr, "heavyq: first argument must be a priority 1-9 or a command (%s)\n\n%s", strings.Join(commandNames(), ", "), usage)
 		return ExitUsage
 	}
 	return runCommand(cfg, args, stderr)

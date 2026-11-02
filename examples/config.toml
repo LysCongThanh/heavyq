@@ -1,3 +1,4 @@
+#:schema https://raw.githubusercontent.com/LysCongThanh/heavyq/main/schema/config.schema.json
 # heavyq configuration: ~/.config/heavyq/config.toml
 # Every key is optional; the values below are the defaults unless marked "example".
 

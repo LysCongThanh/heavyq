@@ -21,7 +21,7 @@ The remote path is tested through a `sh -c` transport, which runs the same code 
 | Package | Responsibility |
 |---|---|
 | `internal/cli` | flags, the wait loop, execution, `status`, `history`, `cache`, `hook` commands |
-| `internal/hook` | Claude Code `PreToolUse` hook: safe shell-form parser, wrap rules, settings install/uninstall |
+| `internal/hook` | Claude Code hooks: the `PreToolUse` safe shell-form parser and wrap rules; the input and output objects the other hooks share (`claude_hook_io.go`); the feature table and settings install/uninstall (`claude_features.go`) |
 | `internal/agentmode` | agent mode: detection (`AgentEnv` table), bounded output capture and log, failure lines, the result digest, the `help agents` card |
 | `internal/cache` | `--cache`: key by git tree, output recorder/replay, result store (TTL, size cap), in-flight coalescing |
 | `internal/schedule` | pure rules: who may claim which machine, the resource gate, outside-repo path detection |
@@ -41,8 +41,14 @@ The remote path is tested through a `sh -c` transport, which runs the same code 
 | `internal/anchor` | the anchor checklist: lenient reader, extra read-only sources, one-checkbox rewrite |
 | `internal/lease` | per-item leases and the events log under the repository's common dir, with a directory flock |
 | `internal/itemstatus` | pure derivation of an item's status from anchor line, lease, events and proofs |
+| `internal/steer` | the brief (`Brief`, at most 300 tokens) and the stop gate (`DecideStop`, a pure function of facts and the session record), the claim-vs-ledger phrase matcher, the steering mode and per-session records under the repository's common dir, the delivery canary. See `docs/steer.md` |
 | `internal/repoconfig` | per-repo `heavyq.toml`: named gates, validation (trusted like a Makefile) |
 | `internal/tomlkeys` | strict-key check shared by both config parsers: unknown or upper-case keys, with their line |
+| `internal/cli/command_table_*.go` | the table of commands, subcommands and flags behind `<cmd> --help`, `heavyq completion` and the man page; drift tests tie it to `usage` and to the flag definitions |
+| `tools/mangen` | writes the man page from that table (run by goreleaser at release) |
+| `tools/schemagen` | separate module (own `go.mod`): writes `schema/*.json` from the config and snapshot types |
+| `schema/` | generated JSON Schemas for `heavyq.toml`, the user config and `status --json`; do not edit by hand |
+| `scripts/` | `install.sh` (a release asset) and its test, `test-install.sh` |
 
 ## House rules
 
@@ -103,6 +109,10 @@ people don't do the same work.
 - One topic per PR, with a test that fails without the change.
 - The PR title is a conventional commit (`feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `ci:`, `build:`);
   a check enforces it, and it becomes the squash commit.
+- A new command, subcommand or flag goes into the command table (`internal/cli/command_table_data.go`,
+  `command_table_more.go`) and the `usage` text; `go test ./internal/cli` says what is missing. A change to a
+  config key, a validation rule or the status snapshot needs `cd tools/schemagen && go run .` and the updated
+  `schema/` committed (CI checks).
 - If you change behaviour, update the docs (README, docs/queue.md, docs/configuration.md, docs/exit-codes.md) and the `Unreleased`
   section of `CHANGELOG.md` in the same PR. The changelog section becomes the release notes.
 

@@ -52,6 +52,51 @@ jobs:
       - name: macOS subset
         run: go test -race -count=1 ./internal/metrics/... ./internal/procinfo/... ./internal/cli/... -run 'Metrics|Breakdown|Descendants|Cancel|Status|PS|Parse|Host|StartTime|Local'
 
+  # install.sh (attached to every release) on both platforms it supports: against a local fake release
+  # (checksum match, mismatch, tampering, --verify plumbing) and against the real v0.3.0 and latest releases.
+  install-script:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: shellcheck
+        if: runner.os == 'Linux'
+        run: shellcheck scripts/*.sh
+      - name: install.sh tests
+        env:
+          HEAVYQ_TEST_NETWORK: "1"
+        run: sh scripts/test-install.sh
+
+  # JSON Schemas (schema/) are generated from the Go types by tools/schemagen, a separate module that holds
+  # the only extra dependencies. Its tests also validate heavyq.toml and examples/config.toml against them;
+  # then the files are regenerated and must not differ from what is committed.
+  schemas:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable
+      - name: schemagen tests
+        working-directory: tools/schemagen
+        run: go test -count=1 ./...
+      - name: regenerate
+        working-directory: tools/schemagen
+        run: go run .
+      - name: schema/ is up to date
+        run: |
+          if ! git diff --exit-code -- schema/; then
+            echo "::error::schema/ is stale. Run 'cd tools/schemagen && go run .' and commit the result."
+            exit 1
+          fi
+
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -75,7 +120,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {pkg: hook, targets: "FuzzParse FuzzDecideRewrite FuzzDecideStdin"}
+          - {pkg: hook, targets: "FuzzParse FuzzDecideRewrite FuzzDecideStdin FuzzParseInput FuzzMergeEntries"}
+          - {pkg: steer, targets: "FuzzClaimsDone"}
           - {pkg: redact, targets: "FuzzCommand"}
           - {pkg: anchor, targets: "FuzzParse FuzzSetChecked"}
           - {pkg: repoconfig, targets: "FuzzParse"}
@@ -133,7 +179,13 @@ jobs:
         with:
           distribution: goreleaser
           version: "~> v2"
-          args: release --snapshot --clean
+          args: release --snapshot --clean --skip=sign # signing needs the release job's OIDC token
+      - name: archives hold the man page and the install script is listed in checksums.txt
+        run: |
+          for a in dist/heavyq_*.tar.gz; do
+            tar -tzf "$a" | grep -qx 'man/man1/heavyq.1' || { echo "::error::$a has no man/man1/heavyq.1"; exit 1; }
+          done
+          grep -q ' install.sh$' dist/checksums.txt || { echo "::error::install.sh is not in checksums.txt"; exit 1; }
 
   govulncheck:
     runs-on: ubuntu-latest

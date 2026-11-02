@@ -25,7 +25,8 @@ exit    the command's own, else: 75 queue busy past --max-wait: retry
 proof   heavyq gate status [name]  (exit 0 = proven on this exact code)
         heavyq gate run [name]     (runs what is unproven)
 item    heavyq item claim --next | done <id> --run | block <id> "needs: x"
-why     heavyq why [lane]: who waits, and why
+brief   heavyq brief  (goal, your items, next)
+why     heavyq why [lane]
 `
 
 // CapLines keeps whole lines of text while they fit in max bytes (newlines

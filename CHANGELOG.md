@@ -7,6 +7,62 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Signed releases.** Every archive and `checksums.txt` now has a cosign keyless signature
+  (`<file>.sigstore.json`, made by the release workflow through Sigstore with GitHub OIDC), next to the existing
+  SPDX SBOMs and GitHub build-provenance attestation. This is what the Scorecard Signed-Releases check reads. The
+  release footer and [docs/install.md](docs/install.md#verify-a-release) show `cosign verify-blob` and
+  `gh attestation verify`. Releases are immutable (repository setting), and `v*` tags are protected from deletion
+  and force-push (ruleset).
+- **`install.sh`**, attached to every release and listed in its signed `checksums.txt`: detects OS and CPU,
+  downloads the archive, **checks its SHA-256 against `checksums.txt`** (a mismatch or a duplicated line installs
+  nothing), installs into `~/.local/bin` or `--prefix DIR/bin` atomically, and with `--verify` also checks the
+  cosign signature. `--version` pins a release. Tested in CI on Linux and macOS against a local fake release and
+  against real releases ([docs/install.md](docs/install.md)).
+- **`heavyq <command> --help`** (and `heavyq help <command>`) prints a real usage block: what the command does,
+  its synopsis, its flags with descriptions, and a link to its docs, instead of the Go flag defaults. It works
+  without a config and for subcommands (`heavyq gate run --help`). A `--help` after `--` still belongs to your
+  command.
+- **`heavyq completion bash|zsh|fish`**: shell completion scripts for commands, subcommands, flags and their
+  values (`--remote local|auto`, `--scope ...`, paths); after `--` they complete the program you queue. They run
+  on bash 3.2 (macOS) and need no bash-completion package.
+- **Man page** `heavyq(1)`, generated at release by `tools/mangen` and shipped in every archive as
+  `man/man1/heavyq.1`. The help blocks, completions and man page are generated from one command table
+  (`internal/cli/command_table_*.go`); tests fail when it and the code or the usage text disagree.
+- **JSON Schemas** in `schema/` for `heavyq.toml`, the user config and `heavyq status --json`, generated from the
+  Go types by `tools/schemagen` (a separate module, so the main module keeps its single dependency). Add
+  `#:schema https://raw.githubusercontent.com/LysCongThanh/heavyq/main/schema/heavyq.schema.json` as the first line
+  of a file for completion, hover help and errors in Taplo-based editors
+  ([docs/configuration.md](docs/configuration.md#editor-support-json-schemas)). CI regenerates them and fails on a
+  difference.
+- **Steer: a brief after compaction and a stop gate that wants proof** ([docs/steer.md](docs/steer.md),
+  `internal/steer`).
+  - **`heavyq brief [--json]`**: the goal, the asking lane's items, the one next command, a red gate, items that need
+    a human and one machine-pressure line, in at most 300 tokens (bytes / 4; a test holds the worst case). The
+    SessionStart hook injects it as `additionalContext` on startup, resume and compact, so `/compact` cannot erase
+    the thread. Silent in a repository that never used heavyq.
+  - **`heavyq steer off|guard|destroy`**, stored per repository in the git common dir (default `off`;
+    `HEAVYQ_STEER` overrides it, `off` is the kill switch). The **Stop hook** blocks while the lane holds claimed
+    items that are not proven on this tree, and every block names the exact next command
+    (`heavyq item done <id> --run`) and an escape (`item block ... "needs: ..."`, `item release`). `guard` blocks
+    at most 3 times per session and honours `stop_hook_active` (no second block on an unchanged situation); items
+    that are blocked, released, without a proof, or whose proof was **already red when the session started**
+    (a baseline recorded at SessionStart) never block. `destroy` has no cap, also gates SubagentStop,
+    TaskCompleted and TeammateIdle (exit 2 with the reason on stderr) and repeats the brief in every block;
+    `heavyq steer destroy` prints how to lift Claude Code's native cap (`CLAUDE_CODE_STOP_HOOK_BLOCK_CAP=0`) and
+    `--apply` writes it to the Claude Code settings `env` block (a `.bak` is kept, idempotent).
+  - **Claim vs ledger**: when the last assistant message says the tests pass (two conservative phrases) and the
+    ledger shows a plain failure on this tree that was not red at the start, the Stop hook continues once with the
+    fact, without blocking.
+  - **Delivery canary**: each brief carries a short random token; `heavyq doctor` looks for it in the transcript
+    path the hook was given (best effort, never changes the exit code).
+  - **`heavyq hook install claude --features queue,brief,stop`** (default `queue`; the exact set, foreign hooks are
+    kept) and the plugin's `hooks.json` now carry SessionStart, Stop, SubagentStop, TaskCompleted and
+    TeammateIdle, behind the same `command -v heavyq` guard. New hooks plug in with one row in the feature table
+    and the shared hook input/output helpers (`internal/hook/claude_hook_io.go`). Hook handlers run under
+    `deadline.RunWithin` and fail open. Golden tests pin each hook's JSON; table tests cover the stop decisions;
+    an end-to-end test drives a temporary repository (claim, edit, Stop blocks with the next command, gate run,
+    Stop allowed).
+
 - **macOS remotes: run heavy jobs on a spare Mac** ([docs/remote.md](docs/remote.md#a-spare-mac-as-a-remote)).
   A stock Mac (no `flock`, no `setsid`, no Homebrew) is now a valid `[[remote]]`. Where util-linux is missing the
   remote script uses Perl, which ships with macOS: `flock()` for the slot lock (the same `flock(2)` on the same

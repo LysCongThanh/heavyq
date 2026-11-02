@@ -26,3 +26,17 @@ updates:
     commit-message:
       prefix: build
       include: scope
+
+  # tools/schemagen is its own module: the JSON Schema generator, dev only.
+  - package-ecosystem: gomod
+    directory: /tools/schemagen
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 5
+    groups:
+      schemagen:
+        patterns: ["*"]
+    commit-message:
+      prefix: build
+      include: scope

@@ -35,7 +35,11 @@ this exact code is proven). CI runs the same gate.
   real process cannot produce the case.
 - **Fail closed** on unsafe or unknown input (config values, remote names, refs, paths). Never guess and run.
 - **The hook fails open**: on any doubt `heavyq hook claude-pretooluse` exits 0 with no output. New command
-  shapes need table tests in `internal/hook/claude_pretooluse_test.go`.
+  shapes need table tests in `internal/hook/claude_pretooluse_test.go`. The same goes for `claude-sessionstart` and
+  `claude-stop` (`docs/steer.md`): they run under `deadline.RunWithin`, say nothing on any doubt, and only a destroy-mode
+  block of TaskCompleted or TeammateIdle exits 2 (Claude Code's contract for those events). A new hook is one row in
+  `internal/hook/claude_features.go` and its handler on `runHookHandler`; the stop decision stays a pure function in
+  `internal/steer` with a table test.
 - **Exit codes are API**: 2, 75, 76, 77, 78, 255 keep their meaning.
 - **Agent output is a budget** (`docs/agent-mode.md`): a run prints at most queued, running and a digest; the
   digest stays under 4 KB, `why` under 600 bytes, `heavyq help agents` under 900. Never print ANSI in agent
@@ -43,6 +47,9 @@ this exact code is proven). CI runs the same gate.
 - **Dashboard security model** (`docs/dashboard.md`): loopback only, token, `Host`/`Origin` checks, CSP
   `default-src 'none'`. Do not loosen any of these. Keep the page free of external resources.
 - **Redaction**: anything that shows command lines goes through `internal/redact`.
+- **One command table**: a new command, subcommand or flag goes into `internal/cli/command_table_*.go` (it feeds
+  `--help`, completions and the man page) and into `usage`; drift tests fail otherwise. A change to a config key,
+  a validation rule or the status snapshot needs `cd tools/schemagen && go run .`, with `schema/` committed.
 - **Docs move with behaviour**: flags, config keys and exit codes change in README.md, docs/ (configuration.md, exit-codes.md) and CHANGELOG.md
   (Keep a Changelog) in the same PR.
 

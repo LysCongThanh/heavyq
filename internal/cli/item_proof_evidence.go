@@ -47,19 +47,9 @@ func (c *evidenceCache) of(it anchor.Item, root string) itemstatus.Evidence {
 }
 
 func (c *evidenceCache) evaluate(p anchor.Proof, root string) itemstatus.Evidence {
-	var name string
-	var commands []string
-	switch p.Kind {
-	case anchor.ProofGate:
-		g, ok := proofGate(c.set, p.Value)
-		if !ok {
-			return itemstatus.Unprovable(fmt.Sprintf("no gate %q in heavyq.toml", p.Value))
-		}
-		name, commands = g.Name, g.Run
-	case anchor.ProofCmd:
-		name, commands = "item", []string{p.Value}
-	default:
-		return itemstatus.Unprovable("unknown proof kind " + p.Kind)
+	name, commands, why := proofCommands(c.set, p)
+	if why != "" {
+		return itemstatus.Unprovable(why)
 	}
 	subj := c.set.subject(root)
 	recs, err := proofRecords(subj)
@@ -67,6 +57,23 @@ func (c *evidenceCache) evaluate(p anchor.Proof, root string) itemstatus.Evidenc
 		recs = nil
 	}
 	return itemstatus.EvidenceFor(proof.Evaluate(name, commands, subj, recs), subj, c.recent)
+}
+
+// proofCommands is the gate name and the shell commands a proof stands for. why
+// is set instead when the proof cannot be evaluated at all (its gate does not
+// exist, or its kind is unknown).
+func proofCommands(s *itemSet, p anchor.Proof) (name string, commands []string, why string) {
+	switch p.Kind {
+	case anchor.ProofGate:
+		g, ok := proofGate(s, p.Value)
+		if !ok {
+			return "", nil, fmt.Sprintf("no gate %q in heavyq.toml", p.Value)
+		}
+		return g.Name, g.Run, ""
+	case anchor.ProofCmd:
+		return "item", []string{p.Value}, ""
+	}
+	return "", nil, "unknown proof kind " + p.Kind
 }
 
 // proofGate is the gate called name in the repository's heavyq.toml (or the
