@@ -42,6 +42,8 @@ The remote path is tested through a `sh -c` transport, which runs the same code 
 | `internal/lease` | per-item leases and the events log under the repository's common dir, with a directory flock |
 | `internal/itemstatus` | pure derivation of an item's status from anchor line, lease, events and proofs |
 | `internal/steer` | the brief (`Brief`, at most 300 tokens) and the stop gate (`DecideStop`, a pure function of facts and the session record), the claim-vs-ledger phrase matcher, the steering mode and per-session records under the repository's common dir, the delivery canary. See `docs/steer.md` |
+| `internal/preflight` | the preflight checks as pure functions of gathered facts (anchor, dependencies, environment, Claude Code permissions, quota), the GO / NO-GO report and the SessionStart nudge rule. See `docs/preflight.md` |
+| `internal/runspan` | run spans: the plan of one long run, a JSON file per span under the repository's common dir (`Open`, `End`, `Current`, `List`) |
 | `internal/repoconfig` | per-repo `heavyq.toml`: named gates, validation (trusted like a Makefile) |
 | `internal/tomlkeys` | strict-key check shared by both config parsers: unknown or upper-case keys, with their line |
 | `internal/cli/*_command_spec.go` | one file per command: its table entry (name, synopsis, flags, subcommands) and its dispatch, registered from `init()` through `command_registry.go`. The table generates `heavyq --help`, `<cmd> --help`, `heavyq completion` and the man page, and `Main` dispatches through it; drift tests tie it to the flag definitions |

@@ -1,0 +1,85 @@
+{
+  "schema": 1,
+  "verdict": "NO-GO",
+  "goal": "ship login v2",
+  "hours": 8,
+  "parallel": 3,
+  "items": [
+    "api",
+    "docs",
+    "ghost"
+  ],
+  "checked": [
+    "anchor",
+    "dependencies",
+    "environment",
+    "permissions",
+    "quota"
+  ],
+  "skipped": [],
+  "findings": [
+    {
+      "check": "anchor",
+      "severity": "block",
+      "subject": "docs",
+      "text": "item docs has no proof: it can only be ticked by hand, never proven",
+      "fix": "edit .heavyq/anchor.md:5: add `proof: <command>` to docs"
+    },
+    {
+      "check": "anchor",
+      "severity": "block",
+      "subject": "ghost",
+      "text": "item ghost: its proof cannot run: `heavyq-no-such-tool-xyz` is not installed (not on PATH)",
+      "fix": "edit .heavyq/anchor.md:6: fix the proof of ghost"
+    },
+    {
+      "check": "dependencies",
+      "severity": "block",
+      "subject": "ui",
+      "text": "item ui needs a human: design sign-off",
+      "fix": "answer it, then delete the `needs:` span at .heavyq/anchor.md:4"
+    },
+    {
+      "check": "dependencies",
+      "severity": "block",
+      "subject": "ghost",
+      "text": "item ghost waits on \"nope\", which is not an item",
+      "fix": "edit .heavyq/anchor.md:6: fix the `after:` id of ghost"
+    },
+    {
+      "check": "permissions",
+      "severity": "block",
+      "subject": "sh -c true",
+      "text": "`sh -c true` may prompt: no allow rule covers it",
+      "fix": "edit .claude/settings.local.json: add \"Bash(sh -c true)\" to permissions.allow"
+    },
+    {
+      "check": "permissions",
+      "severity": "block",
+      "subject": "heavyq item done --run",
+      "text": "`heavyq item done --run` may prompt: no allow rule covers it",
+      "fix": "edit .claude/settings.local.json: add \"Bash(heavyq item:*)\" to permissions.allow"
+    },
+    {
+      "check": "anchor",
+      "severity": "warn",
+      "subject": "api",
+      "text": "no known duration for the proof of api: it has never passed here, so the run length is a guess",
+      "fix": "heavyq item done api --run"
+    },
+    {
+      "check": "environment",
+      "severity": "warn",
+      "text": "3 lanes planned but 1 heavy slots in all (local 1): the rest queue behind them",
+      "fix": "heavyq preflight --parallel 1"
+    },
+    {
+      "check": "permissions",
+      "severity": "warn",
+      "subject": "headless",
+      "text": "an unattended `claude -p` run hangs on a prompt nobody answers; deny instead, so a missing rule is a failure you can read",
+      "fix": "claude -p --permission-prompts none \"<prompt>\""
+    }
+  ],
+  "span": "<span>"
+}
