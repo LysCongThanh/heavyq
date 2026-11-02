@@ -32,6 +32,10 @@ type Snapshot struct {
 	// there is nothing to say.
 	Gates      []LaneGate  `json:"gates"`
 	Exceptions []Exception `json:"exceptions"`
+	// Items is what each lane holds or waits on in the work items
+	// (`heavyq item`): claimed, proven (not yet done) and blocked items. Added
+	// within schema 1; an empty array when no lane has any.
+	Items []LaneItems `json:"items"`
 }
 
 // Config is the part of the configuration a viewer needs to interpret values.
