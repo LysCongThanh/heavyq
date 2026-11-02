@@ -26,7 +26,7 @@ func TestManPageHoldsTheTable(t *testing.T) {
 			t.Errorf("no section for %q", name)
 		}
 	}
-	for _, c := range commandTable {
+	for _, c := range commandTable() {
 		for _, f := range c.Flags {
 			if !strings.Contains(page, roff(f.display())) {
 				t.Errorf("%s: flag %s missing", c.Name, f.display())

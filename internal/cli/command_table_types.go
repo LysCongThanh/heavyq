@@ -2,11 +2,12 @@ package cli
 
 import "strings"
 
-// The command table is the one description of heavyq's command line that the
-// generated surfaces read: `<cmd> --help` blocks, shell completions
-// (`heavyq completion`) and the man page. The dispatch in Main and the flag
-// parsers stay where they are; command_table_drift_test.go fails when the table
-// and the code or the usage text disagree.
+// The command table is the one description of heavyq's command line. Every
+// generated surface reads it: the usage text, `<cmd> --help` blocks, shell
+// completions (`heavyq completion`) and the man page; Main dispatches through
+// it too. A command adds its entry from its own <name>_command_spec.go (see
+// command_registry.go). The flag parsers stay in the command files;
+// command_table_drift_test.go fails when the table and the code disagree.
 
 // flagSpec describes one flag.
 type flagSpec struct {
@@ -39,7 +40,16 @@ type commandSpec struct {
 	NextCommands bool
 	Notes        string // paragraph after the flags
 	Docs         string // file under docs/ that has more
+
+	// Dispatch, see command_registry.go.
+	Order   int        // position in the usage, completions and man page (10 apart; ties by name)
+	Aliases []string   // other first arguments that run it ("--help" for help); not shown anywhere
+	Config  configNeed // what Main prepares before Run
+	Run     func(*invocation) int
 }
+
+// jsonFlag is the --json switch most read commands share.
+func jsonFlag(help string) flagSpec { return flagSpec{Long: "json", Help: help} }
 
 // configFlag is the global --config FILE that precedes every command.
 var configFlag = flagSpec{Long: "config", Value: "FILE", Path: "file",
@@ -50,7 +60,7 @@ func commandByName(name string) (commandSpec, bool) {
 	if len(name) == 1 && name[0] >= '1' && name[0] <= '9' {
 		name = "run"
 	}
-	for _, c := range commandTable {
+	for _, c := range commandTable() {
 		if c.Name == name {
 			return c, true
 		}
@@ -61,7 +71,7 @@ func commandByName(name string) (commandSpec, bool) {
 // commandNames lists the first-argument commands in table order, "run" excluded.
 func commandNames() []string {
 	var out []string
-	for _, c := range commandTable {
+	for _, c := range commandTable() {
 		if c.Name != "run" {
 			out = append(out, c.Name)
 		}

@@ -113,7 +113,7 @@ complete -c heavyq -n __heavyq_after_dashdash -F
 			b.WriteString("\n")
 		}
 	}
-	for _, c := range commandTable {
+	for _, c := range commandTable() {
 		for _, f := range c.Flags {
 			fishFlag(&b, fmt.Sprintf("__heavyq_at \"%s\"", c.Name), f)
 		}

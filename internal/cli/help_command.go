@@ -13,7 +13,7 @@ import (
 // session start.
 func helpCommand(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprint(stdout, usage)
+		fmt.Fprint(stdout, usageText())
 		return 0
 	}
 	if len(args) == 1 && args[0] == "agents" {
