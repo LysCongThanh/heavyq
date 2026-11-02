@@ -45,7 +45,11 @@ type Options struct {
 	Snapshot func() (snapshot.Snapshot, error)
 	// History returns up to n most recent records (n <= 0: all), oldest first.
 	History func(n int) ([]history.Record, error)
-	Mailbox control.Mailbox
+	// HistorySince returns the records that ended at or after since, oldest
+	// first, reading no further back than that (the insights windows). Nil: the
+	// insights read History(0) and filter.
+	HistorySince func(since time.Time) ([]history.Record, error)
+	Mailbox      control.Mailbox
 	// Ticket reports whether ticket id exists and whether it is running.
 	Ticket func(id string) (exists, running bool)
 	// Machine reports whether a machine of that name is configured.

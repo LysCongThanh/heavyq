@@ -28,6 +28,9 @@ this exact code is proven). CI runs the same gate.
 
 - **No new dependencies** without an issue first. Stdlib plus `BurntSushi/toml` only.
 - **Files stay small** (~200 lines) with descriptive `snake_case.go` names. Split rather than grow.
+- **Hot paths never scan the ledger**: hooks, `gate status`, `why` and the Tower read `internal/ledgerindex`
+  (index first, a bounded `history.ReadTail` as fallback) and write records with `ledgerindex.Append`.
+  See `docs/ledger.md`; the 20 ms hook budget is a test.
 - **Tests use real things**: real processes, real locks, real temp git repos. No mocks of the OS unless a
   real process cannot produce the case.
 - **Fail closed** on unsafe or unknown input (config values, remote names, refs, paths). Never guess and run.

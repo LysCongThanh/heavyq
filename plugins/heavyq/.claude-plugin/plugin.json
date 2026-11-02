@@ -1,0 +1,12 @@
+{
+  "name": "heavyq",
+  "description": "Queue heavy Bash commands through heavyq and teach agents the proof gate. Needs the heavyq binary on PATH; silent without it.",
+  "author": {
+    "name": "LysCongThanh",
+    "url": "https://github.com/LysCongThanh"
+  },
+  "homepage": "https://github.com/LysCongThanh/heavyq",
+  "repository": "https://github.com/LysCongThanh/heavyq",
+  "license": "MIT",
+  "keywords": ["queue", "gate", "tests", "builds", "agents"]
+}

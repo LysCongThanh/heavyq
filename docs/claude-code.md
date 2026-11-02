@@ -8,6 +8,53 @@ This page lists the documented behaviour the hook relies on, quoted from the off
 (<https://code.claude.com/docs/en/hooks.md>, read on 2026-11-01), and what was verified by running the
 real `claude` binary (Claude Code 2.1.316).
 
+## Install as a Claude Code plugin
+
+The repository is also a Claude Code marketplace (`.claude-plugin/marketplace.json`, name `heavyq`) with one
+plugin (`plugins/heavyq`). It gives you the hook and a skill in two commands, no settings file edited by hand.
+The binary is **not** bundled: install it first (`go install github.com/LysCongThanh/heavyq@latest` or a
+[release](https://github.com/LysCongThanh/heavyq/releases)), then in Claude Code:
+
+```
+/plugin marketplace add LysCongThanh/heavyq
+/plugin install heavyq@heavyq
+```
+
+or from a shell: `claude plugin marketplace add LysCongThanh/heavyq && claude plugin install heavyq@heavyq`.
+
+What the plugin contains:
+
+- `hooks/hooks.json`: the same `PreToolUse` hook (matcher `Bash`, timeout 30 s) that `heavyq hook install claude`
+  writes, run as
+  ```
+  sh -c 'command -v heavyq >/dev/null 2>&1 && exec heavyq hook claude-pretooluse || exit 0'
+  ```
+  Without `heavyq` on `PATH` the hook exits 0 and prints nothing, so a teammate who has the plugin but not the
+  binary sees no error and no change.
+- `skills/heavyq/SKILL.md`: when to use `heavyq gate status`, `gate run`, `why` and `help agents`, what exit
+  75 and 78 mean, and never to bypass heavyq.
+
+The hook behaves exactly as described below (`hook.*` config, rules, fail-open). The plugin adds no `bin/`
+directory and sets no version, so Claude Code treats each commit of the repository as an update.
+
+**Plugin or settings, not both.** Hooks from all sources run in parallel, and when two of them rewrite the same
+command the reference does not say which rewrite wins (see "Several hooks"). `heavyq hook install claude` therefore
+reads the user, project and local settings files, and when any of them has `"enabledPlugins": {"heavyq@heavyq": true}`
+it refuses with exit 2:
+
+```
+heavyq: the Claude Code plugin heavyq@heavyq is enabled in <file>, and it already runs the same hook; ...
+next: keep the plugin (nothing to do), or disable it (/plugin disable heavyq@heavyq) and run this again; --force installs anyway
+```
+
+`--force` installs anyway (and `--print` and `uninstall` are never refused). If you installed through the CLI first
+and now want the plugin, run `heavyq hook uninstall claude` for each scope you used before enabling it.
+
+The plugin files are checked in CI by Go tests (`internal/hook/claude_plugin_files_test.go`): the JSON
+structure, the required fields, the exact hook command above, and the skill's frontmatter and size. Locally,
+`claude plugin validate .` and `claude plugin validate plugins/heavyq` give the authoritative answer. They warn
+about a missing `version` and `icon`, which is intended.
+
 ## Rewriting is supported: `updatedInput`
 
 > `PreToolUse`: `updatedInput` directly under `hookSpecificOutput` replaces a tool's arguments before it runs.

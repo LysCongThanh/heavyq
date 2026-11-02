@@ -5,6 +5,33 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Ledger tail reader and indexes: hooks stay under 20 ms.** A full scan of a 100,000-line ledger (about
+  55 MB, a month of a busy fleet) took 0.3-0.7 s. `history.ReadTail` now reads the newest records backwards
+  in chunks, across the monthly files, with a record count and/or a `since` time (the last 2,000 records of
+  that ledger in about 5 ms); corrupt and oversized lines are skipped as before. Beside the ledger,
+  small JSON files are updated under a lock at the end of every run: per lane the last 50 records
+  (`index/lanes/`), per `(repo, tree)` the conclusive runs with the latest outcome and pass/fail counts per
+  `run_id` (`index/trees/`), both bounded (the least recently touched are evicted). They are derived data:
+  a missing, stale or damaged index is detected (the ledger size is recorded) and readers fall back to a
+  bounded tail read, never to a full scan. `gate status`, `why`, the Tower (red gates, loops, starved lanes),
+  `history`, and the dashboard's insights windows use them. **`heavyq doctor [--reindex]`** is new: it
+  prints the index state and size, and rebuilds it from the ledger. The same ledger lines also decode about
+  4x faster (a hand-written decoder with `encoding/json` as the fallback, fuzzed against it). See
+  `docs/ledger.md`.
+- **`internal/deadline`: `RunWithin(d, fn)`**, the fail-open time budget for the hooks to come (SessionStart,
+  Stop, PostToolUse): a handler that misses its deadline or panics yields an error and the hook says nothing.
+  A test holds the hook path through the index under 20 ms on a 100,000-record ledger.
+- **Claude Code plugin marketplace.** The repository is its own marketplace (`.claude-plugin/marketplace.json`,
+  name `heavyq`) with a `plugins/heavyq` plugin: `/plugin marketplace add LysCongThanh/heavyq`, then
+  `/plugin install heavyq@heavyq`. It carries the `PreToolUse` Bash hook, wrapped as
+  `sh -c 'command -v heavyq >/dev/null 2>&1 && exec heavyq hook claude-pretooluse || exit 0'` so a missing
+  binary is silent, and a `heavyq` skill (gate status/run, why, `help agents`, exit codes 75/78, never bypass).
+  The binary is not bundled. Go tests check the plugin files (structure, required fields, hook command).
+- `heavyq hook install claude` refuses (exit 2, with a `next:` line) when the user, project or local settings
+  enable `heavyq@heavyq`, because the plugin already runs the same hook and two rewriting hooks have no defined
+  winner. `--force` installs anyway; `--print` and `uninstall` are never refused.
 ### Changed
 
 - **README is a short hero** (tagline, a 14-second proof GIF recorded from real runs, install, Run / Prove / Steer).

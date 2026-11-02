@@ -24,12 +24,19 @@ func hookInstallCommand(cfgPath string, explicit, install bool, args []string, s
 	fs.SetOutput(stderr)
 	scope := fs.String("scope", "local", "local (.claude/settings.local.json), project (.claude/settings.json) or user (~/.claude/settings.json)")
 	printOnly := fs.Bool("print", false, "print the resulting settings instead of writing them")
+	force := fs.Bool("force", false, "install even when the heavyq Claude Code plugin is enabled (the hook would run twice)")
 	if err := fs.Parse(args[1:]); err != nil {
 		return ExitUsage
 	}
 	if fs.NArg() > 0 {
 		fmt.Fprintf(stderr, "heavyq: unexpected argument %q\n", fs.Arg(0))
 		return ExitUsage
+	}
+	if install && !*force && !*printOnly {
+		if path := pluginEnabledIn(); path != "" {
+			fmt.Fprint(stderr, pluginRefusal(path))
+			return ExitUsage
+		}
 	}
 	path, err := settingsFile(*scope)
 	if err != nil {

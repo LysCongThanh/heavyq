@@ -31,7 +31,9 @@ The remote path is tested through a `sh -c` transport, which runs the same code 
 | `internal/metrics` | RAM / load / cores from `/proc` or `sysctl` + `vm_stat` (macOS), placement score |
 | `internal/remote` | transport, probe, `git push` of exact commits, the embedded remote job script |
 | `internal/config` | TOML config, defaults, validation |
-| `internal/history` | the run ledger: JSONL records (commit, tree, session, ...), ULIDs, monthly rotation |
+| `internal/history` | the run ledger: JSONL records (commit, tree, session, ...), ULIDs, monthly rotation; `ReadTail` reads the newest records backwards, `Each`/`EachFrom` stream; `historytest` makes synthetic ledgers for tests |
+| `internal/ledgerindex` | rebuildable indexes beside the ledger (per lane, per tree), written under a lock where a record is appended (`Append`); hot-path reads (`TreeRuns`, `LastOfLane`, `Recent`) with a bounded-tail fallback; `heavyq doctor --reindex`. See `docs/ledger.md` |
+| `internal/deadline` | `RunWithin(d, fn)`: fail-open time budget for hook handlers |
 | `internal/gitutil` | git queries, including the tree identity of clean and dirty work trees |
 | `internal/runident` | the `run_id`: the one definition of "the same run" (tree, argv, subdir, `cache.env` values, base ref) shared by cache, ledger, proof, flaky and loop detection |
 | `internal/proof` | pure matching of ledger records to gate commands on a tree (by `run_id`, else `cmd_hash`): proven / failed (flaky, under load) / missing |
@@ -42,6 +44,10 @@ The remote path is tested through a `sh -c` transport, which runs the same code 
 
 - **Stdlib first.** The only dependency is `BurntSushi/toml`. Ask in an issue before adding another.
 - **Small files.** Keep each file under ~200 lines, with `snake_case` names that say what's inside.
+- **Hot paths never scan the ledger.** Anything a hook or a status command reads goes through
+  `ledgerindex` (index first, `history.ReadTail` window as fallback), never `history.ReadLast(path, 0)`.
+  Records are written with `ledgerindex.Append`, not `history.Append`. The 20 ms budget is tested in
+  `internal/ledgerindex` (a 100,000-record ledger; skipped under `-short` and `-race`).
 - **Test with real things.** Spawn real processes, take real locks, push to real (temporary) git repos.
   Fake `/proc` only where a real process can't produce the case (see `procinfo_test.go`).
 - **Agent output is a budget.** Anything a run prints in agent mode costs an agent context: keep the digest

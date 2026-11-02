@@ -26,6 +26,10 @@ jobs:
         with:
           go-version: stable
       - run: go build -o heavyq .
+      # Latency gate for hooks: on a generated 100,000-record ledger, the tail read of 2,000 records and the
+      # hook path through the ledger index must stay inside their budgets (skipped under -race, so run here).
+      - name: ledger latency (tail reader, hook path under 20 ms)
+        run: go test -count=1 -run 'Latency|HookPathUnder20ms' ./internal/history ./internal/ledgerindex
       # heavyq proves itself: the gate in heavyq.toml (gofmt, go vet and `go test -race`, which includes the
       # end-to-end runs with real processes and an sh -c "remote"), run through the binary just built.
       # A failing command fails the job, and its output is shown as usual.
@@ -76,7 +80,7 @@ jobs:
           - {pkg: anchor, targets: "FuzzParse FuzzSetChecked"}
           - {pkg: repoconfig, targets: "FuzzParse"}
           - {pkg: config, targets: "FuzzParse"}
-          - {pkg: history, targets: "FuzzReadLast"}
+          - {pkg: history, targets: "FuzzReadLast FuzzDecodeRecord"}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
