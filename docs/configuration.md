@@ -44,6 +44,7 @@ Every key is optional. [`examples/config.toml`](../examples/config.toml) has eve
 
 Environment: `HEAVYQ_LANE` (default lane), `HEAVYQ_REMOTE` (default `--remote`), `HEAVYQ_AUTO=0` (never
 auto-place), `HEAVYQ_DIR` (queue dir; default `$XDG_RUNTIME_DIR/heavyq`, else `/tmp/heavyq-<uid>`),
+`HEAVYQ_STEER` (`off|guard|destroy`: overrides the stored stop-gate mode; `off` is the kill switch, see [steer](steer.md)),
 `HEAVYQ_SESSION` / `HEAVYQ_ITEM` (default `--session` / `--item`), `HEAVYQ_OUTPUT` / `HEAVYQ_AGENT` (output
 mode), `HEAVYQ_HISTORY` (one history file;
 default: monthly files in `$XDG_STATE_HOME/heavyq`), `HEAVYQ_CONFIG`, `HEAVYQ_MENTOR=off` (silence the mentor hook), `HEAVYQ_MENTOR_SEED` (fixed experiment seed), `XDG_CACHE_HOME` (result

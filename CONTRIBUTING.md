@@ -21,7 +21,7 @@ The remote path is tested through a `sh -c` transport, which runs the same code 
 | Package | Responsibility |
 |---|---|
 | `internal/cli` | flags, the wait loop, execution, `status`, `history`, `cache`, `hook` commands |
-| `internal/hook` | Claude Code `PreToolUse` hook: safe shell-form parser, wrap rules, settings install/uninstall |
+| `internal/hook` | Claude Code hooks: the `PreToolUse` safe shell-form parser and wrap rules; the input and output objects the other hooks share (`claude_hook_io.go`); the feature table and settings install/uninstall (`claude_features.go`) |
 | `internal/agentmode` | agent mode: detection (`AgentEnv` table), bounded output capture and log, failure lines, the result digest, the `help agents` card |
 | `internal/cache` | `--cache`: key by git tree, output recorder/replay, result store (TTL, size cap), in-flight coalescing |
 | `internal/schedule` | pure rules: who may claim which machine, the resource gate, outside-repo path detection |
@@ -41,6 +41,7 @@ The remote path is tested through a `sh -c` transport, which runs the same code 
 | `internal/anchor` | the anchor checklist: lenient reader, extra read-only sources, one-checkbox rewrite |
 | `internal/lease` | per-item leases and the events log under the repository's common dir, with a directory flock |
 | `internal/itemstatus` | pure derivation of an item's status from anchor line, lease, events and proofs |
+| `internal/steer` | the brief (`Brief`, at most 300 tokens) and the stop gate (`DecideStop`, a pure function of facts and the session record), the claim-vs-ledger phrase matcher, the steering mode and per-session records under the repository's common dir, the delivery canary. See `docs/steer.md` |
 | `internal/repoconfig` | per-repo `heavyq.toml`: named gates, validation (trusted like a Makefile) |
 | `internal/tomlkeys` | strict-key check shared by both config parsers: unknown or upper-case keys, with their line |
 

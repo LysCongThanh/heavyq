@@ -29,12 +29,23 @@ What the plugin contains:
   ```
   sh -c 'command -v heavyq >/dev/null 2>&1 && exec heavyq hook claude-pretooluse || exit 0'
   ```
-  Without `heavyq` on `PATH` the hook exits 0 and prints nothing, so a teammate who has the plugin but not the
-  binary sees no error and no change.
+  plus the hooks of the `brief` and `stop` features ([steer.md](steer.md)), each behind the same guard (timeout
+  10 s, matcher `startup|resume|compact` for SessionStart):
+  ```
+  sh -c 'command -v heavyq >/dev/null 2>&1 && exec heavyq hook claude-sessionstart || exit 0'
+  sh -c 'command -v heavyq >/dev/null 2>&1 && exec heavyq hook claude-stop || exit 0'
+  sh -c 'command -v heavyq >/dev/null 2>&1 && exec heavyq hook claude-stop SubagentStop || exit 0'
+  sh -c 'command -v heavyq >/dev/null 2>&1 && exec heavyq hook claude-stop TaskCompleted || exit 0'
+  sh -c 'command -v heavyq >/dev/null 2>&1 && exec heavyq hook claude-stop TeammateIdle || exit 0'
+  ```
+  Without `heavyq` on `PATH` every hook exits 0 and prints nothing, so a teammate who has the plugin but not the
+  binary sees no error and no change. With it, the stop-family hooks do nothing until you run `heavyq steer guard`
+  (the default mode is off), and the SessionStart hook is silent in a repository with no anchor goal, no items and
+  no red gate.
 - `skills/heavyq/SKILL.md`: when to use `heavyq gate status`, `gate run`, `why` and `help agents`, what exit
   75 and 78 mean, and never to bypass heavyq.
 
-The hook behaves exactly as described below (`hook.*` config, rules, fail-open). The plugin adds no `bin/`
+The PreToolUse hook behaves exactly as described below (`hook.*` config, rules, fail-open). The plugin adds no `bin/`
 directory and sets no version, so Claude Code treats each commit of the repository as an update.
 
 **Plugin or settings, not both.** Hooks from all sources run in parallel, and when two of them rewrite the same
@@ -51,9 +62,42 @@ next: keep the plugin (nothing to do), or disable it (/plugin disable heavyq@hea
 and now want the plugin, run `heavyq hook uninstall claude` for each scope you used before enabling it.
 
 The plugin files are checked in CI by Go tests (`internal/hook/claude_plugin_files_test.go`): the JSON
-structure, the required fields, the exact hook command above, and the skill's frontmatter and size. Locally,
+structure, the required fields, that every event, matcher, timeout and command equals the installer's feature
+table, and the skill's frontmatter and size. Locally,
 `claude plugin validate .` and `claude plugin validate plugins/heavyq` give the authoritative answer. They warn
 about a missing `version` and `icon`, which is intended.
+
+## SessionStart and Stop hooks: what they rely on
+
+`heavyq hook install claude --features queue,brief,stop` (or the plugin) adds the hooks behind
+`heavyq brief` and `heavyq steer` ([steer.md](steer.md)). Quoted from the same reference (read on 2026-11-02):
+
+- **SessionStart** matchers `startup`, `resume`, `clear`, `compact` and `fork` say how the session began; heavyq
+  registers `startup|resume|compact`. Output: `{"hookSpecificOutput": {"hookEventName": "SessionStart",
+  "additionalContext": "..."}}`, "String added to Claude's context at the start of the conversation, before the
+  first prompt". `additionalContext`, `systemMessage` and plain stdout are each capped at 10,000 characters
+  (heavyq clips at 9,500 and keeps the brief under 1,150 bytes). The input has `source`, `transcript_path` and
+  `session_id`. "Claude's first response still waits for the hooks to finish": heavyq's budget is 5 s.
+- **Stop** input: `stop_hook_active` ("`true` when Claude Code is already continuing as a result of a stop hook.
+  Check this value ... to avoid blocking on a condition that will never resolve") and `last_assistant_message`.
+  Output: `{"decision": "block", "reason": "..."}`, or `hookSpecificOutput.additionalContext` with
+  `hookEventName` `Stop`: "non-error feedback ... The conversation continues so Claude can act on it", shown as
+  "Stop hook feedback" and counted by the same loop protections. heavyq blocks with `decision` and uses
+  `additionalContext` for the claim-vs-ledger continuation.
+- **The cap.** "Claude Code applies an 8-consecutive-continuation cap: after stop hooks have continued the turn
+  eight times in a row, Claude Code overrides the next block and ends the turn. The count resets each time Claude
+  calls a tool." `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` ("default: 8. Set to `0` to disable the cap") raises it: guard
+  (3 blocks) never needs it, destroy does ([steer.md](steer.md), `heavyq steer destroy --apply`).
+- **SubagentStop** has the same decision control and `stop_hook_active`, `agent_id`, `last_assistant_message`.
+- **TaskCompleted and TeammateIdle** have no matchers. "Exit code 2: the task is not marked as completed and the
+  stderr message is fed back to the model as feedback" / "the teammate receives the stderr message as feedback
+  and continues working instead of going idle". heavyq (destroy mode only) blocks with exit 2 and the reason on
+  stderr. They have no `last_assistant_message`, so claim-vs-ledger does not apply.
+- Failure modes are the PreToolUse ones above: another exit code, bad JSON or a timeout is a non-blocking error, and
+  every heavyq hook exits 0 with no output on any doubt, except the deliberate exit 2 of a destroy block.
+
+Golden tests (`internal/hook/testdata/{sessionstart,stop_block,stop_continue,system_message}.golden.json`) pin
+the exact JSON; `go test ./internal/hook -update` rewrites them after an intended change.
 
 ## Rewriting is supported: `updatedInput`
 
@@ -153,12 +197,14 @@ rewrite wins. Don't combine heavyq's hook with another hook that rewrites Bash c
 > | `.claude/settings.json` | Single project | Yes, can be committed to the repo |
 > | `.claude/settings.local.json` | Single project | No, gitignored when Claude Code saves a setting to it |
 
-`--scope user`, `--scope project` and `--scope local` (the default) map to these three files. The project root is
+`--scope user`, `--scope project` and `--scope local` (the default) map to these three files. `--features` picks
+which hooks to write (`queue` by default; `brief`, `stop`): exactly that set, so a smaller set removes the hooks
+of the others. The project root is
 the git top level of the current directory. `$CLAUDE_CONFIG_DIR` replaces `~/.claude` when set. The
 installer keeps every other key, writes `<file>.bak` before changing anything, replaces the file
 atomically, and is idempotent. It refuses (and leaves the file alone) if the file isn't valid JSON or
-`hooks` / `hooks.PreToolUse` have an unexpected type. `heavyq hook uninstall claude` removes only entries
-whose command ends in `hook claude-pretooluse`.
+`hooks` (or an event heavyq registers on, such as `hooks.PreToolUse`) has an unexpected type. `heavyq hook uninstall claude` removes only entries
+whose command is `<binary> hook claude-<name> [event]`.
 
 With `--scope project`, teammates who don't have heavyq installed are not blocked. For them the hook fails
 to start, which the docs classify as a non-blocking error, so their commands run unchanged.

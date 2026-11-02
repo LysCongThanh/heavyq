@@ -6,7 +6,9 @@
 - **leases** ([leases.md](leases.md)): one agent per item, shared by every worktree of the repository;
 - **proofs** ([gates.md](gates.md)): the run ledger says whether a command passed on this exact code.
 
-An item's status is derived from those facts, never from what an agent says or from a ticked box.
+An item's status is derived from those facts, never from what an agent says or from a ticked box. `heavyq brief`
+puts the lane's items in front of the agent after every compaction, and the stop gate ([steer.md](steer.md))
+keeps an agent from stopping while it holds one that is not proven.
 
 ```
 $ heavyq item ls
