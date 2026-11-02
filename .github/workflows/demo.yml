@@ -1,0 +1,71 @@
+name: demo
+
+# Re-records docs/proof.gif from real runs (docs/tapes/proof.tape: heavyq is built from the tagged commit and
+# runs against a tiny Go module) on every release tag, and on demand. It never pushes a commit: the GIF is
+# an artifact of the run and, for a tag, an asset on the release. To refresh the README GIF, download it and
+# commit it in a normal PR.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable
+      # The tape's hidden setup builds heavyq itself, so a broken build fails here before any recording.
+      - name: record docs/proof.gif
+        uses: charmbracelet/vhs-action@f6d7db07a432fcd3b06772628d36a57f96d95dcf # v2.1.1
+        with:
+          path: docs/tapes/proof.tape
+          version: v0.10.0
+          install-fonts: true
+      - name: GIF is a real recording
+        run: |
+          test -s docs/proof.gif
+          dur=$(ffprobe -v error -show_entries format=duration -of csv=p=0 docs/proof.gif)
+          echo "proof.gif: ${dur}s, $(stat -c %s docs/proof.gif) bytes"
+          awk -v d="$dur" 'BEGIN { exit !(d > 5 && d <= 15) }' || { echo "::error::proof.gif is ${dur}s, want 5-15 s"; exit 1; }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: proof-gif
+          path: docs/proof.gif
+          if-no-files-found: error
+
+  # Tag pushes only: attach the GIF to the release that release.yml publishes for the same tag.
+  demo-release-asset:
+    needs: demo
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # upload one asset to the release
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: proof-gif
+      - name: upload to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          # release.yml creates the release in parallel; wait up to 15 minutes for it to appear.
+          for i in $(seq 1 90); do
+            if gh release view "$TAG" > /dev/null 2>&1; then
+              gh release upload "$TAG" proof.gif --clobber
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::release $TAG did not appear within 15 minutes"
+          exit 1
