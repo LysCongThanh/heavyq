@@ -17,6 +17,15 @@ versions follow [Semantic Versioning](https://semver.org/).
   macOS, and the new per-remote **`env_path`** key puts extra directories first (`~/` is the remote home), for
   toolchains the login shell does not set, such as `~/.local/go-sdk/bin`. Linux remotes behave as before.
 
+- **`heavyq receipts [--day|--week|--month] [--share] [--json]`: a shareable, privacy-rounded summary**
+  (`internal/receipts`, [docs/receipts.md](docs/receipts.md)). Counts from the ledger window: heavy runs,
+  duplicate runs avoided (cache hits plus coalesced), runs held back in the queue, flaky and under-load
+  failures flagged, remote runs and machines, pool values handed out, wait p50/p95 and agents (lanes) served.
+  Each metric counts only what the ledger proves; "freezes avoided" is left out because admission records
+  cannot show it. `--share` rounds into ranges ("~40 runs/day", "about 1 in 8 runs"), drops every lane,
+  repository, command, path and machine name, adds the heavyq version and the window, and prints a compact
+  box-drawing card of at most 12 lines. The dashboard gets a "Receipts" panel (week/month toggle, "Copy to
+  share") fed by the new token-protected `GET /api/v1/receipts?window=day|week|month`.
 - **Mentor: break repeat failures, measured with a holdout** (`internal/mentor`, [docs/mentor.md](docs/mentor.md)).
   The same `run_id` (same tree, argv and env) failing again with a deterministic exit code gets one short note,
   built from ledger fields only: `[heavyq · tool data] <fact>.` at the 2nd failure, with `Next: <one action>.` at

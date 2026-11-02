@@ -51,6 +51,7 @@ keep other users, other machines and web pages out, not to separate privileges w
 | `GET stream` | Server-Sent Events: `event: snapshot` with the snapshot every `interval_ms`; `: keep-alive` comments every 15 s. One producer serves every open stream. |
 | `GET history?n=100` | `{"records":[...]}`, newest last, at most 1000 |
 | `GET insights?window=1h` | summary of history over `1h`, `6h`, `24h` or `7d`, in 12 buckets |
+| `GET receipts?window=week` | the receipts of `day`, `week` (default) or `month`: exact counts and the rounded share card (see [receipts.md](receipts.md)) |
 | `POST tickets/{id}/cancel` | 202. Waiting: leaves the queue. Running: SIGTERM to the process tree, SIGKILL after 10 s. Exit 78. |
 | `POST tickets/{id}/prio` `{"prio":1-9}` | 202 for waiting tickets, 409 for running ones |
 | `POST machines/{name}/pause`, `.../resume` | 200. Paused machines admit nothing new. |

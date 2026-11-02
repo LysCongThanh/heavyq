@@ -112,6 +112,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/v1/stream", s.api(s.stream))
 	mux.HandleFunc("GET /api/v1/history", s.api(s.historyList))
 	mux.HandleFunc("GET /api/v1/insights", s.api(s.insights))
+	mux.HandleFunc("GET /api/v1/receipts", s.api(s.receiptsHandler))
 	mux.HandleFunc("POST /api/v1/tickets/{id}/cancel", s.api(s.control(s.cancel)))
 	mux.HandleFunc("POST /api/v1/tickets/{id}/prio", s.api(s.control(s.reprio)))
 	mux.HandleFunc("POST /api/v1/machines/{name}/pause", s.api(s.control(s.pause(true))))

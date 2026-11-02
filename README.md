@@ -80,6 +80,7 @@ machines. It listens on loopback only. See [docs/dashboard.md](docs/dashboard.md
 | Claude Code hook (zero config) and what it relies on | [docs/claude-code-hook.md](docs/claude-code-hook.md), [docs/claude-code.md](docs/claude-code.md) |
 | Agent mode: terse output and the result digest | [docs/agent-mode.md](docs/agent-mode.md) |
 | History as a ledger (commit, tree, session) | [docs/history.md](docs/history.md) |
+| Receipts: a shareable, privacy-rounded summary (`heavyq receipts --share`) | [docs/receipts.md](docs/receipts.md) |
 | Ledger tail reader, indexes, `heavyq doctor --reindex` | [docs/ledger.md](docs/ledger.md) |
 | Cache and coalescing: never run the same gate twice | [docs/cache-and-coalescing.md](docs/cache-and-coalescing.md) |
 | Spare machines over SSH, by exact commit | [docs/remote.md](docs/remote.md) |
