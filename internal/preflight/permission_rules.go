@@ -14,6 +14,9 @@ type Rules struct {
 	Allow, Deny, Ask []string // the specifier inside Bash(...), "" for a bare "Bash"
 	// Bypass: defaultMode is bypassPermissions, or a rule allows every Bash command.
 	Bypass bool
+	// EditAllowed: defaultMode is acceptEdits, or an Edit/Write rule allows some file writes, so
+	// whether a `> file` redirection prompts depends on a path rule this package does not read.
+	EditAllowed bool
 	// HookInstalled: a settings file runs the heavyq PreToolUse hook (or enables the plugin).
 	HookInstalled bool
 }
@@ -46,6 +49,14 @@ func (r *Rules) Merge(settings []byte) error {
 	add(&r.Ask, doc.Permissions.Ask)
 	if doc.Permissions.DefaultMode == "bypassPermissions" {
 		r.Bypass = true
+	}
+	if doc.Permissions.DefaultMode == "acceptEdits" {
+		r.EditAllowed = true
+	}
+	for _, e := range doc.Permissions.Allow {
+		if strings.HasPrefix(e, "Edit") || strings.HasPrefix(e, "Write") {
+			r.EditAllowed = true
+		}
 	}
 	var hooks map[string][]hookGroup
 	_ = json.Unmarshal(doc.Hooks, &hooks) // a malformed hooks block only costs the hook detection
@@ -86,14 +97,20 @@ func bashSpec(rule string) (string, bool) {
 }
 
 // matchRule reports whether the rule specifier covers cmd, a single simple
-// command. "git status:*" is a prefix on a word boundary (the command alone
-// counts); any other "*" matches any text, spaces included; with no "*" the
-// whole command must be equal.
+// command. "git status:*" and "git status *" are a prefix on a word boundary
+// (the command alone counts, as recorded in testdata/permission-corpus); any
+// other "*" matches any text, spaces included; with no "*" the whole command
+// must be equal.
 func matchRule(spec, cmd string) bool {
 	if spec == "" {
 		return true
 	}
-	if pre, ok := strings.CutSuffix(spec, ":*"); ok {
+	pre, ok := strings.CutSuffix(spec, ":*")
+	if !ok {
+		pre, ok = strings.CutSuffix(spec, " *")
+		ok = ok && !strings.Contains(pre, "*") // "* --help *" has another wildcard: not a prefix
+	}
+	if ok {
 		return cmd == pre || strings.HasPrefix(cmd, pre+" ")
 	}
 	if !strings.Contains(spec, "*") {
@@ -114,26 +131,4 @@ func anyMatch(specs []string, cmd string) bool {
 		}
 	}
 	return false
-}
-
-// readOnly are commands Claude Code runs without asking. The list is short on
-// purpose: a command missing here is reported as "may prompt".
-var readOnly = map[string]bool{
-	"cd": true, "ls": true, "pwd": true, "cat": true, "head": true, "tail": true, "wc": true,
-	"echo": true, "true": true, "false": true, "grep": true, "sort": true, "uniq": true,
-	"which": true, "date": true, "whoami": true, "diff": true,
-}
-
-// readOnlyGit are git subcommands Claude Code runs without asking.
-var readOnlyGit = map[string]bool{"status": true, "diff": true, "log": true, "show": true}
-
-func isReadOnly(cmd string) bool {
-	w := strings.Fields(cmd)
-	if len(w) == 0 {
-		return true
-	}
-	if w[0] == "git" && len(w) > 1 {
-		return readOnlyGit[w[1]]
-	}
-	return readOnly[w[0]]
 }

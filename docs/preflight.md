@@ -39,7 +39,7 @@ Blocks come first. Each finding ends with `-> <what fixes it>`: a command, or an
 | **anchor** | no goal; no items; nothing left (every item proven); an open item without `proof:`; a proof that cannot run (no such gate, or its first program is not installed) | no known duration for a proof (it never passed here: the run length is a guess); a proof longer than the 30 min lease (only a heavyq run renews a lease); proofs that alone take longer than `--hours` across the lanes |
 | **dependencies** | an item blocked by `item block` or a `needs:` span (a question for the human); an `after:` id that is not an item; an `after:` loop | |
 | **environment** | under 1 GiB free on the repository's file system | under 5 GiB free; a configured remote that did not answer a 3 s probe; more lanes than heavy slots (local plus reachable remotes); a pool with fewer values than lanes |
-| **permissions** | a command that may prompt, or is denied, in Claude Code (below) | the headless advice when any may prompt |
+| **permissions** | a command that is denied, or surely prompts, in Claude Code (below) | a command that may prompt but the matcher is not sure; the headless advice when any may prompt |
 | **quota** | | 5 hour window at 80 % or more (or 50 % with a run over 5 h); 7 day quota at 85 % or more (or 70 % with a run of 12 h or more) |
 
 *Duration* is the median `run_s` of the passing runs of the proof's command in the ledger (by `cmd_hash`; a
@@ -63,12 +63,36 @@ plus `heavyq item done --run`, it evaluates the command the way Claude Code does
    -- go test ./...`, not `go test ./...` ([claude-code.md](claude-code.md), "Permissions"). With
    `hook.permission = "allow"` the hook approves it; otherwise an allow rule must match the wrapped command.
    The fix names that exact prefix, never a blanket `Bash(heavyq:*)`.
-3. The command is cut at `&&`, `||`, `;`, `|` and newlines (outside quotes) and every part must pass: a `deny`
-   rule, an `ask` rule, no `allow` rule that matches (`Bash(go test:*)` is a prefix on a word boundary, `*` any
-   text, otherwise exact). A short list of read-only commands (`ls`, `cat`, `git status`, ...) never prompts.
-   A command with `$( )` or backticks can only be covered by an exact rule.
+3. The command is cut at `&&`, `||`, `;`, `|`, `&` and newlines (outside quotes) and every part must pass. A leading
+   `timeout`, `time`, `nice`, `nohup`, `stdbuf`, `command`, bare `xargs`, and an assignment of a variable Claude Code
+   strips (`CI=1`, `NODE_ENV=test`, `GOOS=linux`, ...) are removed before an `allow` rule is matched; a `deny` or `ask` rule
+   matches past any of them. A part is then judged by, in order: a `deny` rule, an `ask` rule, a redirection to a file
+   (`> out.txt` asks unless an `Edit` rule allows it), an `allow` rule (`Bash(go test:*)` and `Bash(go test *)` are a prefix
+   on a word boundary and also match the bare command; any other `*` is any text; otherwise exact), and the built-in
+   read-only commands (`ls`, `cat`, `git status`, `find` without `-exec`/`-delete`, ...). A command with `$( )`, backticks or a
+   dangling `&&` can only be covered by an exact rule.
 
-It is conservative on purpose ("may prompt"): a false alarm costs one allow rule, a miss costs the night. For
+**Block or warn.** The check blocks (NO-GO) only when it is sure: a deny or ask rule matches, or no allow rule can match
+and nothing built in covers the command. What it cannot decide is a *warning*, `may prompt`, and the verdict stays GO:
+
+| Shape | Why it is only a warning |
+|---|---|
+| a leading `VAR=value` assignment not known to be stripped (`GOFLAGS=...`) | Claude Code's list of strippable variables is not documented |
+| a part ending in `&`, a `( )` subshell, a `for`/`while`/`if` construct | Claude Code was seen to ask for some although the rules match, and to allow others |
+| a command that may be built in as read-only (`tree`, `jq`, `awk`, ...), or a read-only one with an unquoted glob | the built-in set is larger than the documented part |
+| a redirection to a file when an `Edit` rule or `acceptEdits` exists | the file rules are not read |
+
+**Checked against Claude Code.** The matcher is not trusted from the documentation alone.
+`internal/preflight/testdata/permission-corpus/corpus.json` holds commands with the decision a live headless Claude Code
+made for them under given allow, deny and ask rules (and the heavyq hook rewrite), recorded with `claude -p
+--permission-prompts none --output-format stream-json`; the file names the Claude Code version (2.1.316) and says
+`"source": "recorded"`. `TestPermissionMatcherCorpus` fails when the matcher disagrees with a case. A case the matcher can
+only warn about carries `may_warn` with the reason, and the test insists it warns. To re-record, run
+`python3 -I internal/preflight/testdata/permission-corpus/record.py [ruleset ...]` (needs a logged-in `claude`; it uses the
+cheapest model and costs a fraction of a cent per ruleset) and read the diff: a changed decision is Claude Code changing.
+A headless run ignores a project's settings until its folder is trusted, so the recorder passes the rules with `--settings`.
+
+The checks stay conservative where it is cheap: a false alarm costs one allow rule, a miss costs the night. For
 unattended `claude -p` runs add `--permission-prompts none`, which denies instead of hanging (Claude Code
 2.1.259 and later); the rules still matter, or the denials become failures.
 

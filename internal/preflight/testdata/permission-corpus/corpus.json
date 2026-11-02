@@ -1,0 +1,545 @@
+{
+ "claude_code_version": "2.1.316",
+ "recorded": "2026-11-02",
+ "source": "recorded",
+ "rulesets": [
+  {
+   "name": "prefix",
+   "permissions": {
+    "allow": [
+     "Bash(go test:*)",
+     "Bash(npm run build)",
+     "Bash(make *)",
+     "Bash(npm run test*)",
+     "Bash(git * main)"
+    ]
+   },
+   "cases": [
+    {
+     "command": "go test ./...",
+     "decision": "allow",
+     "reason": ""
+    },
+    {
+     "command": "go test",
+     "decision": "allow",
+     "reason": ""
+    },
+    {
+     "command": "go testing ./...",
+     "decision": "refuse",
+     "reason": "asyncAgent"
+    },
+    {
+     "command": "go build ./...",
+     "decision": "refuse",
+     "reason": "asyncAgent"
+    },
+    {
+     "command": "npm run build",
+     "decision": "allow",
+     "reason": ""
+    },
+    {
+     "command": "npm run build --prod",
+     "decision": "refuse",
+     "reason": "asyncAgent"
+    },
+    {
+     "command": "npm run lint",
+     "decision": "refuse",
+     "reason": "asyncAgent"
+    },
+    {
+     "command": "make test",
+     "decision": "allow",
+     "reason": ""
+    },
+    {
+     "command": "make",
+     "decision": "allow",
+     "reason": ""
+    },
+    {
+     "command": "makefoo test",
+     "decision": "refuse",
+     "reason": "asyncAgent"
+    },
+    {
+     "command": "npm run test:unit",
+     "decision": "allow",
+     "reason": ""
+    },
+    {
+     "command": "git push origin main",
+     "decision": "allow",
+     "reason": ""
+    },
+    {
+     "command": "git push origin dev",
+     "decision": "refuse",
+     "reason": "asyncAgent"
+    }
+   ]
+  },
+  {
+   "name": "compound",
+   "permissions": {
+    "allow": [
+     "Bash(go test:*)",
+     "Bash(go vet:*)"
+    ]
+   },
+   "cases": [
+    {
+     "command": "go vet ./... && go test ./...",
+     "decision": "allow",
+     "reason": ""
+    },
+    {
+     "command": "go vet ./... && npm run lint",
+     "decision": "refuse",
+     "reason": "asyncAgent"
+    },
+    {
+     "command": "go test ./... || go vet ./...",
+     "decision": "allow",
+     "reason": ""
+    },
+    {
+     "command": "go test ./... ; go build ./...",
+     "decision": "refuse",
+     "reason": "asyncAgent"
+    },
+    {
+     "command": "go test ./... | tail -5",
+     "decision": "allow",
+     "reason": ""
+    },
+    {
+     "command": "go test ./... 2>&1 | tee out.log",
+     "decision": "refuse",
+     "reason": "asyncAgent"
+    },
+    {
+     "command": "go test ./... || echo failed",
+     "decision": "allow",
+     "reason": ""
+    },
+    {
+     "command": "cd sub && go test ./...",
+     "decision": "allow",
+     "reason": ""
+    },
+    {
+     "command": "go test ./... & go vet ./...",
+     "decision": "refuse",
+     "reason": "asyncAgent",
+     "may_warn": "documented as a separator but a command with & was refused; not modelled"
+    },
+    {
+     "command": "go test ./... && rm -f x",
+     "decision": "refuse",
+     "reason": "asyncAgent"
+    },
+    {
+     "command": "go test ./... > out.txt",
+     "decision": "refuse",
+     "reason": "asyncAgent"
+    },
+    {
+     "command": "go test ./... >/dev/null 2>&1",
+     "decision": "allow",
+     "reason": ""
+    },
+    {
+     "command": "go test ./... 2>&1",
+     "decision": "allow",
+     "reason": ""
+    },
+    {
+     "command": "go test ./... &&",
+     "decision": "refuse",
+     "reason": "asyncAgent"
+    },
+    {
+     "command": "go test -run 'A|B' ./...",
+     "decision": "allow",
+     "reason": ""
+    },
+    {
+     "command": "(go test ./...)",
+     "decision": "refuse",
+     "reason": "asyncAgent",
+     "may_warn": "a subshell was refused although the command inside matches an allow rule"
+    },
+    {
+     "command": "for d in a b; do go test ./$d; done",
+     "decision": "refuse",
+     "reason": "asyncAgent",
+     "may_warn": "a for loop was refused although its body matches an allow rule"
+    },
+    {
+     "command": "if go test ./...; then echo ok; fi",
+     "decision": "allow",
+     "reason": "",
+     "may_warn": "an if construct ran, a for loop did not; the rule for constructs is not known"
+    }
+   ]
+  },
+  {
+   "name": "env-and-wrappers",
+   "permissions": {
+    "allow": [
+     "Bash(go test:*)",
+     "Bash(npm run build)"
+    ]
+   },
+   "cases": [
+    {
+     "command": "CI=1 go test ./...",
+     "decision": "allow",
+     "reason": ""
+    },
+    {
+     "command": "GOFLAGS=-count=1 go test ./...",
+     "decision": "refuse",
+     "reason": "asyncAgent",
+     "may_warn": "Claude Code strips only some leading VAR= assignments and the list is not documented"
+    },
+    {
+     "command": "NODE_ENV=test npm run build",
+     "decision": "allow",
+     "reason": ""
+    },
+    {
+     "command": "timeout 30 go test ./...",
+     "decision": "allow",
+     "reason": ""
+    },
+    {
+     "command": "time go test ./...",
+     "decision": "allow",
+     "reason": ""
+    },
+    {
+     "command": "env CI=1 go test ./...",
+     "decision": "refuse",
+     "reason": "asyncAgent"
+    },
+    {
+     "command": "sh -c 'go test ./...'",
+     "decision": "refuse",
+     "reason": "asyncAgent"
+    },
+    {
+     "command": "xargs go test",
+     "decision": "allow",
+     "reason": ""
+    },
+    {
+     "command": "GOOS=linux go test ./...",
+     "decision": "allow",
+     "reason": ""
+    },
+    {
+     "command": "RUST_LOG=debug go test ./...",
+     "decision": "allow",
+     "reason": ""
+    },
+    {
+     "command": "FOO=bar go test ./...",
+     "decision": "refuse",
+     "reason": "asyncAgent",
+     "may_warn": "Claude Code strips only some leading VAR= assignments and the list is not documented"
+    },
+    {
+     "command": "CI=1 NODE_ENV=test go test ./...",
+     "decision": "allow",
+     "reason": ""
+    },
+    {
+     "command": "NO_COLOR=1 go test ./...",
+     "decision": "allow",
+     "reason": ""
+    },
+    {
+     "command": "TZ=UTC go test ./...",
+     "decision": "allow",
+     "reason": ""
+    },
+    {
+     "command": "nohup go test ./...",
+     "decision": "allow",
+     "reason": ""
+    },
+    {
+     "command": "nice -n 5 go test ./...",
+     "decision": "allow",
+     "reason": ""
+    },
+    {
+     "command": "xargs -n1 go test",
+     "decision": "refuse",
+     "reason": "asyncAgent"
+    },
+    {
+     "command": "/usr/local/go/bin/go test ./...",
+     "decision": "refuse",
+     "reason": "asyncAgent"
+    }
+   ]
+  },
+  {
+   "name": "deny-and-ask",
+   "permissions": {
+    "allow": [
+     "Bash(go test:*)",
+     "Bash(git push:*)",
+     "Bash(git diff:*)"
+    ],
+    "deny": [
+     "Bash(rm:*)",
+     "Bash(go test ./secret/...)"
+    ],
+    "ask": [
+     "Bash(git push:*)"
+    ]
+   },
+   "cases": [
+    {
+     "command": "git push origin main",
+     "decision": "refuse",
+     "reason": "asyncAgent"
+    },
+    {
+     "command": "git diff HEAD",
+     "decision": "allow",
+     "reason": ""
+    },
+    {
+     "command": "go test ./...",
+     "decision": "allow",
+     "reason": ""
+    },
+    {
+     "command": "go test ./secret/...",
+     "decision": "refuse",
+     "reason": "rule"
+    },
+    {
+     "command": "rm -f nothing.txt",
+     "decision": "refuse",
+     "reason": "subcommandResults"
+    },
+    {
+     "command": "go test ./... && rm -f nothing.txt",
+     "decision": "refuse",
+     "reason": "subcommandResults"
+    },
+    {
+     "command": "git diff HEAD && git push origin main",
+     "decision": "refuse",
+     "reason": "asyncAgent"
+    }
+   ]
+  },
+  {
+   "name": "complex-shell",
+   "permissions": {
+    "allow": [
+     "Bash(echo:*)",
+     "Bash(go test:*)",
+     "Bash(echo $(date))"
+    ]
+   },
+   "cases": [
+    {
+     "command": "echo $(date)",
+     "decision": "allow",
+     "reason": ""
+    },
+    {
+     "command": "echo $(whoami)",
+     "decision": "refuse",
+     "reason": "asyncAgent"
+    },
+    {
+     "command": "echo `date`",
+     "decision": "refuse",
+     "reason": "asyncAgent"
+    },
+    {
+     "command": "go test ./... $(echo -v)",
+     "decision": "refuse",
+     "reason": "asyncAgent"
+    },
+    {
+     "command": "echo 'a && b'",
+     "decision": "allow",
+     "reason": ""
+    },
+    {
+     "command": "echo \"a | b\"",
+     "decision": "allow",
+     "reason": ""
+    }
+   ]
+  },
+  {
+   "name": "no-rules",
+   "permissions": {},
+   "cases": [
+    {
+     "command": "ls -la",
+     "decision": "allow",
+     "reason": ""
+    },
+    {
+     "command": "git status",
+     "decision": "allow",
+     "reason": ""
+    },
+    {
+     "command": "cat README.md",
+     "decision": "allow",
+     "reason": ""
+    },
+    {
+     "command": "go test ./...",
+     "decision": "refuse",
+     "reason": "asyncAgent"
+    },
+    {
+     "command": "git push",
+     "decision": "refuse",
+     "reason": "asyncAgent"
+    },
+    {
+     "command": "echo hi > out.txt",
+     "decision": "refuse",
+     "reason": "asyncAgent"
+    },
+    {
+     "command": "find . -name x",
+     "decision": "allow",
+     "reason": ""
+    },
+    {
+     "command": "find . -delete",
+     "decision": "refuse",
+     "reason": "asyncAgent"
+    },
+    {
+     "command": "sed -n 1p README.md",
+     "decision": "allow",
+     "reason": ""
+    },
+    {
+     "command": "ls *.md",
+     "decision": "allow",
+     "reason": ""
+    },
+    {
+     "command": "echo hi 2>&1",
+     "decision": "allow",
+     "reason": ""
+    },
+    {
+     "command": "stat README.md",
+     "decision": "allow",
+     "reason": ""
+    }
+   ]
+  },
+  {
+   "name": "hook-rewrite-prefix-rule",
+   "hook": "rewrite",
+   "permissions": {
+    "allow": [
+     "Bash(go test:*)"
+    ]
+   },
+   "cases": [
+    {
+     "command": "go test ./...",
+     "decision": "refuse",
+     "reason": "asyncAgent"
+    },
+    {
+     "command": "echo hi",
+     "decision": "allow",
+     "reason": ""
+    }
+   ]
+  },
+  {
+   "name": "hook-rewrite-exact-prefix-rule",
+   "hook": "rewrite",
+   "permissions": {
+    "allow": [
+     "Bash(heavyq 4 --lane api --max-wait 300s -- go test *)"
+    ]
+   },
+   "cases": [
+    {
+     "command": "go test ./...",
+     "decision": "allow",
+     "reason": ""
+    },
+    {
+     "command": "go test",
+     "decision": "allow",
+     "reason": ""
+    }
+   ]
+  },
+  {
+   "name": "hook-rewrite-approved",
+   "hook": "rewrite-allow",
+   "permissions": {},
+   "cases": [
+    {
+     "command": "go test ./...",
+     "decision": "allow",
+     "reason": ""
+    }
+   ]
+  },
+  {
+   "name": "hook-rewrite-approved-but-denied",
+   "hook": "rewrite-allow",
+   "permissions": {
+    "deny": [
+     "Bash(heavyq:*)"
+    ]
+   },
+   "cases": [
+    {
+     "command": "go test ./...",
+     "decision": "refuse",
+     "reason": ""
+    }
+   ]
+  },
+  {
+   "name": "hook-rewrite-deny-on-original",
+   "hook": "rewrite",
+   "permissions": {
+    "allow": [
+     "Bash(heavyq 4 --lane api --max-wait 300s -- go test *)"
+    ],
+    "deny": [
+     "Bash(go test:*)"
+    ]
+   },
+   "cases": [
+    {
+     "command": "go test ./...",
+     "decision": "allow",
+     "reason": ""
+    }
+   ]
+  }
+ ]
+}
