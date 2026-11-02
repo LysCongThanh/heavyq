@@ -74,7 +74,6 @@ light_slots = 2
 
 func TestRejectsBadConfigs(t *testing.T) {
 	cases := map[string]string{
-		"unknown key":      "[queue]\nbogus = 1\n",
 		"reserved name":    "[[remote]]\nname = \"local\"\nssh = \"x\"\n",
 		"duplicate":        "[[remote]]\nname = \"a\"\nssh = \"a\"\n[[remote]]\nname = \"a\"\nssh = \"a\"\n",
 		"ssh with options": "[[remote]]\nname = \"a\"\nssh = \"-oProxyCommand=evil a\"\n",

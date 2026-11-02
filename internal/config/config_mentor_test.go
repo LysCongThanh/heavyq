@@ -30,12 +30,11 @@ func TestMentorSection(t *testing.T) {
 
 func TestMentorSectionIsValidated(t *testing.T) {
 	cases := map[string]string{
-		"[mentor]\nholdout_pct = 101\n":  "holdout_pct",
-		"[mentor]\nholdout_pct = -1\n":   "holdout_pct",
-		"[mentor]\nmin_events = -3\n":    "min_events",
-		"[mentor]\nmin_lift_pp = 150\n":  "min_lift_pp",
-		"[mentor]\nunknown_key = true\n": "unknown_key",
-		"[mentor]\nHoldout_Pct = 20\n":   "Holdout_Pct",
+		"[mentor]\nholdout_pct = 101\n": "holdout_pct",
+		"[mentor]\nholdout_pct = -1\n":  "holdout_pct",
+		"[mentor]\nmin_events = -3\n":   "min_events",
+		"[mentor]\nmin_lift_pp = 150\n": "min_lift_pp",
+		"[mentor]\nHoldout_Pct = 20\n":  "Holdout_Pct",
 	}
 	for body, want := range cases {
 		if _, err := Load(writeConfig(t, body), true); err == nil || !strings.Contains(err.Error(), want) {

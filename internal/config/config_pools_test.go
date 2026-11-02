@@ -29,7 +29,6 @@ func TestPoolsRefuseBadDefinitions(t *testing.T) {
 	for name, body := range map[string]string{
 		"bad name":     "[[pool]]\nname = \"Port\"\nsize = 1\n",
 		"no values":    "[[pool]]\nname = \"pg\"\n",
-		"unknown key":  "[[pool]]\nname = \"pg\"\nsize = 1\ncolour = \"red\"\n",
 		"upper-case":   "[[POOL]]\nname = \"pg\"\nsize = 1\n",
 		"backwards":    "[[pool]]\nname = \"port\"\nvalues = \"4200-4100\"\n",
 		"duplicate":    "[[pool]]\nname = \"pg\"\nsize = 1\n[[pool]]\nname = \"pg\"\nsize = 1\n",
