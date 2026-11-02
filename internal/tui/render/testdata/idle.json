@@ -1,0 +1,143 @@
+{
+  "schema": 1,
+  "generated_at": "2026-11-02T12:04:29Z",
+  "version": "0.5.0-dev",
+  "host": "workstation",
+  "config": {
+    "path": "",
+    "resource_gate": true,
+    "force_after_s": 1200,
+    "hold_for_s": 120,
+    "poll_s": 2,
+    "remote_down_max_s": 600
+  },
+  "machines": [
+    {
+      "name": "local",
+      "reachable": true,
+      "paused": false,
+      "metrics_known": true,
+      "cores": 8,
+      "load1": 0.6,
+      "max_load": 16.0,
+      "free_mb": 22000,
+      "total_mb": 32768,
+      "reserved_mb": 0,
+      "job_mb": 8000,
+      "light_mb": 500,
+      "reserve_mb": 1500,
+      "slots": [
+        {
+          "name": "heavy-1",
+          "kind": "heavy",
+          "state": "free"
+        },
+        {
+          "name": "heavy-2",
+          "kind": "heavy",
+          "state": "free"
+        },
+        {
+          "name": "light-1",
+          "kind": "light",
+          "state": "free"
+        }
+      ],
+      "admits": ""
+    },
+    {
+      "name": "mac",
+      "reachable": true,
+      "paused": false,
+      "metrics_known": true,
+      "cores": 8,
+      "load1": 0.2,
+      "max_load": 12.0,
+      "free_mb": 9100,
+      "total_mb": 0,
+      "reserved_mb": 0,
+      "job_mb": 8000,
+      "light_mb": 500,
+      "reserve_mb": 1500,
+      "slots": [
+        {
+          "name": "heavy-1",
+          "kind": "heavy",
+          "state": "free"
+        },
+        {
+          "name": "heavy-2",
+          "kind": "heavy",
+          "state": "free"
+        },
+        {
+          "name": "light-1",
+          "kind": "light",
+          "state": "free"
+        }
+      ],
+      "admits": ""
+    }
+  ],
+  "running": [],
+  "waiting": [],
+  "coalesced": [],
+  "cpu": {
+    "available": true,
+    "interval_ms": 500,
+    "lanes": [],
+    "outside": [
+      {
+        "name": "chrome",
+        "procs": 12,
+        "cpu_pct": 8,
+        "rss_mb": 3100
+      }
+    ],
+    "outside_total": {
+      "name": "outside",
+      "procs": 40,
+      "cpu_pct": 12,
+      "rss_mb": 6400
+    }
+  },
+  "story": [
+    {
+      "text": "The queue is empty: nothing runs and nothing waits.",
+      "parts": [
+        {
+          "text": "The queue is empty: nothing runs and nothing waits."
+        }
+      ]
+    }
+  ],
+  "gates": [
+    {
+      "lane": "api",
+      "gate": "ready",
+      "tree": "a1b2c3d4e5f6",
+      "state": "proven"
+    },
+    {
+      "lane": "web",
+      "gate": "ready",
+      "tree": "a1b2c3d4e5f6",
+      "state": "proven"
+    },
+    {
+      "lane": "docs",
+      "gate": "ready",
+      "tree": "a1b2c3d4e5f6",
+      "state": "proven"
+    },
+    {
+      "lane": "infra",
+      "gate": "ready",
+      "tree": "a1b2c3d4e5f6",
+      "state": "proven"
+    }
+  ],
+  "exceptions": [],
+  "pools": [],
+  "items": []
+}

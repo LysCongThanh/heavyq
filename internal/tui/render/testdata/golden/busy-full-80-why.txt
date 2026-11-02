@@ -1,0 +1,7 @@
+heavyq  2 running, 2 waiting, 4 proven, 1 unproven              12:04:31  2s ago
+WHY web ------------------------------------------------------------------------
+  lane web: 1 waiting.
+    waiting #2 for 1m10s (p4, pid 4004): npm run e2e
+      linuxi: load 16.00 >= 9.0 (1.50 x 6 cores)
+  no run of this lane in the history yet.
+Esc back  q quit

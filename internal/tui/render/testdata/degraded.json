@@ -1,0 +1,215 @@
+{
+  "schema": 1,
+  "generated_at": "2026-11-02T12:04:29Z",
+  "version": "0.5.0-dev",
+  "host": "workstation",
+  "config": {
+    "path": "",
+    "resource_gate": true,
+    "force_after_s": 1200,
+    "hold_for_s": 120,
+    "poll_s": 2,
+    "remote_down_max_s": 600
+  },
+  "machines": [
+    {
+      "name": "local",
+      "reachable": true,
+      "paused": false,
+      "metrics_known": true,
+      "cores": 8,
+      "load1": 3.0,
+      "max_load": 16.0,
+      "free_mb": 1200,
+      "total_mb": 16384,
+      "reserved_mb": 0,
+      "job_mb": 8000,
+      "light_mb": 500,
+      "reserve_mb": 1500,
+      "slots": [
+        {
+          "name": "heavy-1",
+          "kind": "heavy",
+          "state": "free"
+        },
+        {
+          "name": "heavy-2",
+          "kind": "heavy",
+          "state": "free"
+        },
+        {
+          "name": "light-1",
+          "kind": "light",
+          "state": "free"
+        }
+      ],
+      "admits": "RAM 1200 MB < 9500 MB needed (job 8000 + reserve 1500)"
+    },
+    {
+      "name": "linuxi",
+      "reachable": true,
+      "paused": true,
+      "metrics_known": true,
+      "cores": 8,
+      "load1": 0.4,
+      "max_load": 9.0,
+      "free_mb": 20000,
+      "total_mb": 0,
+      "reserved_mb": 0,
+      "job_mb": 8000,
+      "light_mb": 500,
+      "reserve_mb": 1500,
+      "slots": [
+        {
+          "name": "heavy-1",
+          "kind": "heavy",
+          "state": "free"
+        },
+        {
+          "name": "heavy-2",
+          "kind": "heavy",
+          "state": "free"
+        },
+        {
+          "name": "light-1",
+          "kind": "light",
+          "state": "free"
+        }
+      ],
+      "admits": ""
+    },
+    {
+      "name": "mac",
+      "reachable": false,
+      "paused": false,
+      "metrics_known": false,
+      "cores": 8,
+      "load1": 1.0,
+      "max_load": 16.0,
+      "free_mb": 20000,
+      "total_mb": 0,
+      "reserved_mb": 0,
+      "job_mb": 8000,
+      "light_mb": 500,
+      "reserve_mb": 1500,
+      "slots": [
+        {
+          "name": "heavy-1",
+          "kind": "heavy",
+          "state": "free"
+        },
+        {
+          "name": "heavy-2",
+          "kind": "heavy",
+          "state": "free"
+        },
+        {
+          "name": "light-1",
+          "kind": "light",
+          "state": "free"
+        }
+      ],
+      "admits": ""
+    }
+  ],
+  "running": [
+    {
+      "id": "4-00000000000000000001-4001-api",
+      "pid": 4001,
+      "lane": "api",
+      "prio": 4,
+      "light": false,
+      "target": "auto",
+      "candidates": [
+        "linuxi"
+      ],
+      "cmd": "go test -race ./...",
+      "since": "2026-11-02T12:03:19Z",
+      "wait_s": 2.0,
+      "cancel_requested": true,
+      "machine": "linuxi",
+      "slot": "heavy-1",
+      "claimed_at": "2026-11-02T12:03:21Z",
+      "run_s": 68.0,
+      "forced": true
+    }
+  ],
+  "waiting": [
+    {
+      "id": "4-00000000000000000004-4004-web",
+      "pid": 4004,
+      "lane": "web",
+      "prio": 4,
+      "light": false,
+      "target": "auto",
+      "candidates": [
+        "linuxi"
+      ],
+      "cmd": "npm run e2e",
+      "since": "2026-11-02T12:03:51Z",
+      "wait_s": 38.0,
+      "cancel_requested": false,
+      "needs": [
+        "pg"
+      ],
+      "position": 1,
+      "reasons": {
+        "linuxi": "paused by an operator"
+      },
+      "bypass_in_s": 900.0
+    }
+  ],
+  "coalesced": [],
+  "cpu": {
+    "available": true,
+    "interval_ms": 500,
+    "lanes": [],
+    "outside": [],
+    "outside_total": {
+      "name": "outside",
+      "procs": 0,
+      "cpu_pct": 0,
+      "rss_mb": 0
+    }
+  },
+  "story": [
+    {
+      "text": "1 agent waits because linuxi is paused.",
+      "parts": [
+        {
+          "text": "1 agent waits because linuxi is paused."
+        }
+      ]
+    }
+  ],
+  "gates": [],
+  "exceptions": [
+    {
+      "id": "machine|linuxi|paused",
+      "kind": "machine",
+      "severity": "warning",
+      "machine": "linuxi",
+      "text": "linuxi is paused: nothing new starts there.",
+      "evidence": {
+        "detail": "paused by an operator"
+      },
+      "action": {
+        "kind": "resume",
+        "target": "linuxi",
+        "command": "heavyq resume linuxi"
+      }
+    },
+    {
+      "id": "machine|mac|down",
+      "kind": "machine",
+      "severity": "warning",
+      "machine": "mac",
+      "text": "mac is unreachable.",
+      "evidence": {
+        "detail": "ssh: connect timed out"
+      }
+    }
+  ],
+  "pools": [],
+  "items": []
+}

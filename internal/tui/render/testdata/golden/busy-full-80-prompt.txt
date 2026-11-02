@@ -1,0 +1,20 @@
+heavyq  2 running, 2 waiting, 4 proven, 1 unproven              12:04:31  2s ago
+NEEDS YOU (3) ------------------------------------------------------------------
+  ● red gate  api  tree 3f2a9c1  go test ./...  failed 2x
+  ▲ starved  agent-ad17ea  go test ./internal/cli                         + prio
+  ● blocked  docs  item doc-7  needs a Stripe test key   heavyq item claim doc-7
+LANES --------------------------------------------------------------------------
+  ● run   api           p4  linuxi/h1  1m10s   go test -race ./...
+  ● run   docs          p5  local/h1   2m31s   npm run build
+> ○ wait  agent-ad17ea  p4  #1 auto    14m     load 16.00 >= 9.0  go test ./int…
+  ○ wait  web           p4  #2 auto    40s     load 16.00 >= 9.0  npm run e2e
+MACHINES -----------------------------------------------------------------------
+  local   ▪▪|▫▫▫▫▫  9.6G free  load 12.3/16.0  slots free h 1/2 l 1/1
+  linuxi  ▪▪▫▫|▫▫▫  5.4G free  load 16.0/9.0  ! load 16.00 >= 9.0
+  mac     ▪▪▪▪|▫▫▫  8.3G free  load 1.5/12.0  slots free h 2/2 l 1/1
+POOLS --------------------------------------------------------------------------
+  pg 2/3  port 1/100
+  2 agents wait because linuxi is over its load limit: agent-ad17ea is first and
+  the bypass applies in 6m.
+  Outside the queue, 33 chrome processes hold 7.5 GB, everything else 11 GB.
+cancel web (npm run e2e)?  y/n

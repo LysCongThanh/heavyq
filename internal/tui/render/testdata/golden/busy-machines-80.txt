@@ -1,0 +1,17 @@
+heavyq  2 running, 2 waiting, 4 proven, 1 unproven              12:04:31  2s ago
+MACHINES -----------------------------------------------------------------------
+  local   ▪▪|▫▫▫▫▫  9.6G free  load 12.3/16.0  slots free h 1/2 l 1/1
+          h1 docs  h2 free  l1 free
+  linuxi  ▪▪▫▫|▫▫▫  5.4G free  load 16.0/9.0  ! load 16.00 >= 9.0
+          h1 api  h2 free  l1 free
+  mac     ▪▪▪▪|▫▫▫  8.3G free  load 1.5/12.0  slots free h 2/2 l 1/1
+          h1 free  h2 free  l1 free
+POOLS --------------------------------------------------------------------------
+  pg 2/3  pg-1 web, pg-2 api
+  port 1/100  4101 docs
+OUTSIDE THE QUEUE --------------------------------------------------------------
+  chrome          33 procs     35% cpu    7.5G
+  code            14 procs     12% cpu    2.8G
+  slack            6 procs      2% cpu    980M
+  total           71 procs     61% cpu   18.0G
+⏎ why  / filter  m mode machines  ? help  q quit  read-only: --control to act

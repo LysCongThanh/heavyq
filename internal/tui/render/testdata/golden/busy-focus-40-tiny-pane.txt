@@ -1,0 +1,6 @@
+heavyq  2 running, 2 waiting, 4 proven,…
+NEEDS YOU (3) --------------------------
+  ● red gate  api  tree 3f2a9c1
+  ▲ starved  agent-ad17ea  go test ./in…
+  ● blocked  docs  item doc-7
+⏎ why  / filter  ? help  q quit

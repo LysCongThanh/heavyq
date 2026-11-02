@@ -1,0 +1,10 @@
+heavyq  idle, 4 proven                                          12:04:31  2s ago
+MACHINES -----------------------------------------------------------------------
+  local  ▪▪|▪▪▫▫▫  21.5G free  load 0.6/16.0  slots free h 2/2 l 1/1
+         h1 free  h2 free  l1 free
+  mac    ▪▪▪▪|▫▫▫  8.9G free  load 0.2/12.0  slots free h 2/2 l 1/1
+         h1 free  h2 free  l1 free
+OUTSIDE THE QUEUE --------------------------------------------------------------
+  chrome          12 procs      8% cpu    3.0G
+  total           40 procs     12% cpu    6.2G
+⏎ why  / filter  m mode machines  ? help  q quit  read-only: --control to act

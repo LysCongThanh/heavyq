@@ -1,0 +1,1 @@
+hq idle ok | local 21.5G load 0.6/16.0 | mac 8.9G load 0.2/12.0

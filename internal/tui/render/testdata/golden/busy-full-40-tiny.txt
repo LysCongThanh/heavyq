@@ -1,0 +1,19 @@
+heavyq  2 running, 2 waiting, 4 proven,…
+NEEDS YOU (3) --------------------------
+  ● red gate  api  tree 3f2a9c1
+  ▲ starved  agent-ad17ea  go test ./in…
+  ● blocked  docs  item doc-7
+LANES ----------------------------------
+  ● run   api           1m10s
+  ● run   docs          2m31s
+> ○ wait  agent-ad17ea  14m             
+  ○ wait  web           40s
+MACHINES -------------------------------
+  local   ▪▪|▫▫▫▫▫  9.6G free  load 12.…
+  linuxi  ▪▪▫▫|▫▫▫  5.4G free  load 16.…
+  mac     ▪▪▪▪|▫▫▫  8.3G free  load 1.5…
+POOLS ----------------------------------
+  pg 2/3  port 1/100
+  2 agents wait because linuxi is over
+  its load limit: agent-ad17ea is first…
+⏎ why  / filter  ? help  q quit

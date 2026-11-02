@@ -35,6 +35,19 @@ versions follow [Semantic Versioning](https://semver.org/).
     `deadline.RunWithin` and fail open. Golden tests pin each hook's JSON; table tests cover the stop decisions;
     an end-to-end test drives a temporary repository (claim, edit, Stop blocks with the next command, gate run,
     Stop allowed).
+||||||| parent of a40563a (feat: heavyq top, a terminal monitor for the pane next to your agents)
+- **`heavyq top`: a terminal monitor for the pane next to your agents** ([docs/top.md](docs/top.md)). It reads
+  the same snapshot as `status --json` and the dashboard and redraws every 2 s (`--interval`): what needs you
+  first (red gates bound to their tree, loops, starved jobs, machines down, blocked items), one row per ticket
+  with the short reason it waits, machines with a RAM bar marked at what a heavy job needs, pools and the story
+  sentence. Five display modes, `--mode full|focus|lanes|machines|line` or `m` at runtime (the last one is
+  remembered in `$XDG_STATE_HOME/heavyq/top-mode`); `--line` / `--once` print one frame for tmux
+  `status-right` or scripts. Keys: `j k g G Tab`, `Enter` (why), `/` filter, `r`, `?`, `y` (copy, OSC 52),
+  `q`; with `--control`, `c` (inline y/n), `+ -` (priority) and `p` (pause) go through the same control mailbox
+  and checks as the dashboard. No TUI framework: hand-rolled ANSI, alternate screen restored on exit,
+  SIGINT/TERM/HUP, Ctrl-Z/SIGCONT and panics, synchronized output, width measured in cells, `NO_COLOR`, ASCII
+  fallback, a 60-column floor. The one new dependency is `golang.org/x/term` (raw mode and terminal size).
+  Humans only: the `help agents` card is unchanged.
 
 - **macOS remotes: run heavy jobs on a spare Mac** ([docs/remote.md](docs/remote.md#a-spare-mac-as-a-remote)).
   A stock Mac (no `flock`, no `setsid`, no Homebrew) is now a valid `[[remote]]`. Where util-linux is missing the
