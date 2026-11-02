@@ -204,7 +204,7 @@ the git top level of the current directory. `$CLAUDE_CONFIG_DIR` replaces `~/.cl
 installer keeps every other key, writes `<file>.bak` before changing anything, replaces the file
 atomically, and is idempotent. It refuses (and leaves the file alone) if the file isn't valid JSON or
 `hooks` (or an event heavyq registers on, such as `hooks.PreToolUse`) has an unexpected type. `heavyq hook uninstall claude` removes only entries
-whose command is `<binary> hook claude-<name> [event]`.
+whose command is `<binary> hook claude-<name> [event]` for a hook some feature installs (a heavyq hook you wrote by hand, such as the mentor's `claude-posttooluse`, is left alone).
 
 With `--scope project`, teammates who don't have heavyq installed are not blocked. For them the hook fails
 to start, which the docs classify as a non-blocking error, so their commands run unchanged.

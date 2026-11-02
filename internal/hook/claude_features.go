@@ -119,6 +119,20 @@ func EntriesFor(bin string, features []string) []Entry {
 	return out
 }
 
+// ownsSubcommand reports whether name (`claude-stop`) is a hook some feature
+// installs. A heavyq hook the installer does not manage yet (one a user wrote
+// by hand) is left alone by install and uninstall.
+func ownsSubcommand(name string) bool {
+	for _, f := range Features {
+		for _, s := range f.specs {
+			if strings.Fields(s.Sub)[0] == name {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // managedEvents is every event some feature registers: the ones install and
 // uninstall look at.
 func managedEvents() map[string]bool {

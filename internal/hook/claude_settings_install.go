@@ -169,8 +169,8 @@ func isOurs(h any) bool {
 		return false
 	}
 	c, _ := m["command"].(string)
-	_, ours := ownedSubcommand(c)
-	return ours
+	name, ours := ownedSubcommand(c)
+	return ours && ownsSubcommand(name)
 }
 
 // withoutOurs drops heavyq hooks (and matcher groups left empty by that).

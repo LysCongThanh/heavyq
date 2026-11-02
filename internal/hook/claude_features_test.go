@@ -180,3 +180,20 @@ func TestOwnedSubcommand(t *testing.T) {
 		}
 	}
 }
+
+// A heavyq hook the installer does not manage (the mentor's PostToolUse hook, written by hand) survives install,
+// narrowing and uninstall untouched.
+func TestInstallLeavesHandWrittenHeavyqHooksAlone(t *testing.T) {
+	orig := []byte(`{"hooks":{"PostToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"heavyq hook claude-posttooluse"}]}]}}`)
+	full, _, err := MergeEntries(orig, EntriesFor(testBin, allFeatures()))
+	if err != nil || !strings.Contains(string(full), "claude-posttooluse") {
+		t.Fatalf("install must keep it: %v\n%s", err, full)
+	}
+	un, _, err := MergeUninstall(full)
+	var a, z any
+	_ = json.Unmarshal(orig, &a)
+	_ = json.Unmarshal(un, &z)
+	if err != nil || !reflect.DeepEqual(a, z) {
+		t.Fatalf("uninstall must leave it: %v\n%s", err, un)
+	}
+}
