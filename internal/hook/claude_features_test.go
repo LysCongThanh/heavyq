@@ -78,12 +78,12 @@ func TestInstallAllFeaturesIsIdempotentAndComplete(t *testing.T) {
 	if err != nil || !changed {
 		t.Fatalf("changed=%v err=%v", changed, err)
 	}
-	want := []string{"PreToolUse", "SessionStart", "Stop", "SubagentStop", "TaskCompleted", "TeammateIdle"}
+	want := []string{"PreToolUse", "SessionStart", "Stop", "SubagentStop", "TaskCompleted", "TeammateIdle", "UserPromptSubmit"}
 	if got := events(t, b); !reflect.DeepEqual(got, want) {
 		t.Fatalf("events %v, want %v\n%s", got, want, b)
 	}
 	for _, c := range []string{testBin + " hook claude-pretooluse", testBin + " hook claude-sessionstart", testBin + " hook claude-stop\"",
-		testBin + " hook claude-stop SubagentStop", testBin + " hook claude-stop TaskCompleted", testBin + " hook claude-stop TeammateIdle"} {
+		testBin + " hook claude-stop SubagentStop", testBin + " hook claude-stop TaskCompleted", testBin + " hook claude-stop TeammateIdle", testBin + " hook claude-userpromptsubmit"} {
 		if !strings.Contains(string(b), c) {
 			t.Errorf("missing %s in\n%s", c, b)
 		}
