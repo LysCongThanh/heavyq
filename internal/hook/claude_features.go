@@ -55,7 +55,19 @@ var Features = []Feature{
 		}},
 	{Name: "stance", Summary: "UserPromptSubmit: switch the lane into a stance on a keyword (or evidence) and inject it once; the brief carries it after compaction",
 		specs: []hookSpec{{"UserPromptSubmit", "", "claude-userpromptsubmit", stopFamilyTimeoutSecs}}},
+	{Name: "flow", Summary: "PermissionRequest, Notification, StopFailure, PostModelSwitch, PostToolUse: observe where agents wait on a person (never decides); feeds `heavyq flow`",
+		specs: []hookSpec{
+			{"PermissionRequest", "", "claude-flow", stopFamilyTimeoutSecs},
+			{"Notification", flowNotificationMatcher, "claude-flow", stopFamilyTimeoutSecs},
+			{"StopFailure", "", "claude-flow", stopFamilyTimeoutSecs},
+			{"PostModelSwitch", "", "claude-flow", stopFamilyTimeoutSecs},
+			{"PostToolUse", "", "claude-flow", stopFamilyTimeoutSecs},
+		}},
 }
+
+// flowNotificationMatcher: the notification types that mean a person is needed.
+// Letters, digits, `_` and `|` only, so Claude Code reads it as an exact list.
+const flowNotificationMatcher = "permission_prompt|idle_prompt|agent_needs_input"
 
 // DefaultFeatures is what install does without --features: the queue hook only.
 var DefaultFeatures = []string{"queue"}

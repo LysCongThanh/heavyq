@@ -122,6 +122,10 @@ func (r *Record) set(key string, ln lineBuf, i int) (int, bool) {
 		r.Item, i, ok = ln.str(i)
 	case "gate":
 		r.Gate, i, ok = ln.str(i)
+	case "agent":
+		r.Agent, i, ok = ln.str(i)
+	case "model":
+		r.Model, i, ok = ln.str(i)
 	case "repo":
 		r.Repo, i, ok = ln.str(i)
 	case "worktree":

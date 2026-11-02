@@ -1,0 +1,16 @@
+{
+  "now": "2026-11-02T10:40:00Z",
+  "leases": [
+    {"at": "2026-11-02T10:00:00Z", "op": "claim", "item": "login-api", "lane": "api", "session": "s1"},
+    {"at": "2026-11-02T10:12:00Z", "op": "renew", "item": "login-api", "lane": "api", "session": "s1"},
+    {"at": "2026-11-02T10:36:00Z", "op": "done", "item": "login-api", "lane": "api", "session": "s1", "commit": "abc1234"}
+  ],
+  "records": [
+    {"end": "2026-11-02T10:10:00Z", "lane": "api", "session": "s1", "item": "login-api", "wait_s": 60, "run_s": 120, "exit": 0, "cmd": "go build ./..."},
+    {"end": "2026-11-02T10:20:00Z", "lane": "api", "session": "s1", "item": "login-api", "gate": "fast", "run_s": 300, "exit": 1, "cmd": "go test ./..."},
+    {"end": "2026-11-02T10:35:00Z", "lane": "api", "session": "s1", "item": "login-api", "gate": "fast", "wait_s": 30, "run_s": 240, "exit": 0, "cmd": "go test ./..."}
+  ],
+  "items": [
+    {"Status": {"id": "login-api", "state": "proven", "lane": "api", "session": "s1", "commit": "abc1234", "at": "2026-11-02T10:35:00Z", "done": true}, "Gate": "fast"}
+  ]
+}

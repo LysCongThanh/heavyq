@@ -75,6 +75,7 @@ func (r *run) tag(rec *history.Record, co gitutil.Checkout) {
 	rec.CmdHash = history.CmdHash(r.opts.Argv)
 	rec.RunID = r.runID(co)
 	rec.Session, rec.Item, rec.Gate = r.opts.Session, r.opts.Item, r.opts.Gate
+	rec.Agent, rec.Model = agentModelOf(co.Worktree, rec.Session) // from the session meta record, when there is one
 	rec.Needs = strings.Join(pools.FormatNeeds(r.opts.Needs), ",")
 	if r.me != nil { // a cache hit is recorded before the ticket exists
 		rec.Pools = pools.FormatHeld(r.opts.Needs, r.me.Pools)
