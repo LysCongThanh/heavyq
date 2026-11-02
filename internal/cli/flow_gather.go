@@ -67,6 +67,7 @@ func gatherFlow(cfg *config.Config, dir string, now time.Time) (flow.Input, stri
 	if m := sessionmeta.Latest(common); m != nil {
 		in.Session = sessionInfo(m)
 	}
+	gatherFlowExtras(&in, common, root, from)
 	return in, common, nil
 }
 

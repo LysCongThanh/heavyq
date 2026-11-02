@@ -13,17 +13,16 @@ func headerFacts(f Facts, remaining, running int, lastProof time.Time) (Forecast
 	in := forecast.Input{Now: f.Now, Remaining: remaining, Running: running, LastProof: lastProof}
 	constraint := ""
 	if st := f.State; st != nil {
-		if t := st.Throughput; t != nil {
-			in.N, in.P50 = t.N, time.Duration(t.P50ClaimToS*float64(time.Second))
-			if !t.LastProof.IsZero() {
-				in.LastProof = t.LastProof
-			}
+		t := st.Throughput
+		in.N, in.P50 = t.N, time.Duration(t.P50ClaimToProofS*float64(time.Second))
+		if t.LastProof != nil {
+			in.LastProof = *t.LastProof
 		}
-		if run := st.RunInfo(); run != nil {
-			in.ExpectedEnd = run.ExpectedEnd
+		if run := st.RunInfo(); run != nil && run.ExpectedEnd != nil {
+			in.ExpectedEnd = *run.ExpectedEnd
 		}
-		if c := st.Constraint; c != nil && c.Significant && c.State != "" && c.State != "none" {
-			constraint = c.State
+		if c := st.Constraint; c.Significant && c.State != "" && c.State != "none" {
+			constraint = string(c.State)
 		}
 	}
 	res := forecast.Compute(in)

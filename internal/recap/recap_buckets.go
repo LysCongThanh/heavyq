@@ -3,7 +3,7 @@ package recap
 import (
 	"sort"
 
-	"github.com/LysCongThanh/heavyq/internal/flowview"
+	"github.com/LysCongThanh/heavyq/internal/flow"
 	"github.com/LysCongThanh/heavyq/internal/itemstatus"
 )
 
@@ -44,7 +44,7 @@ func inFlight(it Item) Line {
 
 // addNeedsYou lists what the flow state says waits for a person and no blocked
 // item already covers (a permission prompt has no item to claim).
-func (r *Recap) addNeedsYou(st *flowview.State) {
+func (r *Recap) addNeedsYou(st *flow.Snapshot) {
 	if st == nil {
 		return
 	}

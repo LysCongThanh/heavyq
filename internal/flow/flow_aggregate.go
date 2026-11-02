@@ -32,11 +32,9 @@ type Throughput struct {
 type Constraint struct {
 	State State   `json:"state"`
 	Share float64 `json:"share"`
-	// Significant: the share is at least SignificantShare. The design also asks
-	// that it exceed the state's own baseline (an EWMA of past shares, so a
-	// large but normal share is not news); that needs history this package does
-	// not have, so for now the threshold alone decides and a baseline gate is
-	// the next step (docs/flow.md).
+	// Significant: the share is at least SignificantShare and above the state's
+	// own baseline (an EWMA of its past shares, see Baseline), so a share that
+	// is large but normal is not news.
 	Significant bool `json:"significant"`
 }
 
@@ -56,14 +54,14 @@ func aggregate(in Input, tls []Timeline, holds map[string]*itemHolds) (Fleet, Co
 	if f.LeadS > 0 {
 		f.FlowEfficiency = f.ByStateS[Working] / f.LeadS
 	}
-	return f, constraintOf(f), throughputOf(in, holds, from, unionSeconds(all))
+	return f, constraintOf(f, in.Baseline), throughputOf(in, holds, from, unionSeconds(all))
 }
 
 // constraintOf picks the state with the largest share of lead time. Working is
 // the work itself, not a wait, so it is never the constraint (its share is the
 // flow efficiency). Ties go to the state of higher priority, which is the one a
-// person can act on soonest.
-func constraintOf(f Fleet) Constraint {
+// person can act on soonest. base may be nil (no history): the threshold decides.
+func constraintOf(f Fleet, base *Baseline) Constraint {
 	if f.LeadS <= 0 {
 		return Constraint{}
 	}
@@ -83,7 +81,7 @@ func constraintOf(f Fleet) Constraint {
 		return Constraint{}
 	}
 	share := f.ByStateS[states[0]] / f.LeadS
-	return Constraint{State: states[0], Share: share, Significant: share >= SignificantShare}
+	return Constraint{State: states[0], Share: share, Significant: share >= SignificantShare && share > base.Of(states[0])}
 }
 
 // throughputOf counts the items proven inside the window per hour the fleet was

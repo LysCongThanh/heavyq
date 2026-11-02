@@ -33,19 +33,44 @@ func Dir(common string) string { return filepath.Join(common, "heavyq", "flow") 
 // StatePath is state.json.
 func StatePath(common string) string { return filepath.Join(Dir(common), "state.json") }
 
+// maxStateBytes bounds what is read: a state file is a few KB.
+const maxStateBytes = 1 << 20
+
+// ErrNoState: there is no state file (nothing has been materialised here).
+var ErrNoState = errors.New("no flow state")
+
 // Read returns the materialised state. A repository that has none yet is
 // (nil, nil): callers show "no flow data", not an error.
 func Read(common string) (*flow.Snapshot, error) {
-	b, err := os.ReadFile(StatePath(common))
-	if errors.Is(err, fs.ErrNotExist) {
+	s, err := ReadFile(StatePath(common))
+	if errors.Is(err, ErrNoState) {
 		return nil, nil
 	}
+	return s, err
+}
+
+// ReadFile parses the state file at path, the one reader every surface shares
+// (the status line, top, recap, the brief). A missing file is ErrNoState; a file
+// of another schema, too large or one that does not parse is an error: hot
+// callers then say nothing.
+func ReadFile(path string) (*flow.Snapshot, error) {
+	f, err := os.Open(path)
 	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, ErrNoState
+		}
 		return nil, fmt.Errorf("flow state: %w", err)
 	}
+	defer func() { _ = f.Close() }()
+	if st, err := f.Stat(); err != nil || st.Size() > maxStateBytes {
+		return nil, fmt.Errorf("flow state %s: unreadable or too large", path)
+	}
 	var s flow.Snapshot
-	if err := json.Unmarshal(b, &s); err != nil {
-		return nil, fmt.Errorf("flow state %s: %w", StatePath(common), err)
+	if err := json.NewDecoder(f).Decode(&s); err != nil {
+		return nil, fmt.Errorf("flow state %s: %w", path, err)
+	}
+	if s.Schema != flow.SchemaVersion {
+		return nil, fmt.Errorf("flow state %s: schema %d, this heavyq reads %d", path, s.Schema, flow.SchemaVersion)
 	}
 	return &s, nil
 }

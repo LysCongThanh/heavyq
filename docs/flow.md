@@ -27,7 +27,7 @@ item its lane held when it started, so a minute is never counted twice.
 | `proving` | runs tagged with a gate, or whose command is the item's proof (`run_s`) |
 | `rework` | from a failed proof to the next proof attempt |
 | `blocked_human` | `heavyq item block`; a permission or idle prompt, input wanted or a stopped turn (hooks, below) |
-| `ci_wait`, `merge_wait`, `conflict_rework` | gh and git, **optional**: see "Not in this version" |
+| `ci_wait`, `merge_wait`, `conflict_rework` | gh and git, **optional**: see "Collectors: git and gh" |
 | `done_proven`, `claimed_unproven` | end a timeline (no duration): the item's derived status says so |
 
 Where spans overlap the highest wins: `blocked_human`, `proving`, `conflict_rework`, `ci_wait`, `merge_wait`,
@@ -44,7 +44,10 @@ later).
   claim an item's proof followed to the proof (`p50_claim_to_proof_s`). Without pull requests "proven" is the proof,
   not the merge.
 - **The constraint** is the state with the largest share of lead time, excluding `working` (that is the work itself;
-  its share is the flow efficiency). `significant` is true when the share is at least 0.30.
+  its share is the flow efficiency). `significant` is true when the share is at least 0.30 **and** above the state's own
+  baseline: an exponentially weighted average (alpha 0.2) of the share that state held in past windows, folded in at most
+  once per 30 minutes and kept in `state.json` (`baseline`). The baseline starts empty, so a new wait is news at once; a wait
+  that persists is learned as normal over hours, and a large but normal share is no longer flagged.
 
 ## `state.json`
 
@@ -65,7 +68,10 @@ later).
 Other tools (the status line, `top`, recap) read this file in parallel, so the shape is a contract: a field may be
 added, never renamed or retyped.
 
-- `run` is `null` until the preflight records run spans. `session` is `null` until a session meta record exists.
+- `run` is `null` unless a run span is open (`internal/runspan`, from `heavyq preflight`); then it is
+  `{"id","started","expected_end"(or null),"goal","items"(count),"parallel"}`. `session` is `null` until a session meta record exists.
+- `baseline` (`{"at","shares":{"<state>":share}}`, additive, optional) is what the constraint finder learned is normal.
+  Delete the file to forget it.
 - `constraint.state` is `""` when there is no lead time. `needs_you` and `lanes` are `[]` when empty.
 - `throughput.last_proof` is when the newest item in the window was proven, `null` when none was (with `p50_claim_to_proof_s`
   it tells "nothing proven for twice the median while lanes work", the at-risk signal).
@@ -129,23 +135,47 @@ percentages, change points). It skips the write when nothing changed in the last
 cadence costs a small read. In Go the same call is `sessionmeta.RecordStatusline` (`internal/sessionmeta`), for the
 status line command to use in-process.
 
+## Collectors: git and gh
+
+A collector returns spans for an item (`flow.External`) and they are painted into its timeline like any other.
+They live in `internal/flow/collect`, which is the only place that runs git or gh; `internal/flow` stays pure. A
+branch or pull request belongs to the item whose id its name carries: `feat/flow-collectors` is the item
+`flow-collectors`, the longest id wins. A repository with no anchor items collects nothing.
+
+- **`conflict_rework` (git, local, works offline).** For every branch named after an item, the merge commits that
+  merged the default branch (origin's HEAD, else `origin/main`, `main`, ...) in and conflicted. The conflict is
+  found by redoing the merge (`git merge-tree`, git 2.38 or newer; older git reads the merge's combined diff and can
+  miss a conflict settled by taking one side). Git knows when a merge was made, not how long it took: the span
+  ends at the merge and starts at the branch's previous commit, between one and 15 minutes before it. A clean merge of main is no
+  rework. The conflicted files are kept (`flow.ConflictHotspots` ranks them: one file in at least 30% of the conflicts is a
+  structural hotspot, not bad luck).
+- **`ci_wait` and `merge_wait` (gh, optional).** `ci_wait` is every workflow run on an item's branch, from its start
+  to its end (to now while it is going): each push and each rerun is a run, so a convoy of reruns shows as one.
+  `merge_wait` runs from the moment the newest commit's runs were all green until the pull request was merged (until now while
+  it is not); drafts and closed pull requests wait for nothing.
+
+gh is used only when it is on the PATH and logged in, and it **fails open**: offline, unauthenticated, slow (3 s) or a
+repository not on GitHub, it yields nothing, or the spans of its last good answer, and never fails the refresh.
+The two calls (`gh pr list`, `gh run list`) are cached in `<common>/heavyq/flow/gh-cache.json` and made **at most
+once per five minutes**, a failed call included. Spans still open are cut five minutes after the last good answer, so stale data
+never claims a wait that has since ended. `HEAVYQ_FLOW_GH=off` turns gh off; git stays on.
+
 ## Not in this version
 
-- **`ci_wait`, `merge_wait`, `conflict_rework`.** They need gh and git. `flow.Input.External` and `flow.Collector`
-  are the typed hook: a collector returns spans for an item and they are painted into its timeline like any
-  other. No collector ships yet, so these states never appear.
-- **The baseline in the constraint finder.** The design asks that the constraint also exceed its own EWMA baseline, so
-  a large but normal share is not news. The finder has no history to build one from yet, so only the 0.30 threshold
-  decides.
-- **Run spans.** `run` stays `null` until the preflight fills `<common>/heavyq/runs/`.
+- **Item names from agent branches.** A branch is matched to an item by name; an agent's work tree branch
+  (`worktree-agent-...`) names no item, so its merges and runs are not attributed.
+- **The run span as the window.** `run` is filled, but the aggregates still use the last four hours; a run span
+  replacing the window is the next step.
 
 ## Files
 
 | Path (under `<git common dir>/heavyq/`) | What |
 |---|---|
 | `flow/state.json` | the materialised state |
+| `flow/gh-cache.json` | the last answer of gh and when it was asked |
 | `flow/events.jsonl` (`.1`) | hook observations, append-only, rotated at 512 KiB |
 | `flow/state.lock` | the flock |
+| `runs/<id>.json` | run spans (`internal/runspan`) |
 | `sessions/<session>.meta.json` | model, agent version, rate limits |
 
 Nothing is committed: it all lives under the git common dir, shared by every work tree of the repository.

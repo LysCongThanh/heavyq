@@ -6,6 +6,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/LysCongThanh/heavyq/internal/flow"
+	"github.com/LysCongThanh/heavyq/internal/flowstate"
 	"github.com/LysCongThanh/heavyq/internal/flowview"
 	"github.com/LysCongThanh/heavyq/internal/notify"
 	"github.com/LysCongThanh/heavyq/internal/tui/render"
@@ -59,7 +61,7 @@ func Run(o Options) int {
 		common, ok = flowview.CommonDirOf(dir)
 	}
 	if ok {
-		st, err := flowview.Read(flowview.Path(common))
+		st, err := flowstate.ReadFile(flowstate.StatePath(common))
 		if err != nil {
 			st = nil // no state, a bad one or another schema: say nothing
 		}
@@ -87,13 +89,13 @@ func Run(o Options) int {
 }
 
 // sideEffects are the cheap or detached things a status-line call also does.
-func (o Options) sideEffects(common string, in Input, st *flowview.State, now time.Time) {
+func (o Options) sideEffects(common string, in Input, st *flow.Snapshot, now time.Time) {
 	recordSessionMeta(common, in, now)
 	if o.SpawnRefresh != nil && NeedsRefresh(st, now) && ClaimRefresh(common, now) {
 		o.SpawnRefresh(in.Dir())
 	}
 	if !o.NoNotify {
-		notify.Check(common, st.NotifyFacts(now), notify.Options{
+		notify.Check(common, flowview.NotifyFacts(st, now), notify.Options{
 			Budget:   notify.BudgetFromEnv(o.Getenv),
 			Channels: o.channels(),
 		})
