@@ -18,15 +18,23 @@ func allFeatures() []string {
 	return names
 }
 
+// hooksOf is the array of groups per event; an event whose value is not an array (settings may hold odd shapes
+// of events heavyq does not manage) is left out.
 func hooksOf(t *testing.T, b []byte) map[string][]any {
 	t.Helper()
 	var v struct {
-		Hooks map[string][]any `json:"hooks"`
+		Hooks map[string]any `json:"hooks"`
 	}
 	if err := json.Unmarshal(b, &v); err != nil {
 		t.Fatalf("%v\n%s", err, b)
 	}
-	return v.Hooks
+	out := map[string][]any{}
+	for event, val := range v.Hooks {
+		if arr, ok := val.([]any); ok {
+			out[event] = arr
+		}
+	}
+	return out
 }
 
 func events(t *testing.T, b []byte) []string {
