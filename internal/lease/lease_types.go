@@ -42,6 +42,9 @@ type Lease struct {
 	Acquired time.Time `json:"acquired"`
 	Renewed  time.Time `json:"renewed"`
 	Expires  time.Time `json:"expires"`
+	// Paths are the globs the item declared when it was claimed (anchor
+	// `paths:`); what overlap checks of other claims compare. nil: undeclared.
+	Paths []string `json:"paths,omitempty"`
 	// Stale is set by List: the lease is expired, or its explicit owner pid is gone.
 	Stale bool `json:"stale,omitempty"`
 }

@@ -38,14 +38,20 @@ type File struct {
 
 // Item is one checklist line.
 type Item struct {
-	ID       string `json:"id"`
-	Text     string `json:"text"` // without the id prefix and the proof/needs spans
-	Checked  bool   `json:"checked"`
-	Proof    Proof  `json:"proof"`
-	Needs    string `json:"needs,omitempty"`
-	Source   string `json:"source"`    // file the item was read from
-	Line     int    `json:"line"`      // 1-based
-	ReadOnly bool   `json:"read_only"` // true for extra sources: heavyq never edits them
+	ID      string `json:"id"`
+	Text    string `json:"text"` // without the id prefix and the proof/needs spans
+	Checked bool   `json:"checked"`
+	Proof   Proof  `json:"proof"`
+	Needs   string `json:"needs,omitempty"`
+	// Paths are the globs an item says it touches (`paths:`), repository-relative.
+	// `claim` refuses an item whose paths overlap a live lease's. Empty: undeclared.
+	Paths []string `json:"paths,omitempty"`
+	// After are the ids of the items that must be proven or done first (`after:`);
+	// `claim --next` passes the item over until they are.
+	After    []string `json:"after,omitempty"`
+	Source   string   `json:"source"`    // file the item was read from
+	Line     int      `json:"line"`      // 1-based
+	ReadOnly bool     `json:"read_only"` // true for extra sources: heavyq never edits them
 }
 
 // Proof says how an item is proven.

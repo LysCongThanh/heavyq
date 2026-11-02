@@ -45,6 +45,8 @@ func ParseExtra(path string, data []byte) ([]Item, []Warning) {
 			Checked: checked,
 			Proof:   meta.proof,
 			Needs:   meta.needs,
+			Paths:   meta.paths,
+			After:   meta.after,
 			Source:  path, Line: n, ReadOnly: true,
 		})
 		return true

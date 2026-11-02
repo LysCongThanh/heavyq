@@ -40,10 +40,12 @@ type itemMeta struct {
 	text  string // line text without those spans, whitespace collapsed
 	proof Proof
 	needs string
+	paths []string // `paths:` globs, cleaned
+	after []string // `after:` ids
 	msgs  []string // problems to report as warnings
 }
 
-// extractMeta pulls the `proof: ...` and `needs: ...` code spans out of raw.
+// extractMeta pulls the `proof:`, `needs:`, `paths:` and `after:` code spans out of raw.
 // Other code spans stay in the text. The first of each kind wins.
 func extractMeta(raw string) itemMeta {
 	var m itemMeta
@@ -60,6 +62,10 @@ func extractMeta(raw string) itemMeta {
 		switch key {
 		case "proof":
 			m.setProof(val)
+		case "paths":
+			m.setPaths(val)
+		case "after":
+			m.setAfter(val)
 		case "needs":
 			if m.needs != "" {
 				m.msgs = append(m.msgs, "more than one `needs:`; the first one is used")
@@ -75,9 +81,9 @@ func extractMeta(raw string) itemMeta {
 	return m
 }
 
-// metaKey recognises "proof: v" / "needs: v" (key case-insensitive).
+// metaKey recognises "proof: v", "needs: v", "paths: v" and "after: v" (key case-insensitive).
 func metaKey(content string) (key, val string, ok bool) {
-	for _, k := range []string{"proof", "needs"} {
+	for _, k := range []string{"proof", "needs", "paths", "after"} {
 		if len(content) > len(k) && strings.EqualFold(content[:len(k)], k) && content[len(k)] == ':' {
 			return k, strings.TrimSpace(content[len(k)+1:]), true
 		}

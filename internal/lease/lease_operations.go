@@ -26,12 +26,7 @@ func (s *Store) Claim(item string, owner Owner) (Lease, error) {
 	if err := owner.validate(); err != nil {
 		return Lease{}, err
 	}
-	var out Lease
-	err := s.withLock(func() (err error) {
-		out, err = s.claimLocked(item, owner)
-		return err
-	})
-	return out, err
+	return s.ClaimGuarded(Request{Item: item}, owner, nil)
 }
 
 // ClaimNext claims the first candidate, in order, that is claimable (free,
@@ -39,37 +34,20 @@ func (s *Store) Claim(item string, owner Owner) (Lease, error) {
 // candidates are validated first; the scan runs under one lock, so
 // concurrent callers get distinct items.
 func (s *Store) ClaimNext(candidates []string, owner Owner) (Lease, bool, error) {
-	for _, c := range candidates {
-		if err := ValidateItem(c); err != nil {
-			return Lease{}, false, err
-		}
+	reqs := make([]Request, len(candidates))
+	for i, c := range candidates {
+		reqs[i] = Request{Item: c}
 	}
-	if err := owner.validate(); err != nil {
-		return Lease{}, false, err
-	}
-	var (
-		out   Lease
-		found bool
-	)
-	err := s.withLock(func() error {
-		for _, c := range candidates {
-			l, err := s.claimLocked(c, owner)
-			if errors.Is(err, ErrHeld) {
-				continue
-			}
-			out, found = l, err == nil || errors.Is(err, ErrEventLog)
-			return err
-		}
-		return nil
-	})
-	return out, found, err
+	l, found, _, err := s.ClaimNextGuarded(reqs, owner, nil)
+	return l, found, err
 }
 
-// claimLocked is Claim's body; the caller holds the directory lock.
-func (s *Store) claimLocked(item string, owner Owner) (Lease, error) {
-	now := s.now().UTC()
+// claimLocked is Claim's body; the caller holds the directory lock. admit, when
+// not nil, may refuse a lease that is not a renewal (see Admit).
+func (s *Store) claimLocked(req Request, owner Owner, admit Admit) (Lease, error) {
+	item, now := req.Item, s.now().UTC()
 	l := Lease{Item: item, Lane: owner.Lane, Session: owner.Session, Pid: owner.Pid,
-		Start: owner.Start, Acquired: now, Renewed: now, Expires: now.Add(s.TTL)}
+		Start: owner.Start, Acquired: now, Renewed: now, Expires: now.Add(s.TTL), Paths: req.Paths}
 	ev := Event{At: now, Op: opClaim, Item: item, Lane: owner.Lane, Session: owner.Session}
 
 	cur, err := s.read(item)
@@ -91,6 +69,11 @@ func (s *Store) claimLocked(item string, owner Owner) (Lease, error) {
 			return Lease{}, &HeldError{Holder: cur}
 		}
 		ev.Op, ev.Reason, ev.PrevLane, ev.PrevSession = opReclaim, reason, cur.Lane, cur.Session
+	}
+	if ev.Op != opRenew && admit != nil { // an item already in hand is never judged again
+		if err := s.admit(req, admit); err != nil {
+			return Lease{}, err
+		}
 	}
 	if err := s.write(l); err != nil {
 		return Lease{}, err

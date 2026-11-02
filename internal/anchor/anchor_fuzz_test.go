@@ -2,6 +2,7 @@ package anchor
 
 import (
 	"os"
+	"reflect"
 	"slices"
 	"testing"
 )
@@ -99,7 +100,7 @@ func FuzzSetChecked(f *testing.F) {
 			}
 			for j, want := range before.Items {
 				want.Checked = want.Checked != (j == i)
-				if parsed.Items[j] != want {
+				if !reflect.DeepEqual(parsed.Items[j], want) {
 					t.Fatalf("flipping %q changed item %d\n got  %+v\n want %+v\ninput %q", it.ID, j, parsed.Items[j], want, data)
 				}
 			}

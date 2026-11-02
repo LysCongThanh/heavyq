@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -72,7 +73,7 @@ func TestSetCheckedChangesExactlyOneByte(t *testing.T) {
 					if a.ID == it.ID {
 						want.Checked = !want.Checked
 					}
-					if a != want {
+					if !reflect.DeepEqual(a, want) {
 						t.Fatalf("%s: item %s = %+v, want %+v", it.ID, a.ID, a, want)
 					}
 				}

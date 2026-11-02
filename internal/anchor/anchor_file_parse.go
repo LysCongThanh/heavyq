@@ -75,7 +75,7 @@ func Parse(path string, data []byte) File {
 		}
 		f.Items = append(f.Items, Item{
 			ID: id, Text: text, Checked: checked, Proof: meta.proof,
-			Needs: meta.needs, Source: path, Line: n,
+			Needs: meta.needs, Paths: meta.paths, After: meta.after, Source: path, Line: n,
 		})
 		return true
 	})
