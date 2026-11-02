@@ -21,7 +21,9 @@ const hookUsage = `usage:
   heavyq hook claude-posttooluse                (the mentor: PostToolUse and PostToolUseFailure, see docs/mentor.md)
   heavyq hook claude-sessionstart               (SessionStart: the brief; called by Claude Code)
   heavyq hook claude-stop [Stop|SubagentStop|TaskCompleted|TeammateIdle]   (the stop gate; called by Claude Code)
-  heavyq hook install claude [--scope local|project|user] [--features queue,brief,stop,stance] [--print] [--force]   (--force: even with the plugin enabled)
+  heavyq hook claude-flow                       (observe only: permission prompts, idle, StopFailure, model switches; see docs/flow.md)
+  heavyq hook claude-sessionmeta                (reads status-line JSON on stdin; keeps the session's model and agent version)
+  heavyq hook install claude [--scope local|project|user] [--features queue,brief,stop,stance,flow] [--print] [--force]   (--force: even with the plugin enabled)
   heavyq hook uninstall claude [--scope local|project|user] [--print]
 `
 
@@ -44,6 +46,10 @@ func hookCommand(cfgPath string, explicit bool, args []string, stdin io.Reader, 
 		return claudeSessionStart(cfgPath, explicit, stdin, stdout, stderr)
 	case "claude-stop":
 		return claudeStop(cfgPath, explicit, args[1:], stdin, stdout, stderr)
+	case "claude-flow":
+		return claudeFlow(stdin, stdout, stderr)
+	case "claude-sessionmeta":
+		return claudeSessionMeta(stdin)
 	case "install", "uninstall":
 		return hookInstallCommand(cfgPath, explicit, args[0] == "install", args[1:], stdout, stderr)
 	}

@@ -69,6 +69,13 @@ type Record struct {
 	Session string `json:"session,omitempty"`
 	Item    string `json:"item,omitempty"`
 	Gate    string `json:"gate,omitempty"`
+	// Agent ("claude-code/2.1.90") and Model ("claude-opus-5") are the coding agent
+	// and model of the session, joined from its session meta record (internal/
+	// sessionmeta) when the run was written. They are what baselines are
+	// segmented on at a change point. Absent for a plain terminal, and on lines
+	// written before they existed.
+	Agent string `json:"agent,omitempty"`
+	Model string `json:"model,omitempty"`
 
 	// The code it ran on. All empty outside a git repository.
 	//

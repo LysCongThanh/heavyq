@@ -1,0 +1,10 @@
+{
+  "now": "2026-11-02T09:33:00Z",
+  "records": [
+    {"end": "2026-11-02T09:05:00Z", "lane": "misc", "session": "s5", "wait_s": 20, "run_s": 100, "exit": 0, "cmd": "make build"},
+    {"end": "2026-11-02T09:12:00Z", "lane": "misc", "session": "s5", "gate": "ready", "wait_s": 0, "run_s": 120, "exit": 1, "cmd": "make test"},
+    {"end": "2026-11-02T09:25:00Z", "lane": "misc", "session": "s5", "wait_s": 0, "run_s": 30, "exit": 0, "cmd": "make fmt"},
+    {"end": "2026-11-02T09:30:00Z", "lane": "misc", "session": "s5", "wait_s": 0, "run_s": 60, "exit": 0, "cmd": "make lint"},
+    {"end": "2026-11-02T09:31:00Z", "lane": "misc", "session": "s5", "result": "gave_up", "wait_s": 45, "exit": 75, "cmd": "make test"}
+  ]
+}

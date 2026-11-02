@@ -125,7 +125,7 @@ func TestE2EStatuslineAndRecapShareTheFlowState(t *testing.T) {
 		t.Errorf("wrap: rc=%d %q", rc, wrapped)
 	}
 	// The session record the status line leaves for the ledger to join on.
-	if b := mustRead(t, filepath.Join(app, ".git", "heavyq", "session-meta", "s-1.json")); !strings.Contains(b, `"agent_version":"2.0"`) {
+	if b := mustRead(t, filepath.Join(app, ".git", "heavyq", "sessions", "s-1.meta.json")); !strings.Contains(b, `"version":"2.0"`) {
 		t.Errorf("session meta: %s", b)
 	}
 

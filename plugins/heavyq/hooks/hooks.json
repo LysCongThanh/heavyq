@@ -78,6 +78,62 @@
           }
         ]
       }
+    ],
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'command -v heavyq >/dev/null 2>&1 && exec heavyq hook claude-flow || exit 0'",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "permission_prompt|idle_prompt|agent_needs_input",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'command -v heavyq >/dev/null 2>&1 && exec heavyq hook claude-flow || exit 0'",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'command -v heavyq >/dev/null 2>&1 && exec heavyq hook claude-flow || exit 0'",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostModelSwitch": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'command -v heavyq >/dev/null 2>&1 && exec heavyq hook claude-flow || exit 0'",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'command -v heavyq >/dev/null 2>&1 && exec heavyq hook claude-flow || exit 0'",
+            "timeout": 10
+          }
+        ]
+      }
     ]
   }
 }

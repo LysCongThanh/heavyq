@@ -2,11 +2,9 @@ package statusline
 
 import (
 	"bytes"
-	"encoding/json"
 	"io"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -14,6 +12,7 @@ import (
 
 	"github.com/LysCongThanh/heavyq/internal/history/historytest"
 	"github.com/LysCongThanh/heavyq/internal/notify"
+	"github.com/LysCongThanh/heavyq/internal/sessionmeta"
 	"github.com/LysCongThanh/heavyq/internal/tui/render"
 )
 
@@ -48,17 +47,13 @@ func TestRunPrintsSegmentAndLeavesSideEffects(t *testing.T) {
 	if want := "◆ 5/8 proven  ⚑ 1 needs you  ▲ CI wait  ✓ on track · ~14:45\n"; render.StripSGR(out.String()) != want {
 		t.Errorf("stdout %q, want %q", out.String(), want)
 	}
-	// Session meta: model, version and rate limits, joined later by session id.
-	b, err := os.ReadFile(filepath.Join(MetaDir(common), "sess-1.json"))
-	if err != nil {
-		t.Fatal(err)
+	// Session meta (internal/sessionmeta): model, version and rate limits, joined later by session id.
+	m, err := sessionmeta.Read(common, "sess-1")
+	if err != nil || m == nil {
+		t.Fatalf("session meta: %v %v", m, err)
 	}
-	var m SessionMeta
-	if err := json.Unmarshal(b, &m); err != nil {
-		t.Fatal(err)
-	}
-	if m.Model != "claude-x" || m.AgentVersion != "2.1.0" || m.FiveHourPct == nil || *m.FiveHourPct != 61 || *m.SevenDayPct != 20 {
-		t.Errorf("session meta: %s", b)
+	if m.Model != "claude-x" || m.Version != "2.1.0" || m.FiveHourPct == nil || *m.FiveHourPct != 61 || *m.SevenDayPct != 20 {
+		t.Errorf("session meta: %+v", m)
 	}
 	// Notified once, however many times the status line runs.
 	for i := 0; i < 4; i++ {
@@ -178,51 +173,6 @@ func TestParseInputIsTolerant(t *testing.T) {
 	}
 	if in := ParseInput([]byte(`{"cwd":"/a"}`)); in.Dir() != "/a" || in.FiveHour != -1 {
 		t.Errorf("%+v", in)
-	}
-}
-
-func TestSessionMetaIsRewrittenOnlyOnChange(t *testing.T) {
-	_, common := repoWith(t, scenarios[0].state)
-	in := ParseInput([]byte(stdinFor("/x")))
-	path := filepath.Join(MetaDir(common), "sess-1.json")
-	if err := WriteSessionMeta(common, in, now); err != nil {
-		t.Fatal(err)
-	}
-	old := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
-	_ = os.Chtimes(path, old, old)
-	_ = WriteSessionMeta(common, in, now.Add(time.Minute)) // same content, fresh enough
-	if fi, _ := os.Stat(path); !fi.ModTime().Equal(old) {
-		t.Error("an unchanged record must not be rewritten")
-	}
-	in.FiveHour = 70
-	_ = WriteSessionMeta(common, in, now.Add(time.Minute))
-	if fi, _ := os.Stat(path); fi.ModTime().Equal(old) {
-		t.Error("a changed rate limit must be recorded")
-	}
-	// A new session forgets the records nobody has touched for weeks.
-	stale := filepath.Join(MetaDir(common), "long-gone.json")
-	if err := os.WriteFile(stale, []byte("{}"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	_ = os.Chtimes(stale, old, old)
-	fresh := in
-	fresh.SessionID = "sess-2"
-	_ = WriteSessionMeta(common, fresh, now)
-	if _, err := os.Stat(stale); err == nil {
-		t.Error("an old record must be pruned when a new session starts")
-	}
-	// Unsafe ids never become file names.
-	bad := in
-	bad.SessionID = "../../evil"
-	_ = WriteSessionMeta(common, bad, now)
-	entries, _ := os.ReadDir(MetaDir(common))
-	var names []string
-	for _, e := range entries {
-		names = append(names, e.Name())
-	}
-	sort.Strings(names)
-	if strings.Join(names, ",") != "sess-1.json,sess-2.json" {
-		t.Errorf("files: %v", names)
 	}
 }
 

@@ -78,17 +78,19 @@ func TestInstallAllFeaturesIsIdempotentAndComplete(t *testing.T) {
 	if err != nil || !changed {
 		t.Fatalf("changed=%v err=%v", changed, err)
 	}
-	want := []string{"PreToolUse", "SessionStart", "Stop", "SubagentStop", "TaskCompleted", "TeammateIdle", "UserPromptSubmit"}
+	want := []string{"Notification", "PermissionRequest", "PostModelSwitch", "PostToolUse", "PreToolUse", "SessionStart", "Stop", "StopFailure",
+		"SubagentStop", "TaskCompleted", "TeammateIdle", "UserPromptSubmit"}
 	if got := events(t, b); !reflect.DeepEqual(got, want) {
 		t.Fatalf("events %v, want %v\n%s", got, want, b)
 	}
 	for _, c := range []string{testBin + " hook claude-pretooluse", testBin + " hook claude-sessionstart", testBin + " hook claude-stop\"",
-		testBin + " hook claude-stop SubagentStop", testBin + " hook claude-stop TaskCompleted", testBin + " hook claude-stop TeammateIdle", testBin + " hook claude-userpromptsubmit"} {
+		testBin + " hook claude-stop SubagentStop", testBin + " hook claude-stop TaskCompleted", testBin + " hook claude-stop TeammateIdle", testBin + " hook claude-userpromptsubmit", testBin + " hook claude-flow"} {
 		if !strings.Contains(string(b), c) {
 			t.Errorf("missing %s in\n%s", c, b)
 		}
 	}
-	if !strings.Contains(string(b), `"matcher": "startup|resume|compact"`) || !strings.Contains(string(b), `"matcher": "Bash"`) {
+	if !strings.Contains(string(b), `"matcher": "startup|resume|compact"`) || !strings.Contains(string(b), `"matcher": "Bash"`) ||
+		!strings.Contains(string(b), `"matcher": "permission_prompt|idle_prompt|agent_needs_input"`) {
 		t.Errorf("matchers:\n%s", b)
 	}
 	b2, changed, err := MergeEntries(b, entries)
@@ -107,7 +109,7 @@ func TestInstallIsDeclarativeAndKeepsForeignHooks(t *testing.T) {
 	orig := []byte(`{"model":"opus","hooks":{
   "Stop":[{"hooks":[{"type":"command","command":"notify.sh"}]}],
   "SessionStart":[{"matcher":"startup","hooks":[{"type":"command","command":"load-context.sh"}]}],
-  "Notification":{"odd":"shape that is none of our business"}}}`)
+  "PreCompact":{"odd":"shape that is none of our business"}}}`)
 	full, _, err := MergeEntries(orig, EntriesFor(testBin, allFeatures()))
 	if err != nil {
 		t.Fatal(err)
@@ -144,7 +146,7 @@ func TestInstallIsDeclarativeAndKeepsForeignHooks(t *testing.T) {
 func TestInstallMovedBinaryReplacesEveryEntry(t *testing.T) {
 	b, _, _ := MergeEntries(nil, EntriesFor("/old/heavyq", allFeatures()))
 	b2, changed, err := MergeEntries(b, EntriesFor("/new/heavyq", allFeatures()))
-	if err != nil || !changed || strings.Contains(string(b2), "/old/heavyq") || strings.Count(string(b2), "/new/heavyq") != 7 {
+	if err != nil || !changed || strings.Contains(string(b2), "/old/heavyq") || strings.Count(string(b2), "/new/heavyq") != 12 {
 		t.Fatalf("%v %v\n%s", changed, err, b2)
 	}
 }

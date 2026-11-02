@@ -1,0 +1,11 @@
+session s5 lane=misc session=s5
+  09:03:00-09:03:20 queued        20s
+  09:03:20-09:10:00 working       6m40s
+  09:10:00-09:12:00 proving       2m0s
+  09:12:00-09:22:00 rework        10m0s
+  09:24:30-09:30:15 working       5m45s
+  09:30:15-09:31:00 queued        45s
+  09:31:00-09:33:00 working       2m0s
+lane misc state=working item="" since=09:31:00
+constraint rework share=0.36 significant=true
+items {Total:0 Proven:0 Running:0 Blocked:0 ClaimedUnproven:0 Open:0}

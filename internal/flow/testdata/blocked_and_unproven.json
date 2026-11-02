@@ -1,0 +1,22 @@
+{
+  "now": "2026-11-02T12:00:00Z",
+  "leases": [
+    {"at": "2026-11-02T11:00:00Z", "op": "claim", "item": "doc-7", "lane": "docs", "session": "s2"},
+    {"at": "2026-11-02T11:40:00Z", "op": "release", "item": "doc-7", "lane": "docs", "session": "s2"},
+    {"at": "2026-11-02T11:00:00Z", "op": "claim", "item": "db-1", "lane": "db", "session": "s4"},
+    {"at": "2026-11-02T11:20:00Z", "op": "block", "item": "db-1", "lane": "db", "session": "s4", "needs": "prod credentials"}
+  ],
+  "records": [
+    {"end": "2026-11-02T11:05:00Z", "lane": "docs", "session": "s2", "wait_s": 0, "run_s": 60, "exit": 0, "cmd": "npm run build"}
+  ],
+  "items": [
+    {"Status": {"id": "doc-7", "state": "claimed_done_unproven", "lane": "docs", "session": "s2", "done": true}},
+    {"Status": {"id": "db-1", "state": "blocked", "lane": "db", "session": "s4", "needs": "prod credentials", "at": "2026-11-02T11:20:00Z"}}
+  ],
+  "hooks": [
+    {"at": "2026-11-02T11:10:00Z", "kind": "blocked", "lane": "docs", "session": "s2", "class": "permission_request", "reason": "permission_request: Bash(npm run e2e)"},
+    {"at": "2026-11-02T11:10:06Z", "kind": "blocked", "lane": "docs", "session": "s2", "class": "permission_prompt", "reason": "permission_prompt: Claude needs your permission"},
+    {"at": "2026-11-02T11:25:00Z", "kind": "cleared", "lane": "docs", "session": "s2"},
+    {"at": "2026-11-02T11:50:00Z", "kind": "blocked", "lane": "api", "session": "s3", "class": "idle_prompt", "reason": "idle_prompt: Claude is waiting for your input"}
+  ]
+}

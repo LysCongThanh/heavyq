@@ -1,0 +1,15 @@
+item db-1 lane=db session=s4
+  11:00:00-11:20:00 working       20m0s
+  11:20:00-12:00:00 blocked_human 40m0s
+item doc-7 lane=docs session=s2 final=claimed_unproven@11:40:00
+  11:00:00-11:10:00 working       10m0s
+  11:10:00-11:25:00 blocked_human 15m0s
+  11:25:00-11:40:00 working       15m0s
+session s3 lane=api session=s3
+  11:50:00-12:00:00 blocked_human 10m0s
+needs_you item="db-1" lane=db since=11:20:00 reason="blocked: needs prod credentials"
+needs_you item="" lane=api since=11:50:00 reason="idle_prompt: Claude is waiting for your input"
+lane api state=blocked_human item="" since=11:50:00
+lane db state=blocked_human item="db-1" since=11:20:00
+constraint blocked_human share=0.59 significant=true
+items {Total:2 Proven:0 Running:0 Blocked:1 ClaimedUnproven:1 Open:0}

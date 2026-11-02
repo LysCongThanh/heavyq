@@ -61,6 +61,8 @@ func runCommand(cfg *config.Config, args []string, stderr io.Writer) int {
 	}
 
 	defer renewLaneLeases(o.Lane) // a run in a lane keeps that lane's item claims alive (fail-open)
+	// The end of a run is a natural event: flow/state.json is brought up to date (debounced, fail-open).
+	defer refreshFlowAfterRun(cfg)
 
 	if o.Session == "" { // explicit flag and $HEAVYQ_SESSION win over the hook's file
 		o.Session = q.ReadSession(o.Lane, time.Now(), history.ValidTag)

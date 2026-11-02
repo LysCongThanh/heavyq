@@ -83,7 +83,7 @@ func newRig(t *testing.T, config string) *rig {
 		}
 	}
 	env = append(env, "HEAVYQ_DIR="+filepath.Join(root, "q"), "HEAVYQ_CONFIG="+cfg,
-		"HEAVYQ_HISTORY="+filepath.Join(root, "history.jsonl"), "XDG_CACHE_HOME="+filepath.Join(root, "cache"),
+		"HEAVYQ_HISTORY="+filepath.Join(root, "history.jsonl"), "HEAVYQ_FLOW=off", "XDG_CACHE_HOME="+filepath.Join(root, "cache"),
 		"GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@example.com", "GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@example.com")
 	return &rig{t: t, root: root, cwd: root, env: env}
 }

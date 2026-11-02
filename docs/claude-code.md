@@ -38,7 +38,12 @@ What the plugin contains:
   sh -c 'command -v heavyq >/dev/null 2>&1 && exec heavyq hook claude-stop TaskCompleted || exit 0'
   sh -c 'command -v heavyq >/dev/null 2>&1 && exec heavyq hook claude-stop TeammateIdle || exit 0'
   sh -c 'command -v heavyq >/dev/null 2>&1 && exec heavyq hook claude-userpromptsubmit || exit 0'
+  sh -c 'command -v heavyq >/dev/null 2>&1 && exec heavyq hook claude-flow || exit 0'
   ```
+  The last one is the `flow` feature ([flow.md](flow.md)): the same command on `PermissionRequest`, `Notification` (matcher
+  `permission_prompt|idle_prompt|agent_needs_input`), `StopFailure`, `PostModelSwitch` and `PostToolUse`. It only observes: it never
+  returns a permission decision.
+
   Without `heavyq` on `PATH` every hook exits 0 and prints nothing, so a teammate who has the plugin but not the
   binary sees no error and no change. With it, the stop-family hooks do nothing until you run `heavyq steer guard`
   (the default mode is off), and the SessionStart hook is silent in a repository with no anchor goal, no items and
@@ -199,7 +204,7 @@ rewrite wins. Don't combine heavyq's hook with another hook that rewrites Bash c
 > | `.claude/settings.local.json` | Single project | No, gitignored when Claude Code saves a setting to it |
 
 `--scope user`, `--scope project` and `--scope local` (the default) map to these three files. `--features` picks
-which hooks to write (`queue` by default; `brief`, `stop`): exactly that set, so a smaller set removes the hooks
+which hooks to write (`queue` by default; `brief`, `stop`, `stance`, `flow`): exactly that set, so a smaller set removes the hooks
 of the others. The project root is
 the git top level of the current directory. `$CLAUDE_CONFIG_DIR` replaces `~/.claude` when set. The
 installer keeps every other key, writes `<file>.bak` before changing anything, replaces the file

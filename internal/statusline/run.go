@@ -82,7 +82,7 @@ func Run(o Options) int {
 
 // sideEffects are the cheap or detached things a status-line call also does.
 func (o Options) sideEffects(common string, in Input, st *flowview.State, now time.Time) {
-	_ = WriteSessionMeta(common, in, now)
+	recordSessionMeta(common, in, now)
 	if o.SpawnRefresh != nil && NeedsRefresh(st, now) && ClaimRefresh(common, now) {
 		o.SpawnRefresh(in.Dir())
 	}

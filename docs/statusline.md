@@ -102,9 +102,10 @@ machine.
 ## Session record
 
 The status line is the only place the agent's version and the quota windows are visible, so it leaves a small
-record per session, `<git common dir>/heavyq/session-meta/<session id>.json` (model, agent version, five-hour and
-seven-day usage), rewritten only when something changed and pruned after 14 days. It is a stop-gap writer inside
-`internal/statusline` and moves to `internal/sessionmeta` when that lands.
+record per session, `<git common dir>/heavyq/sessions/<session id>.meta.json` (model, agent version, five-hour and
+seven-day usage, model change points), written by `internal/sessionmeta` only when something changed and pruned
+after 14 days. The ledger joins its `agent` and `model` fields on it, and the flow state shows the newest one
+([flow.md](flow.md)).
 
 ## Developing
 
