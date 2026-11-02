@@ -306,7 +306,7 @@ function causeOf(m,r){const s=ramShort(r);if(s!==null)return `<em>${esc(m)}</em>
 const laneN=l=>`<span class="lane-n"><i style="background:${laneColor(l)}"></i>${esc(l)}</span>`;
 
 /* ───────── tower: facts heavyq measured that need a human (snapshot.exceptions, computed in Go) ───────── */
-const SNOOZE_MS=600000,KIND={red_gate:"red gate",loop:"loop",starved:"starved",machine:"machine"};
+const SNOOZE_MS=600000,KIND={red_gate:"red gate",loop:"loop",starved:"starved",machine:"machine",blocked:"blocked"};
 function snoozed(){try{const d=JSON.parse(store.get("hq.snooze")||"{}"),n=Date.now();for(const k in d)if(n-d[k]>=SNOOZE_MS)delete d[k];return d}catch(e){return {}}}
 const snooze=(id,on)=>{const d=snoozed();if(on)d[id]=Date.now();else if(id)delete d[id];else for(const k in d)delete d[k];store.set("hq.snooze",JSON.stringify(d))};
 function towerAction(e){const a=e.action;if(!a)return "";const cmd=`<code title="Run this in a terminal">${esc(a.command)}</code><button class="btn sm" data-act="copy" data-cmd="${esc(a.command)}">Copy</button>`;

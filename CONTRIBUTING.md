@@ -37,6 +37,9 @@ The remote path is tested through a `sh -c` transport, which runs the same code 
 | `internal/gitutil` | git queries, including the tree identity of clean and dirty work trees |
 | `internal/runident` | the `run_id`: the one definition of "the same run" (tree, argv, subdir, `cache.env` values, base ref) shared by cache, ledger, proof, flaky and loop detection |
 | `internal/proof` | pure matching of ledger records to gate commands on a tree (by `run_id`, else `cmd_hash`): proven / failed (flaky, under load) / missing |
+| `internal/anchor` | the anchor checklist: lenient reader, extra read-only sources, one-checkbox rewrite |
+| `internal/lease` | per-item leases and the events log under the repository's common dir, with a directory flock |
+| `internal/itemstatus` | pure derivation of an item's status from anchor line, lease, events and proofs |
 | `internal/repoconfig` | per-repo `heavyq.toml`: named gates, validation (trusted like a Makefile) |
 | `internal/tomlkeys` | strict-key check shared by both config parsers: unknown or upper-case keys, with their line |
 

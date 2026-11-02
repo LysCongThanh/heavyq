@@ -37,6 +37,21 @@ versions follow [Semantic Versioning](https://semver.org/).
 - **README is a short hero** (tagline, a 14-second proof GIF recorded from real runs, install, Run / Prove / Steer).
   The reference sections moved into `docs/` (`queue.md`, `remote.md`, `configuration.md`, `exit-codes.md`, ...) unchanged.
   `docs/tapes/proof.tape` records the GIF; the `demo` workflow re-records it on release tags.
+- **`heavyq item ls|claim|release|done|block`: claim, prove and finish work items.** It joins the anchor
+  (`.heavyq/anchor.md` plus read-only `[anchor] extra` sources), the lease store and the run ledger. Status is a
+  pure function of those facts (`internal/itemstatus`): `open`, `claimed` (lane, expires), `proven` (short
+  commit, time), `stale` (proven on an older tree), `blocked` (needs) and `claimed_done_unproven` (a box ticked
+  with no proof). `proof: gate:<name>` uses the gate's status and `proof: <cmd>` the run identity of `sh -c
+  <cmd>`, like a gate command; a claimed item is judged on its lane's work tree. Lane comes from
+  `$HEAVYQ_LANE` or the work tree name, session from `$HEAVYQ_SESSION` or the hook's session file. Leases
+  are TTL-based, and **any heavyq run in a lane renews that lane's leases** when it ends (fail-open, no event).
+  `claim --next` never hands one item to two worktrees. `done` refuses without proof (exit 1, `next: heavyq
+  gate run <name>` or `heavyq item done <id> --run`); `--run` runs the proof through the queue, tagged with the
+  item, and on success ticks exactly that checkbox under the lease lock (plan-file items are only marked done
+  in the events log, never rewritten) and releases the lease. `block <id> "needs: ..."` records the need and
+  frees the item until it is claimed again. All commands take `--json` where they print data and end with a
+  `next:` line in agent mode. `status --json` gains `items[]` (additive, schema 1) and the Tower a `blocked`
+  exception. The lease package gains `Finish`, `RenewLane`, `Events` and `WithLock`. See `docs/items.md`.
 
 ## [0.4.0] - 2026-11-02
 
