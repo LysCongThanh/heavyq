@@ -34,6 +34,9 @@ Every key is optional. [`examples/config.toml`](../examples/config.toml) has eve
 | `hook.default_rules` | `true` | apply the built-in rules after yours |
 | `hook.rule.match` | required | word prefixes, e.g. `["bun test", "deno task check"]` |
 | `hook.rule.priority` / `light` / `lane` / `cache` | `4` / `false` / `""` / `false` | what the rewritten command gets |
+| `mentor.holdout_pct` | `20` | share of eligible mentor events logged but not shown, 0-100; `100` = shadow mode. See [mentor](mentor.md) |
+| `mentor.auto_mute` | `true` | a rule with too little lift mutes itself |
+| `mentor.min_events` / `min_lift_pp` | `200` / `10` | resolved events per arm before the lift is judged / the lift (percentage points) below which the rule is muted |
 | `cache.ttl` | `"24h"` | cached results older than this are ignored and evicted |
 | `cache.max_size_mb` / `max_entry_mb` | `512` / `64` | total cap (oldest evicted first) / larger outputs are not stored |
 | `cache.cache_failures` | `false` | also replay non-zero exits to later runs (runs that waited always share) |
@@ -43,7 +46,7 @@ Environment: `HEAVYQ_LANE` (default lane), `HEAVYQ_REMOTE` (default `--remote`),
 auto-place), `HEAVYQ_DIR` (queue dir; default `$XDG_RUNTIME_DIR/heavyq`, else `/tmp/heavyq-<uid>`),
 `HEAVYQ_SESSION` / `HEAVYQ_ITEM` (default `--session` / `--item`), `HEAVYQ_OUTPUT` / `HEAVYQ_AGENT` (output
 mode), `HEAVYQ_HISTORY` (one history file;
-default: monthly files in `$XDG_STATE_HOME/heavyq`), `HEAVYQ_CONFIG`, `XDG_CACHE_HOME` (result
+default: monthly files in `$XDG_STATE_HOME/heavyq`), `HEAVYQ_CONFIG`, `HEAVYQ_MENTOR=off` (silence the mentor hook), `HEAVYQ_MENTOR_SEED` (fixed experiment seed), `XDG_CACHE_HOME` (result
 cache), `CLAUDE_CONFIG_DIR` (`--scope user` target). Commands run locally get `HEAVYQ_MACHINE`, `HEAVYQ_SLOT`,
 `HEAVYQ_LANE` and `HEAVYQ_ACTIVE=1` (the hook never rewrites while it is set), plus `HEAVYQ_<POOL>` /
 `HEAVYQ_<POOL>_N` for each value leased with `--needs` ([pools](pools.md)).

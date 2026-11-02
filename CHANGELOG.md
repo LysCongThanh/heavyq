@@ -54,6 +54,21 @@ versions follow [Semantic Versioning](https://semver.org/).
   repository, command, path and machine name, adds the heavyq version and the window, and prints a compact
   box-drawing card of at most 12 lines. The dashboard gets a "Receipts" panel (week/month toggle, "Copy to
   share") fed by the new token-protected `GET /api/v1/receipts?window=day|week|month`.
+- **Mentor: break repeat failures, measured with a holdout** (`internal/mentor`, [docs/mentor.md](docs/mentor.md)).
+  The same `run_id` (same tree, argv and env) failing again with a deterministic exit code gets one short note,
+  built from ledger fields only: `[heavyq · tool data] <fact>.` at the 2nd failure, with `Next: <one action>.` at
+  the 3rd. Never for 124, 137, 130, 143 or heavyq's own 75-78 and 255, never for `under_load` or flaky runs. It
+  speaks on a state change only: each level once per signature, 3 events per rule and session, a 3 s cooldown.
+  **`heavyq hook claude-posttooluse`** (for both `PostToolUse` and `PostToolUseFailure`, which is what Claude
+  Code sends for a failed Bash command) reads the lane's newest records from the ledger index, fails open under
+  the 15 ms hook budget, and prints `additionalContext` only for the inject arm. Every eligible event is logged
+  to `mentor/interventions.jsonl` with its rule, seed, arm (a seeded 80/20 draw), event and outcome (did the next
+  heavy run differ, by `run_id`, within 3 runs). **`heavyq mentor stats [--json]`** shows events, resolved,
+  differed and rate per rule and arm, and the lift in points; `mentor mute|unmute <rule>`. A rule under 10 points
+  of lift after 200 resolved events per arm mutes itself. New `[mentor]` config (`holdout_pct`, `auto_mute`,
+  `min_events`, `min_lift_pp`; `holdout_pct = 100` is shadow mode), `HEAVYQ_MENTOR=off`, and
+  `ledgerindex.LaneRuns` (a lane's newest records from the index). The settings entry is documented; `hook
+  install` does not write it yet.
 - **Named pools: ports, databases and browsers handed out to parallel agents** (`internal/pools`,
   [docs/pools.md](docs/pools.md)). `[[pool]]` tables (`name`, `values` as a range `"4100-4199"` or a list, or
   `size`) in the user config and in `heavyq.toml` (the repository's pool replaces the user's of the same name).

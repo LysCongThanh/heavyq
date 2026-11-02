@@ -110,6 +110,9 @@ func (c *Config) normalize() error {
 	if err := c.Cache.normalize(); err != nil {
 		return err
 	}
+	if err := c.Mentor.normalize(); err != nil {
+		return err
+	}
 	var err error
 	if c.Pools, err = pools.Build(c.PoolSpecs); err != nil {
 		return err

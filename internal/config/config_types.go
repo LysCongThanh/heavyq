@@ -30,6 +30,7 @@ type Config struct {
 	Remotes []MachineConfig `toml:"remote"`
 	Hook    HookConfig      `toml:"hook"`
 	Cache   CacheConfig     `toml:"cache"`
+	Mentor  MentorConfig    `toml:"mentor"`
 	// PoolSpecs are the [[pool]] tables as written; normalize validates them
 	// into Pools. A pool of the same name in heavyq.toml replaces the user's.
 	PoolSpecs []pools.Spec `toml:"pool"`
