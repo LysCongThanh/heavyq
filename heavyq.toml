@@ -8,7 +8,7 @@ name = "ready"
 run  = [
   "gofmt -l . | (! grep .)",
   "go vet ./...",
-  "go test -race -timeout 20m -count=1 ./...",  # the cli end-to-end suite alone runs ~9 minutes under the race detector: the default 10m is a coin flip
+  "go test -race -timeout 20m -count=1 ./...",  # the cli end-to-end rigs run in parallel (about 70 s of the package under -race on a 12-core remote, was ~11 min); the longer timeout is headroom for small CI runners
 ]
 prio = 3
 
