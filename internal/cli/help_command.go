@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/LysCongThanh/heavyq/internal/agentmode"
 )
@@ -19,6 +20,12 @@ func helpCommand(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprint(stdout, agentmode.Card)
 		return 0
 	}
-	fmt.Fprintf(stderr, "heavyq: no help topic %q (topics: agents)\n", args[0])
+	if len(args) == 1 {
+		if c, ok := commandByName(args[0]); ok {
+			writeCommandHelp(stdout, c)
+			return 0
+		}
+	}
+	fmt.Fprintf(stderr, "heavyq: no help topic %q (topics: agents, or a command: %s)\n", args[0], strings.Join(commandNames(), ", "))
 	return ExitUsage
 }

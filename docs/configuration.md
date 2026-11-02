@@ -51,3 +51,66 @@ default: monthly files in `$XDG_STATE_HOME/heavyq`), `HEAVYQ_CONFIG`, `HEAVYQ_ME
 cache), `CLAUDE_CONFIG_DIR` (`--scope user` target). Commands run locally get `HEAVYQ_MACHINE`, `HEAVYQ_SLOT`,
 `HEAVYQ_LANE` and `HEAVYQ_ACTIVE=1` (the hook never rewrites while it is set), plus `HEAVYQ_<POOL>` /
 `HEAVYQ_<POOL>_N` for each value leased with `--needs` ([pools](pools.md)).
+
+## Editor support: JSON Schemas
+
+Three JSON Schemas (draft 7) describe the files heavyq reads and writes. They are generated from the Go types the
+parsers use, so a key cannot be in one and not the other; CI fails when `schema/` is stale.
+
+| Schema | Describes | Used for |
+|---|---|---|
+| [`schema/heavyq.schema.json`](../schema/heavyq.schema.json) | `heavyq.toml` at the repository root: `[[gate]]`, `[[pool]]`, `[anchor]` | completion, hover help and errors for gates (name shape, `prio` 1-9, non-empty `run`) |
+| [`schema/config.schema.json`](../schema/config.schema.json) | the user config, `~/.config/heavyq/config.toml` | the same for slots, budgets, `[[remote]]`, `[[hook.rule]]`, `[cache]`, durations like `"15m"` |
+| [`schema/status.schema.json`](../schema/status.schema.json) | the output of `heavyq status --json` (schema 1) | typed clients; extra fields are allowed, because fields are added within schema 1 |
+
+Like heavyq itself, the TOML schemas refuse unknown keys, so a typo is underlined as it is typed.
+
+**Taplo and Even Better TOML (VS Code, Neovim, Helix, Zed).** Put a `#:schema` directive on the first line of the
+file; it is a comment to every other TOML reader:
+
+```toml
+#:schema https://raw.githubusercontent.com/LysCongThanh/heavyq/main/schema/heavyq.schema.json
+[[gate]]
+name = "ready"
+run  = ["go test ./..."]
+```
+
+and for the user config:
+
+```toml
+#:schema https://raw.githubusercontent.com/LysCongThanh/heavyq/main/schema/config.schema.json
+```
+
+To pin the schema to the heavyq you run, replace `main` with the release tag (`v0.4.0`). A checked-out copy works
+too, with a relative path: `#:schema ./schema/heavyq.schema.json`.
+
+**Without editing the file.** Associate the schema with the file name in the editor:
+
+```jsonc
+// VS Code settings.json (Even Better TOML)
+"evenBetterToml.schema.associations": {
+  "^(.*/)?heavyq\\.toml$": "https://raw.githubusercontent.com/LysCongThanh/heavyq/main/schema/heavyq.schema.json",
+  "^.*/heavyq/config\\.toml$": "https://raw.githubusercontent.com/LysCongThanh/heavyq/main/schema/config.schema.json"
+}
+```
+
+```toml
+# .taplo.toml (Taplo CLI and language server)
+[[rule]]
+include = ["**/heavyq.toml"]
+schema.path = "https://raw.githubusercontent.com/LysCongThanh/heavyq/main/schema/heavyq.schema.json"
+```
+
+`taplo lint heavyq.toml` then checks a file in CI. The schema describes the shape only; `heavyq gate status` and
+`heavyq doctor` are still what validate semantics (duplicate gate names, unknown remotes, pool ranges).
+
+**Regenerating.** `schema/` is written by `tools/schemagen`, a separate Go module (its own `go.mod`), so the main
+module keeps its single dependency. After changing a config type, a key or a validation rule:
+
+```bash
+cd tools/schemagen && go test ./... && go run .
+```
+
+The tests there validate `heavyq.toml` and `examples/config.toml` against the schemas and check that the committed
+files are current. Rules that only a validator knows (required keys, ranges, name shapes) are in
+`tools/schemagen/patches.go`; add one there when you add a rule to a validator.

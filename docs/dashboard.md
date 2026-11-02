@@ -93,6 +93,8 @@ most 8 work trees per snapshot, within 1.5 s, and reused for 10 s.
 ## Snapshot (schema 1)
 
 The Go definition is the reference: [`internal/snapshot/snapshot_types.go`](../internal/snapshot/snapshot_types.go).
+Its JSON Schema, generated from that file, is [`schema/status.schema.json`](../schema/status.schema.json)
+([editor and client use](configuration.md#editor-support-json-schemas)).
 Fields may be added within schema 1; renaming or removing one bumps `schema`.
 
 - `machines[]`: `free_mb`, `total_mb`, `reserved_mb` (RAM promised to jobs that started less than
