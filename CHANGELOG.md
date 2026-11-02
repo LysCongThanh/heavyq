@@ -35,7 +35,7 @@ versions follow [Semantic Versioning](https://semver.org/).
     `deadline.RunWithin` and fail open. Golden tests pin each hook's JSON; table tests cover the stop decisions;
     an end-to-end test drives a temporary repository (claim, edit, Stop blocks with the next command, gate run,
     Stop allowed).
-||||||| parent of a40563a (feat: heavyq top, a terminal monitor for the pane next to your agents)
+
 - **`heavyq top`: a terminal monitor for the pane next to your agents** ([docs/top.md](docs/top.md)). It reads
   the same snapshot as `status --json` and the dashboard and redraws every 2 s (`--interval`): what needs you
   first (red gates bound to their tree, loops, starved jobs, machines down, blocked items), one row per ticket
