@@ -159,6 +159,22 @@ func write(common string, m Meta) error {
 	return nil
 }
 
+// keep is how long a session's record is kept after its last update.
+const keep = 14 * 24 * time.Hour
+
+// prune removes the records nobody has touched for two weeks.
+func prune(common string, now time.Time) {
+	entries, err := os.ReadDir(Dir(common))
+	if err != nil {
+		return
+	}
+	for _, e := range entries {
+		if info, err := e.Info(); err == nil && !e.IsDir() && now.Sub(info.ModTime()) > keep {
+			_ = os.Remove(filepath.Join(Dir(common), e.Name()))
+		}
+	}
+}
+
 // RecordModelSwitch notes that the session moved to model `to` at `at`: the
 // record's model changes and the change point is kept (the newest
 // maxSwitches). A session without a record gets one.

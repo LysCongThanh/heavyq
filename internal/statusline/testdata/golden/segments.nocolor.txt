@@ -1,0 +1,8 @@
+idle	◆ 5/8 ✓ ~15:30
+busy	◆ 5/8 proven  ▲ CI wait  ✓ on track · ~14:45
+needs-you	◆ 5/8 proven  ⚑ 1 needs you  ▲ CI wait  ✓ on track · ~14:45
+at-risk	◆ 5/8 proven  ⚠ at risk · ~14:45
+done	◆ 8/8 ✓ done
+unknown	◆ 1/8
+empty	
+no-state	

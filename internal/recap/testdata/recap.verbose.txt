@@ -1,0 +1,27 @@
+◆ 5/9 proven  ✓ on track · ~16:00 (medium confidence, 9 proofs)  ▲ CI wait  ⚑ 2 needs you
+next: heavyq item claim doc-7   (doc-7  needs: a Stripe test key)
+
+merged into main (2)
+  api-1  Login endpoint  [12:40]   git show --stat 3f2a9c1
+  api-3  Rate limiting  [13:40]    git show --stat c0ffee1
+
+proven, not on main (2)
+  api-2  Token refresh  [13:10]    heavyq item done api-2
+  ui-1  Form[31m markup  [13:55]   heavyq item done ui-1
+
+claimed, unproven (1)
+  doc-3  no proof declared   heavyq item done doc-3 --run
+
+blocked (2)
+  doc-7  needs: a Stripe test key                      heavyq item claim doc-7
+  web  permission_prompt: Bash(npm run e2e)  [13:50]   heavyq top
+
+wasted (1)
+  go test ./internal/cli  failed 3x, 7m lost (api)   heavyq why api
+
+in flight (1)
+  web-1  web holds it until 14:30  [14:30]   heavyq item done web-1 --run
+
+lanes
+  web            proving    web-1  since 13:20 (40m)
+  docs           blocked    doc-7  since 13:30 (30m)

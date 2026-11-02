@@ -1,0 +1,113 @@
+{
+  "schema": 1,
+  "generated": "2026-11-02T14:00:00Z",
+  "since": "2026-11-02T12:00:00Z",
+  "goal": "ship login",
+  "merge_ref": "main",
+  "progress": {
+    "proven": 5,
+    "total": 9
+  },
+  "forecast": {
+    "status": "on_track",
+    "confidence": "medium",
+    "eta": "2026-11-02T16:00:00Z",
+    "samples": 9
+  },
+  "constraint": "ci_wait",
+  "needs_you": 2,
+  "best": {
+    "command": "heavyq item claim doc-7",
+    "why": "doc-7  needs: a Stripe test key"
+  },
+  "merged": [
+    {
+      "id": "api-1",
+      "text": "api-1  Login endpoint",
+      "lane": "api",
+      "at": "2026-11-02T12:40:00Z",
+      "commit": "3f2a9c1",
+      "action": "git show --stat 3f2a9c1"
+    },
+    {
+      "id": "api-3",
+      "text": "api-3  Rate limiting",
+      "lane": "api",
+      "at": "2026-11-02T13:40:00Z",
+      "commit": "c0ffee1",
+      "action": "git show --stat c0ffee1"
+    }
+  ],
+  "proven_not_merged": [
+    {
+      "id": "api-2",
+      "text": "api-2  Token refresh",
+      "lane": "api",
+      "at": "2026-11-02T13:10:00Z",
+      "commit": "8b1d0e2",
+      "action": "heavyq item done api-2"
+    },
+    {
+      "id": "ui-1",
+      "text": "ui-1  Form[31m markup",
+      "lane": "ui",
+      "at": "2026-11-02T13:55:00Z",
+      "commit": "d00d123",
+      "action": "heavyq item done ui-1"
+    }
+  ],
+  "claimed_unproven": [
+    {
+      "id": "doc-3",
+      "text": "doc-3  no proof declared",
+      "lane": "docs",
+      "action": "heavyq item done doc-3 --run"
+    }
+  ],
+  "blocked": [
+    {
+      "id": "doc-7",
+      "text": "doc-7  needs: a Stripe test key",
+      "lane": "docs",
+      "action": "heavyq item claim doc-7"
+    },
+    {
+      "text": "web  permission_prompt: Bash(npm run e2e)",
+      "lane": "web",
+      "at": "2026-11-02T13:50:00Z",
+      "action": "heavyq top"
+    }
+  ],
+  "wasted": [
+    {
+      "text": "go test ./internal/cli  failed 3x, 7m lost (api)",
+      "lane": "api",
+      "count": 3,
+      "lost_s": 390,
+      "action": "heavyq why api"
+    }
+  ],
+  "in_flight": [
+    {
+      "id": "web-1",
+      "text": "web-1  web holds it until 14:30",
+      "lane": "web",
+      "at": "2026-11-02T14:30:00Z",
+      "action": "heavyq item done web-1 --run"
+    }
+  ],
+  "lanes": [
+    {
+      "lane": "web",
+      "state": "proving",
+      "item": "web-1",
+      "since": "2026-11-02T13:20:00Z"
+    },
+    {
+      "lane": "docs",
+      "state": "blocked",
+      "item": "doc-7",
+      "since": "2026-11-02T13:30:00Z"
+    }
+  ]
+}

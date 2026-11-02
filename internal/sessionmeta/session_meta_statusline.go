@@ -120,6 +120,9 @@ func RecordIn(common string, m Meta, now time.Time) (Meta, bool, error) {
 	if err := write(common, m); err != nil {
 		return m, false, err
 	}
+	if old == nil {
+		prune(common, now) // a new session is the moment to forget the old ones
+	}
 	return m, true, nil
 }
 
