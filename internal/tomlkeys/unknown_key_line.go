@@ -19,10 +19,7 @@ func Check(path string, data []byte, md toml.MetaData) error {
 	if key == nil {
 		return nil
 	}
-	if line := Line(data, key); line > 0 {
-		return fmt.Errorf("%s:%d: unknown key %q", path, line, key.String())
-	}
-	return fmt.Errorf("%s: unknown key %q", path, key.String())
+	return Error(path, data, key)
 }
 
 // FirstUnknown returns the first key the schema does not define, or nil.
@@ -44,6 +41,61 @@ func FirstUnknown(md toml.MetaData) toml.Key {
 		}
 	}
 	return nil
+}
+
+// Unknown returns the keys the schema does not define, outermost first and
+// without the keys below an unknown table, in file order. It is the list a
+// lenient parser warns about; Check and FirstUnknown are the strict form.
+func Unknown(md toml.MetaData) []toml.Key {
+	var out []toml.Key
+	for _, key := range md.Undecoded() {
+		below := false
+		for _, kept := range out {
+			if len(key) > len(kept) && slices.Equal(key[:len(kept)], kept) {
+				below = true
+				break
+			}
+		}
+		if !below {
+			out = append(out, key)
+		}
+	}
+	return out
+}
+
+// FirstMiscased returns the first key that decoded into the schema although it
+// has an upper-case letter ("[LOCAL]" fills [local]), or nil. That is the
+// merge hazard FirstUnknown describes: it stays an error even for a parser
+// that ignores unknown keys. A key the schema does not know at all is not one:
+// it decodes into nothing.
+func FirstMiscased(md toml.MetaData) toml.Key {
+	undec := Unknown(md)
+	for _, key := range md.Keys() {
+		known := true
+		for _, u := range undec {
+			if len(key) >= len(u) && slices.Equal(key[:len(u)], u) {
+				known = false
+				break
+			}
+		}
+		if !known {
+			continue
+		}
+		for _, part := range key {
+			if part != strings.ToLower(part) {
+				return key
+			}
+		}
+	}
+	return nil
+}
+
+// Error is the error Check returns for key: "path:line: unknown key "a.b"".
+func Error(path string, data []byte, key toml.Key) error {
+	if line := Line(data, key); line > 0 {
+		return fmt.Errorf("%s:%d: unknown key %q", path, line, key.String())
+	}
+	return fmt.Errorf("%s: unknown key %q", path, key.String())
 }
 
 // Line returns the 1-based line where the undecoded key is

@@ -1,7 +1,7 @@
 # Configuration
 
 `--config FILE`, else `$HEAVYQ_CONFIG`, else `$XDG_CONFIG_HOME/heavyq/config.toml` (`~/.config/heavyq/config.toml`).
-Every key is optional. [`examples/config.toml`](../examples/config.toml) has every key with comments.
+Every key is optional; keys this heavyq does not know are ignored with a warning. [`examples/config.toml`](../examples/config.toml) has every key with comments.
 
 | Key | Default | Meaning |
 |---|---|---|
@@ -64,7 +64,11 @@ parsers use, so a key cannot be in one and not the other; CI fails when `schema/
 | [`schema/config.schema.json`](../schema/config.schema.json) | the user config, `~/.config/heavyq/config.toml` | the same for slots, budgets, `[[remote]]`, `[[hook.rule]]`, `[cache]`, durations like `"15m"` |
 | [`schema/status.schema.json`](../schema/status.schema.json) | the output of `heavyq status --json` (schema 1) | typed clients; extra fields are allowed, because fields are added within schema 1 |
 
-Like heavyq itself, the TOML schemas refuse unknown keys, so a typo is underlined as it is typed.
+The TOML schemas refuse unknown keys, so a typo is underlined as it is typed. heavyq treats the two files
+differently: a repository `heavyq.toml` is strict (an unknown key is an error, and CI catches typos), but the
+**user config** ignores keys this heavyq does not know and says so once on stderr, so a config written for a newer
+heavyq never stops an older one (which may be the one about to upgrade it). `heavyq doctor` lists them. A value
+that is wrong, or a key spelled with upper-case letters that would merge with a known one, is still an error.
 
 **Taplo and Even Better TOML (VS Code, Neovim, Helix, Zed).** Put a `#:schema` directive on the first line of the
 file; it is a comment to every other TOML reader:

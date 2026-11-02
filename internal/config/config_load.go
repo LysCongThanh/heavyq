@@ -59,18 +59,24 @@ func defaults() (*Config, error) {
 	return cfg, nil
 }
 
-// parse decodes, strictly checks and validates data, the content of path.
-// Keys must match the schema exactly: the TOML library matches them to fields
-// ignoring case, so tomlkeys.Check refuses upper-case keys ("[LOCAL]" next to
-// "[local]" would otherwise merge, one silently overriding the other).
+// parse decodes, checks and validates data, the content of path.
+// Keys the schema does not define are kept in Config.Unknown and ignored, so a
+// newer config does not brick an older binary (repository heavyq.toml files
+// stay strict: CI catches their typos). The TOML library matches keys to
+// fields ignoring case, so an upper-case key that does decode is still refused
+// ("[LOCAL]" next to "[local]" would otherwise merge, one silently overriding
+// the other).
 func parse(path string, data []byte) (*Config, error) {
 	cfg := &Config{}
 	md, err := toml.Decode(string(data), cfg)
 	if err != nil {
 		return nil, fmt.Errorf("config %s: %w", path, err)
 	}
-	if err := tomlkeys.Check(path, data, md); err != nil {
-		return nil, err
+	if key := tomlkeys.FirstMiscased(md); key != nil {
+		return nil, tomlkeys.Error(path, data, key)
+	}
+	for _, key := range tomlkeys.Unknown(md) {
+		cfg.Unknown = append(cfg.Unknown, UnknownKey{Key: key.String(), Line: tomlkeys.Line(data, key)})
 	}
 	cfg.Path = path
 	if err := cfg.normalize(); err != nil {

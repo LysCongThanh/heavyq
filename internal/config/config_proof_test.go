@@ -28,7 +28,6 @@ func TestProofRemoteIsValidated(t *testing.T) {
 		proofRemotes + "[proof]\nremote = \"gone\"\n":  "gone",
 		"[proof]\nremote = \"box\"\n":                  "no [[remote]] is configured",
 		proofRemotes + "[proof]\nremote = \"Local\"\n": "Local",
-		proofRemotes + "[proof]\nwhere = \"auto\"\n":   "where",
 	}
 	for body, want := range cases {
 		if _, err := Load(writeConfig(t, body), true); err == nil || !strings.Contains(err.Error(), want) {

@@ -97,6 +97,9 @@ func dispatch(c commandSpec, cfgPath string, explicit bool, args []string, stdou
 			fmt.Fprintln(stderr, "heavyq:", err)
 			return ExitUsage
 		}
+		if w := cfg.UnknownKeysWarning(); w != "" { // once per run, never a failure
+			fmt.Fprintln(stderr, w)
+		}
 		inv.Cfg = cfg
 	}
 	return c.Run(inv)

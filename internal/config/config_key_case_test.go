@@ -20,8 +20,6 @@ func TestLoadRejectsCaseVariantKeys(t *testing.T) {
 		{"case twin after local", "[local]\nheavy_slots = 4\n\n[Local]\nheavy_slots = 1\n", `:4: unknown key "Local"`},
 		{"case twin of remote", "[[remote]]\nname = \"a\"\nssh = \"a\"\n[[Remote]]\nname = \"b\"\nssh = \"b\"\n", `:4: unknown key "Remote"`},
 		{"upper case cache key", "[cache]\nMax_Size_MB = 10\n", `:2: unknown key "cache.Max_Size_MB"`},
-		// Behaviour that predates the case check stays: unknown lower-case keys name the line too.
-		{"unknown key", "[queue]\npoll = \"3s\"\nbogus = 1\n", `:3: unknown key "queue.bogus"`},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

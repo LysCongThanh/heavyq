@@ -38,6 +38,10 @@ type Config struct {
 
 	// Path is the file the config was loaded from ("" when defaults only).
 	Path string `toml:"-"`
+	// Unknown are the keys of the file this heavyq does not define, in file
+	// order. They are ignored: a config written for a newer heavyq must not
+	// stop an older one (which may be the one about to upgrade it).
+	Unknown []UnknownKey `toml:"-"`
 	// Pools are the validated [[pool]] tables, in file order.
 	Pools []pools.Pool `toml:"-"`
 }

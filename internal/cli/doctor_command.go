@@ -10,11 +10,14 @@ import (
 	"github.com/LysCongThanh/heavyq/internal/ledgerindex"
 )
 
-// doctorCommand implements `heavyq doctor [--reindex]`: health checks of what
-// heavyq keeps on disk. For now that is the ledger index (docs/ledger.md): its
-// state and size, and with --reindex a rebuild from the ledger. Exit 0 when the
-// index is fresh (or was rebuilt), 1 when it is stale or missing, 2 on usage.
-func doctorCommand(args []string, stdout, stderr io.Writer) (rc int) {
+// doctorCommand implements `heavyq doctor [--reindex]`: health checks of the
+// config and of what heavyq keeps on disk. The config (it does not need to load
+// for doctor to run): keys this heavyq does not know are listed, a config that
+// does not load is reported. The ledger index (docs/ledger.md): its state and
+// size, and with --reindex a rebuild from the ledger. Exit 0 when the index is
+// fresh (or was rebuilt), 1 when it is stale or missing or the config does not
+// load, 2 on usage.
+func doctorCommand(cfgPath string, explicit bool, args []string, stdout, stderr io.Writer) (rc int) {
 	fs := flag.NewFlagSet("doctor", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	reindex := fs.Bool("reindex", false, "rebuild the ledger index from the ledger")
@@ -25,6 +28,13 @@ func doctorCommand(args []string, stdout, stderr io.Writer) (rc int) {
 	if fs.NArg() != 0 {
 		fs.Usage()
 		return ExitUsage
+	}
+	if !printConfigCheck(stdout, cfgPath, explicit) {
+		defer func() {
+			if rc == 0 {
+				rc = 1
+			}
+		}()
 	}
 	defer func() {
 		if rc != ExitUsage {
