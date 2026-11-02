@@ -2,7 +2,6 @@ package preflight
 
 import (
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/LysCongThanh/heavyq/internal/redact"
@@ -22,26 +21,29 @@ type PermInput struct {
 	Settings string   // the file a fix should edit, for the text
 }
 
-// verdicts of one command.
+// verdict of one command. The zero value is "would prompt": no allow rule can
+// match it, and nothing built in covers it.
 type verdict struct {
-	ok     bool
-	denied bool
-	reason string // why not, one clause
-	rule   string // the allow rule that would fix it
+	ok        bool
+	denied    bool   // a deny rule matches: definite
+	uncertain bool   // the matcher cannot tell (see judgeSegment): a warning, not a block
+	reason    string // why not, one clause
+	rule      string // the rule that would fix it
 }
 
-// maxPromptFindings bounds the list; the rest are counted.
+// maxPromptFindings bounds each list; the rest are counted.
 const maxPromptFindings = 8
 
 // CheckPermissions: the commands the run needs would not prompt in Claude Code.
-// A command that is not covered by an allow rule (or by the hook's own approval)
-// "may prompt": the finding blocks, because a prompt nobody answers stalls the
-// run. It is conservative on purpose, so a false alarm costs one allow rule.
+// A command blocks (NO-GO) only when the matcher is sure: a deny or ask rule
+// matches it, or no allow rule (nor anything built in) can cover it. A command
+// the matcher cannot decide, because Claude Code's behavior for that shape is
+// not documented or was seen to differ from the documentation (see
+// testdata/permission-corpus), "may prompt" as a warning.
 func CheckPermissions(in PermInput) []Finding {
-	var out []Finding
+	var blocks, warns []Finding
 	seen := map[string]bool{}
-	var extra int
-	prompts := 0
+	var extraBlocks, extraWarns int
 	for _, cmd := range in.Commands {
 		cmd = strings.TrimSpace(cmd)
 		if cmd == "" || seen[cmd] || in.Rules.Bypass {
@@ -52,67 +54,50 @@ func CheckPermissions(in PermInput) []Finding {
 		if v.ok {
 			continue
 		}
-		if prompts++; prompts > maxPromptFindings {
-			extra++
-			continue
-		}
 		subject := clipText(redact.Command(cmd), 60)
-		if v.denied {
-			out = append(out, Finding{Severity: Block, Subject: subject,
+		switch {
+		case v.denied:
+			if len(blocks) >= maxPromptFindings {
+				extraBlocks++
+				continue
+			}
+			blocks = append(blocks, Finding{Severity: Block, Subject: subject,
 				Text: fmt.Sprintf("`%s` is denied by permissions.deny: %s", subject, v.reason),
 				Fix:  "edit " + in.Settings + ": remove the deny rule, or change the proof"})
-			continue
+		case v.uncertain:
+			if len(warns) >= maxPromptFindings {
+				extraWarns++
+				continue
+			}
+			warns = append(warns, Finding{Severity: Warn, Subject: subject,
+				Text: fmt.Sprintf("`%s` may prompt: %s", subject, v.reason),
+				Fix:  fmt.Sprintf("edit %s: add \"%s\" to permissions.allow, or run it once under `claude -p --permission-prompts none` to see", in.Settings, v.rule)})
+		default:
+			if len(blocks) >= maxPromptFindings {
+				extraBlocks++
+				continue
+			}
+			blocks = append(blocks, Finding{Severity: Block, Subject: subject,
+				Text: fmt.Sprintf("`%s` may prompt: %s", subject, v.reason),
+				Fix:  fmt.Sprintf("edit %s: add \"%s\" to permissions.allow", in.Settings, v.rule)})
 		}
-		out = append(out, Finding{Severity: Block, Subject: subject,
-			Text: fmt.Sprintf("`%s` may prompt: %s", subject, v.reason),
-			Fix:  fmt.Sprintf("edit %s: add \"%s\" to permissions.allow", in.Settings, v.rule)})
 	}
-	if extra > 0 {
+	out := blocks
+	if extraBlocks > 0 {
 		out = append(out, Finding{Severity: Block, Subject: "more",
-			Text: fmt.Sprintf("%d more commands may prompt", extra), Fix: "edit " + in.Settings + ": allow them in permissions.allow"})
+			Text: fmt.Sprintf("%d more commands may prompt", extraBlocks), Fix: "edit " + in.Settings + ": allow them in permissions.allow"})
 	}
-	if prompts > 0 {
+	out = append(out, warns...)
+	if extraWarns > 0 {
+		out = append(out, Finding{Severity: Warn, Subject: "more unsure",
+			Text: fmt.Sprintf("%d more commands may prompt (not sure)", extraWarns), Fix: "claude -p --permission-prompts none \"<prompt>\""})
+	}
+	if len(blocks)+len(warns) > 0 {
 		out = append(out, Finding{Severity: Warn, Subject: "headless",
 			Text: "an unattended `claude -p` run hangs on a prompt nobody answers; deny instead, so a missing rule is a failure you can read",
 			Fix:  "claude -p --permission-prompts none \"<prompt>\""})
 	}
 	return out
-}
-
-// judge evaluates one command the way Claude Code would: through the hook's
-// rewrite first, then deny, ask and allow rules segment by segment.
-func judge(cmd string, in PermInput) verdict {
-	text, approved := cmd, false
-	if in.Rewrite != nil {
-		if rewritten, ok, wrapped := in.Rewrite(cmd); wrapped {
-			text, approved = rewritten, ok
-		}
-	}
-	segs, simple := splitCommand(text)
-	if !simple {
-		// Only an exact rule (or the hook's own approval) can cover a command
-		// whose parts cannot be told apart: "x:*" must not approve "x $(rm -rf ~)".
-		if !anyMatch(in.Rules.Deny, text) && (approved || slices.Contains(in.Rules.Allow, text)) {
-			return verdict{ok: true}
-		}
-		return verdict{reason: "its shell form is too complex to match against rules", rule: ruleFor(cmd)}
-	}
-	for _, seg := range segs {
-		switch {
-		case anyMatch(in.Rules.Deny, seg):
-			return verdict{denied: true, reason: clipText(redact.Command(seg), 50)}
-		case anyMatch(in.Rules.Ask, seg):
-			return verdict{reason: "an ask rule matches " + clipText(redact.Command(seg), 50), rule: ruleFor(seg)}
-		case approved, anyMatch(in.Rules.Allow, seg), isReadOnly(seg):
-		default:
-			if text != cmd {
-				return verdict{reason: fmt.Sprintf("the heavyq hook rewrites it to `%s` and no allow rule covers that (or set hook.permission = \"allow\")", clipText(redact.Command(text), 90)),
-					rule: ruleFor(seg)}
-			}
-			return verdict{reason: "no allow rule covers it", rule: ruleFor(seg)}
-		}
-	}
-	return verdict{ok: true}
 }
 
 // ruleFor is the allow rule that would cover command text: its first word (two
