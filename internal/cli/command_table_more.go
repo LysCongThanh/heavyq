@@ -41,11 +41,13 @@ var moreCommands = []commandSpec{
 		Summary: "the Claude Code PreToolUse hook, and its installation",
 		Synopsis: []string{
 			"heavyq [--config FILE] hook claude-pretooluse",
+			"heavyq [--config FILE] hook claude-posttooluse",
 			"heavyq [--config FILE] hook install claude [--scope local|project|user] [--print] [--force]",
 			"heavyq [--config FILE] hook uninstall claude [--scope local|project|user] [--print]",
 		},
 		Subs: []subSpec{
 			{Name: "claude-pretooluse", Summary: "called by Claude Code; reads the hook JSON on stdin, fails open"},
+			{Name: "claude-posttooluse", Summary: "the mentor: PostToolUse and PostToolUseFailure hook; reads JSON on stdin, fails open"},
 			{Name: "install", Args: "claude", Summary: "add the hook to Claude Code settings", NextWord: []string{"claude"}, Flags: []flagSpec{
 				scopeFlag(), {Long: "print", Help: "print the resulting settings instead of writing them"},
 				{Long: "force", Help: "install even when the heavyq Claude Code plugin is enabled (the hook would run twice)"}}},
@@ -54,6 +56,23 @@ var moreCommands = []commandSpec{
 		},
 		Notes: "The hook never blocks an agent: on any doubt it leaves the command unchanged and exits 0.",
 		Docs:  "claude-code-hook.md",
+	},
+	{
+		Name:    "mentor",
+		Summary: "stats and switches of the mentor (a note after a repeated identical failure)",
+		Synopsis: []string{
+			"heavyq [--config FILE] mentor stats [--json]",
+			"heavyq [--config FILE] mentor mute <rule>",
+			"heavyq [--config FILE] mentor unmute <rule>",
+		},
+		Subs: []subSpec{
+			{Name: "stats", Summary: "each rule's two arms and its lift", Flags: []flagSpec{jsonFlag("machine-readable output")}},
+			{Name: "mute", Args: "<rule>", Summary: "silence a rule"},
+			{Name: "unmute", Args: "<rule>", Summary: "turn a muted rule back on"},
+		},
+		Notes: "The note goes to 80% of eligible events; the other 20% are logged and left silent, so the effect can be\n" +
+			"measured. HEAVYQ_MENTOR=off silences the mentor for one process tree.",
+		Docs: "mentor.md",
 	},
 	{
 		Name:    "stance",

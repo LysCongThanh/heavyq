@@ -173,6 +173,29 @@
       "type": "object",
       "description": "MachineConfig describes the local machine or one remote."
     },
+    "MentorConfig": {
+      "properties": {
+        "holdout_pct": {
+          "type": "integer",
+          "description": "HoldoutPct is the share of eligible events logged but not shown, 0-100\n(default 20). 100 is shadow mode: events are logged and measured, the\nagent sees nothing."
+        },
+        "auto_mute": {
+          "type": "boolean",
+          "description": "AutoMute silences a rule that shows too little lift (default true)."
+        },
+        "min_events": {
+          "type": "integer",
+          "description": "MinEvents is how many resolved events each arm needs before the lift\nis judged (default 200)."
+        },
+        "min_lift_pp": {
+          "type": "number",
+          "description": "MinLiftPP is the lift, in percentage points, below which a rule is\nmuted (default 10)."
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "description": "MentorConfig is the [mentor] section: the experiment behind `heavyq hook claude-posttooluse` (docs/mentor.md)."
+    },
     "QueueConfig": {
       "properties": {
         "poll": {
@@ -322,6 +345,9 @@
     },
     "cache": {
       "$ref": "#/definitions/CacheConfig"
+    },
+    "mentor": {
+      "$ref": "#/definitions/MentorConfig"
     },
     "pool": {
       "items": {

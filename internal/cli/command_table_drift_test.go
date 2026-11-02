@@ -12,6 +12,13 @@ import (
 // These tests keep the command table (which feeds --help, completions and the man page) in step with the
 // code and the usage text. When one fails, update command_table_data.go / command_table_more.go.
 
+// tableFix tells a contributor what to do when a drift test fails.
+const tableFix = "\nTo fix: add or update the command, subcommand or flag in the command table " +
+	"(internal/cli/command_table_data.go for queue/gate/item commands, command_table_more.go for the rest: " +
+	"Name, Summary, Synopsis, Flags, Subs) and in the `usage` text in internal/cli/app.go, " +
+	"then run `go test ./internal/cli -run 'Table|Completion|Help|Man'`. " +
+	"If the change touches a config key or the status snapshot, also run `cd tools/schemagen && go run .` and commit schema/."
+
 // generatedSources are the files that describe commands for the table; their literals do not count as code.
 func isTableOrGeneratedFile(name string) bool {
 	for _, p := range []string{"command_table", "command_help", "completion", "man_page"} {
@@ -74,7 +81,7 @@ func TestTableCommandsMatchUsage(t *testing.T) {
 		fromTable[c.Name] = true
 	}
 	if a, b := strings.Join(sortedKeys(fromUsage), " "), strings.Join(sortedKeys(fromTable), " "); a != b {
-		t.Errorf("usage lists:  %s\ntable lists:  %s", a, b)
+		t.Errorf("usage lists:  %s\ntable lists:  %s%s", a, b, tableFix)
 	}
 }
 
@@ -83,7 +90,7 @@ func TestTableCommandsAreDispatched(t *testing.T) {
 	src := cliSources(t)["app.go"]
 	for _, c := range commandTable {
 		if c.Name != "run" && !strings.Contains(src, `"`+c.Name+`"`) {
-			t.Errorf("command %q is in the table but Main does not dispatch it", c.Name)
+			t.Errorf("command %q is in the table but Main does not dispatch it%s", c.Name, tableFix)
 		}
 	}
 }
@@ -97,10 +104,10 @@ func TestTableSubcommandsExist(t *testing.T) {
 	for _, c := range commandTable {
 		for _, s := range c.Subs {
 			if !strings.Contains(strings.Join(c.Synopsis, "\n"), s.Name) {
-				t.Errorf("%s %s: not in the synopsis", c.Name, s.Name)
+				t.Errorf("%s %s: not in the synopsis%s", c.Name, s.Name, tableFix)
 			}
 			if !strings.Contains(all, `"`+s.Name+`"`) {
-				t.Errorf("%s %s: no such subcommand in the code", c.Name, s.Name)
+				t.Errorf("%s %s: no such subcommand in the code%s", c.Name, s.Name, tableFix)
 			}
 		}
 	}
@@ -143,12 +150,12 @@ func TestTableFlagsMatchCode(t *testing.T) {
 	}
 	for n := range inCode {
 		if !inTable[n] {
-			t.Errorf("flag %q is defined in the code but missing from the command table", n)
+			t.Errorf("flag %q is defined in the code but missing from the command table%s", n, tableFix)
 		}
 	}
 	for n := range inTable {
 		if !inCode[n] {
-			t.Errorf("flag %q is in the command table but no code defines it", n)
+			t.Errorf("flag %q is in the command table but no code defines it%s", n, tableFix)
 		}
 	}
 }
@@ -158,7 +165,7 @@ func TestUsageMentionsEveryRunFlag(t *testing.T) {
 	run, _ := commandByName("run")
 	for _, f := range run.Flags {
 		if f.Long != "" && !strings.Contains(usage, "--"+f.Long) {
-			t.Errorf("usage does not mention --%s", f.Long)
+			t.Errorf("usage does not mention --%s%s", f.Long, tableFix)
 		}
 	}
 }
