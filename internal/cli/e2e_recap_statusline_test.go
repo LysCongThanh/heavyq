@@ -39,7 +39,7 @@ func flowStateFor(updated time.Time) string {
 		updated.UTC().Format(time.RFC3339), updated.UTC().Format(time.RFC3339), updated.UTC().Format(time.RFC3339))
 }
 
-// A real repository with a proven item, a blocked one, a hand-ticked one and a failure repeated twice:
+// A real repository with two proven items (they share the web gate), a blocked one, a hand-ticked one and a failure repeated twice:
 // the recap names each bucket with the command that acts on it, and --json says the same.
 func TestE2ERecapOfARealRepository(t *testing.T) {
 	h := newRig(t, baseConfig)
@@ -61,7 +61,7 @@ func TestE2ERecapOfARealRepository(t *testing.T) {
 	if rc != 0 {
 		t.Fatalf("recap rc=%d\n%s%s", rc, out, errOut)
 	}
-	for _, want := range []string{"1/5 proven", "forecast unknown", "next: heavyq item claim plain-item", "merged into main (1)",
+	for _, want := range []string{"2/5 proven", "forecast unknown", "next: heavyq item claim plain-item", "merged into main (2)",
 		"claimed, unproven (1)", "hand-ticked", "blocked (1)", "needs: a Stripe test key", "wasted (1)", "failed 2x", "heavyq why app"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("recap lacks %q:\n%s", want, out)
@@ -81,7 +81,7 @@ func TestE2ERecapOfARealRepository(t *testing.T) {
 	if err := json.Unmarshal([]byte(out), &r); rc != 0 || err != nil {
 		t.Fatalf("recap --json rc=%d err=%v\n%s%s", rc, err, out, errOut)
 	}
-	if r.Schema != 1 || r.Progress.Total != 5 || r.Progress.Proven != 1 || r.MergeRef != "main" || len(r.Merged) != 1 ||
+	if r.Schema != 1 || r.Progress.Total != 5 || r.Progress.Proven != 2 || r.MergeRef != "main" || len(r.Merged) != 2 ||
 		len(r.Blocked) != 1 || r.Blocked[0].Action != "heavyq item claim plain-item" || len(r.Wasted) != 1 || r.Wasted[0].Count != 2 ||
 		r.Best == nil || r.Best.Command != "heavyq item claim plain-item" || r.Forecast.Status != "unknown" {
 		t.Errorf("recap --json: %s", out)
