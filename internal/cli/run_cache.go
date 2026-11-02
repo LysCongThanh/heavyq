@@ -11,6 +11,7 @@ import (
 	"github.com/LysCongThanh/heavyq/internal/config"
 	"github.com/LysCongThanh/heavyq/internal/gitutil"
 	"github.com/LysCongThanh/heavyq/internal/history"
+	"github.com/LysCongThanh/heavyq/internal/ledgerindex"
 	"github.com/LysCongThanh/heavyq/internal/queue"
 	"github.com/LysCongThanh/heavyq/internal/slots"
 )
@@ -132,7 +133,7 @@ func (r *run) replayCached(m *cache.Meta, coalesced bool, lane string) (int, boo
 		WaitSecs: time.Since(r.t0).Seconds(), Exit: m.Exit, Cmd: queue.TruncateCmd(r.opts.Argv), Cache: kind,
 		CacheNote: fmt.Sprintf("key %.16s, from %s", m.Key, when)}
 	r.tag(&rec, r.replayedCheckout())
-	if err := history.Append(history.DefaultPath(), rec); err != nil {
+	if err := ledgerindex.Append(history.DefaultPath(), rec); err != nil {
 		fmt.Fprintln(r.stderr, "heavyq: warning: history not written:", err)
 	}
 	r.digestReused(m)

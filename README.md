@@ -104,6 +104,7 @@ heavyq status      # what runs, what waits, and why (opens with a short story in
 heavyq why         # just that story: "2 agents wait because every heavy slot on local is taken."
 heavyq why api     # one lane: its running and waiting jobs, the reason per machine, its last run
 heavyq history     # recent runs, with the commit each one ran on (-v: tree, session, item, gate)
+heavyq doctor      # the ledger index: state and size (--reindex rebuilds it; see docs/ledger.md)
 heavyq gate status # is this exact code proven? (heavyq.toml gates, or a detected default; exit 0 yes, 1 no)
 heavyq gate run    # run what is not proven yet, through the queue, cached
 heavyq init --agents-md      # write heavyq.toml from what heavyq detects, tell agents to run the gate
@@ -241,6 +242,9 @@ Each run appends one JSON line. These fields say what it ran on and who asked:
 - **Where.** `$HEAVYQ_HISTORY` if set (exactly that one file, never rotated). Otherwise one file per month,
   `history-YYYY-MM.jsonl` (UTC) in `$XDG_STATE_HOME/heavyq`. `heavyq history` and the dashboard read across
   the months, newest last, and still read the `history.jsonl` that older versions wrote.
+- **Fast reads.** Hot paths (`gate status`, `why`, the Tower, hooks) never scan the ledger: they read the
+  newest records backwards and small index files kept next to it, so they stay in milliseconds on a ledger of
+  100,000 runs. `heavyq doctor --reindex` rebuilds the index. See [docs/ledger.md](docs/ledger.md).
 
 ## Never run the same gate twice (cache + coalescing)
 

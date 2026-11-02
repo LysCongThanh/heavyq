@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/LysCongThanh/heavyq/internal/config"
-	"github.com/LysCongThanh/heavyq/internal/history"
 	"github.com/LysCongThanh/heavyq/internal/proof"
 	"github.com/LysCongThanh/heavyq/internal/repoconfig"
 )
@@ -16,8 +15,8 @@ import (
 // at its root: whether its main gate is proven on the code checked out now.
 // It is "" when there is neither, no unambiguous gate (see pickGate), or the
 // file is invalid (said on stderr).
-// recs is the ledger, oldest first.
-func gateWhyLine(cfg *config.Config, recs []history.Record, stderr io.Writer) string {
+// Its proof comes from the index (proofRecords).
+func gateWhyLine(cfg *config.Config, stderr io.Writer) string {
 	wd, err := os.Getwd()
 	if err != nil {
 		return ""
@@ -34,7 +33,13 @@ func gateWhyLine(cfg *config.Config, recs []history.Record, stderr io.Writer) st
 	if !ok {
 		return ""
 	}
-	st := proof.Evaluate(g.Name, g.Run, subjectOf(cfg, repo.Root), recs)
+	subj := subjectOf(cfg, repo.Root)
+	recs, err := proofRecords(subj)
+	if err != nil {
+		fmt.Fprintln(stderr, "heavyq: ledger unreadable, so nothing can be proven:", err)
+		recs = nil
+	}
+	st := proof.Evaluate(g.Name, g.Run, subj, recs)
 	label := gateLabel(g)
 	switch {
 	case st.Proven:
