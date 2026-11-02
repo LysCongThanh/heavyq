@@ -38,8 +38,11 @@ func TestTopOncePrintsEveryModeOfARealQueue(t *testing.T) {
 		}
 	}
 
-	for mode, want := range map[string]string{"focus": "NOTHING NEEDS YOU", "lanes": "state", "machines": "MACHINES"} {
-		if rc, out := h.run("top", "--once", "--mode", mode, "--width", "100"); rc != 0 || !strings.Contains(out, want) {
+	// What needs you depends on the host the test runs on (a machine exception when
+	// outsiders hold the RAM), so focus is checked for its shape, not its content.
+	for mode, want := range map[string]string{"focus": "NEEDS YOU", "lanes": "state", "machines": "MACHINES"} {
+		if rc, out := h.run("top", "--once", "--mode", mode, "--width", "100"); rc != 0 || !strings.Contains(out, want) ||
+			(mode == "focus" && strings.Contains(out, "LANES")) {
 			t.Errorf("mode %s: rc=%d, want %q in\n%s", mode, rc, want, out)
 		}
 	}
