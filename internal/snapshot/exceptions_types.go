@@ -2,13 +2,15 @@ package snapshot
 
 import "time"
 
-// Exception kinds: the only four things that put a card on the dashboard's
-// Tower. Each one is a fact heavyq measured, never something an agent said.
+// Exception kinds: the only things that put a card on the dashboard's Tower.
+// Each one is a fact heavyq measured (or, for KindBlocked, a need an agent
+// recorded with `heavyq item block`), never something an agent merely said.
 const (
 	KindRedGate = "red_gate" // a lane's gate fails on the code it has checked out now
 	KindLoop    = "loop"     // the same command failed again and again on the same code
 	KindStarved = "starved"  // a job waited close to the bypass delay, or gave up
 	KindMachine = "machine"  // unreachable, paused, or crowded out by processes outside the queue
+	KindBlocked = "blocked"  // a work item waits for something only a human can provide
 )
 
 // Severities.
@@ -64,6 +66,7 @@ type Evidence struct {
 	Cmd    string    `json:"cmd,omitempty"` // secrets redacted
 	Count  int       `json:"count,omitempty"`
 	Gate   string    `json:"gate,omitempty"`
+	Item   string    `json:"item,omitempty"` // the work item a blocked exception is about
 	Detail string    `json:"detail,omitempty"`
 }
 

@@ -22,13 +22,14 @@ const (
 )
 
 // ComputeExceptions lists what needs a human, most urgent first: red gates,
-// loops, starved lanes, machine trouble. It is a pure function of the
+// loops, blocked items, starved lanes, machine trouble. It is a pure function of the
 // snapshot (with its Gates filled in), the ledger (oldest first) and now.
 // Identical exceptions (same ID) appear once.
 func ComputeExceptions(s Snapshot, recs []history.Record, now time.Time) []Exception {
 	var all []Exception
 	all = append(all, redGates(s)...)
 	all = append(all, loops(s, recs, now)...)
+	all = append(all, blockedItems(s)...)
 	all = append(all, starved(s, recs, now)...)
 	all = append(all, machineTrouble(s)...)
 	seen := map[string]bool{}
@@ -39,7 +40,7 @@ func ComputeExceptions(s Snapshot, recs []history.Record, now time.Time) []Excep
 			out = append(out, e)
 		}
 	}
-	rank := map[string]int{KindRedGate: 0, KindLoop: 1, KindStarved: 2, KindMachine: 3}
+	rank := map[string]int{KindRedGate: 0, KindLoop: 1, KindBlocked: 2, KindStarved: 3, KindMachine: 4}
 	sort.SliceStable(out, func(i, j int) bool {
 		a, b := out[i], out[j]
 		if (a.Severity == SeverityCritical) != (b.Severity == SeverityCritical) {

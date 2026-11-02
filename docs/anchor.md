@@ -3,8 +3,8 @@
 An **anchor** is a short, reviewable list of what is left to do, kept in git. It holds a goal and checklist
 items, and each item can say how it is proven. The default file is `.heavyq/anchor.md`.
 
-> Status: this page describes the file format and the reader/rewriter (`internal/anchor`). No command uses
-> them yet; `heavyq item`, `heavyq brief` and the stop gate come later in v0.5.
+> Status: this page describes the file format and the reader/rewriter (`internal/anchor`). `heavyq item`
+> ([items.md](items.md)) uses them; `heavyq brief` and the stop gate come later in v0.5.
 
 ## Format
 
@@ -72,6 +72,6 @@ permission bits kept). It refuses ids that do not exist, items from extra source
 1 MiB. It re-reads the file just before writing and refuses if the item's line changed in the meantime
 (`ErrConcurrent`; retry). Setting the state an item already has writes nothing.
 
-Writers are not serialised. Two processes flipping different items in the same instant can lose one update.
-Heavyq does not tick boxes by itself; it does so only after it has proof, and the status of an item is
-derived from proofs, never from the box.
+Writers are not serialised by this package. Two processes flipping different items in the same instant can
+lose one update. `heavyq item done` therefore ticks under the lease store's directory lock; it does so only
+after it has proof, and the status of an item is derived from proofs, never from the box.
