@@ -79,13 +79,20 @@ end
 
 # __heavyq_at CMD [SUB]: is the line at that command (and subcommand; "" means none yet)?
 function __heavyq_at
+    __heavyq_after_dashdash; and return 1
     set -l p (__heavyq_positionals)
     test "$p[1]" = "$argv[1]"; or return 1
     set -q argv[2]; or return 0
     test "$p[2]" = "$argv[2]"
 end
 
+# After "--" comes the user's own command: offer files, not heavyq's words.
+function __heavyq_after_dashdash
+    contains -- -- (commandline -opc)
+end
+
 complete -c heavyq -f
+complete -c heavyq -n __heavyq_after_dashdash -F
 `)
 	fishFlag(&b, "true", configFlag)
 	b.WriteString("complete -c heavyq -n 'true' -s h -l help -d 'show the usage'\n")
