@@ -96,9 +96,9 @@ until the file changes. Blocks and done marks live in the events log tail (the l
 4. **Plan-file items** (`[anchor] extra`, read-only) are never rewritten: they are marked done in the events
    log only, and still read `proven` + `done` while their proof holds.
 
-Ticking the box edits a file in the repository, so the tree identity changes: right after `done`, the item
-and the gate read as proven on the *previous* tree (`stale` + `done`) until the gate runs on the new one. Commit
-the tick with your change.
+Ticking the box edits only heavyq's own bookkeeping: the anchor file, `.heavyq/decisions/` and
+`.heavyq/stances/` are excluded from the tree identity (see [gates.md](gates.md#what-the-tree-id-ignores)), so
+the item stays `proven` + `done` after the tick, committed or not. A later change to the code makes it `stale`.
 
 ## `ls --json`
 
