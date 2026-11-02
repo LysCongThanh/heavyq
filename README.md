@@ -98,6 +98,7 @@ machines. It listens on loopback only. See [docs/dashboard.md](docs/dashboard.md
 | Work items: claim, prove and finish (`heavyq item`) | [docs/items.md](docs/items.md) |
 | Steer: the brief after compaction, the stop gate (`heavyq steer off\|guard\|destroy`), the delivery canary | [docs/steer.md](docs/steer.md) |
 | Preflight: GO or NO-GO before an unattended run, and the run span it opens (`heavyq preflight`, `heavyq run end\|ls\|current`) | [docs/preflight.md](docs/preflight.md) |
+| Long runs: the 10-minute path from preflight to recap, for unattended Claude Code agent runs | [docs/long-runs.md](docs/long-runs.md) |
 | Stances, leases, anchor | [docs/stances.md](docs/stances.md), [docs/leases.md](docs/leases.md), [docs/anchor.md](docs/anchor.md) |
 | Comparison with pueue, task-spooler, `flock` | [docs/comparison.md](docs/comparison.md) |
 | Platform support (Linux, macOS) | [docs/platform-support.md](docs/platform-support.md) |
