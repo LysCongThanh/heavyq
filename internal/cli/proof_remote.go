@@ -44,6 +44,9 @@ func resolveProofRemote(cfg *config.Config, repo *repoconfig.Repo, gate *repocon
 	case cfg.Proof.Remote != "":
 		p = proofPlace{cfg.Proof.Remote, proofFromUser}
 	}
+	if p.From == proofFromGate {
+		return p, nil // an unknown remote of a gate fails when the command runs, as it always did
+	}
 	if err := cfg.CheckRemoteTarget(p.Remote); err != nil {
 		return p, fmt.Errorf("%s: %w", p.From, err)
 	}
