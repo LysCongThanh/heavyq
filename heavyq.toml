@@ -25,3 +25,27 @@ run  = [
   "env HEAVYQ_TEST_NORACE=1 go test -count=1 -skip 'Latency|HookPathUnder20ms' ./...",
 ]
 prio = 3
+
+# The proofs of the anchor items (.heavyq/anchor.md, `proof: gate:<name>`), one gate per item, named like it.
+# An agent proves an item with `heavyq item done <id> --run --remote linuxi` or `heavyq gate run <id> --remote linuxi`:
+# no `sh -c '...'` to type, which agent harnesses that vet commands refuse (#123). `go test -run` that matches
+# no test exits 0, so each proof also greps for the test's own PASS line: the test must exist and pass.
+[[gate]]
+name = "flow-collectors"
+run  = ["go test -count=1 -run '^TestReplaySerialCIConvoy$' -v ./internal/flow/... | grep -q -- '--- PASS: TestReplaySerialCIConvoy'"]
+
+[[gate]]
+name = "cli-race-fast"
+run  = ["timeout 300 go test -race -count=1 ./internal/cli/..."]
+
+[[gate]]
+name = "permission-matcher"
+run  = ["go test -count=1 -run '^TestPermissionMatcherCorpus$' -v ./internal/preflight | grep -q -- '--- PASS: TestPermissionMatcherCorpus'"]
+
+[[gate]]
+name = "size-gate"
+run  = ["go test -count=1 -run '^TestE2EClaimRefusesOversizedItem$' -v ./internal/cli | grep -q -- '--- PASS: TestE2EClaimRefusesOversizedItem'"]
+
+[[gate]]
+name = "proof-remote"
+run  = ["go test -count=1 -run '^TestE2EItemDoneRunUsesProofRemote$' -v ./internal/cli | grep -q -- '--- PASS: TestE2EItemDoneRunUsesProofRemote'"]
