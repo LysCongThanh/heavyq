@@ -39,9 +39,9 @@ func TestE2EItemDoneRefusesThenSucceedsAndTicksOnlyThatBox(t *testing.T) {
 	if got := mustRead(t, anchorPath); got != want {
 		t.Fatalf("exactly one checkbox may change.\ngot:  %q\nwant: %q", got, want)
 	}
-	// The lease is gone. The tick changed the code (the anchor is in the tree), so the
-	// proof now belongs to an older tree: done, but stale until the gate runs again.
-	if r := h.itemRowsJSON(app)["web-item"]; r.Lane != "" || !r.Done || r.State != "stale" {
+	// The lease is gone. The tick wrote the anchor, which is heavyq bookkeeping and not part
+	// of the tree identity (#71), so the proof still belongs to this code: done and proven.
+	if r := h.itemRowsJSON(app)["web-item"]; r.Lane != "" || !r.Done || r.State != "proven" {
 		t.Fatalf("after done: %+v", r)
 	}
 	if ev := mustRead(t, filepath.Join(app, ".git", "heavyq", "events.jsonl")); !strings.Contains(ev, `"op":"done"`) {
