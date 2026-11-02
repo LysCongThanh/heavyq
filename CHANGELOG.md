@@ -7,6 +7,33 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Signed releases.** Every archive and `checksums.txt` now has a cosign keyless signature
+  (`<file>.sigstore.json`, made by the release workflow through Sigstore with GitHub OIDC), next to the existing
+  SPDX SBOMs and GitHub build-provenance attestation. This is what the Scorecard Signed-Releases check reads. The
+  release footer and [docs/install.md](docs/install.md#verify-a-release) show `cosign verify-blob` and
+  `gh attestation verify`. Releases are immutable (repository setting), and `v*` tags are protected from deletion
+  and force-push (ruleset).
+- **`install.sh`**, attached to every release and listed in its signed `checksums.txt`: detects OS and CPU,
+  downloads the archive, **checks its SHA-256 against `checksums.txt`** (a mismatch or a duplicated line installs
+  nothing), installs into `~/.local/bin` or `--prefix DIR/bin` atomically, and with `--verify` also checks the
+  cosign signature. `--version` pins a release. Tested in CI on Linux and macOS against a local fake release and
+  against real releases ([docs/install.md](docs/install.md)).
+- **`heavyq <command> --help`** (and `heavyq help <command>`) prints a real usage block: what the command does,
+  its synopsis, its flags with descriptions, and a link to its docs, instead of the Go flag defaults. It works
+  without a config and for subcommands (`heavyq gate run --help`). A `--help` after `--` still belongs to your
+  command.
+- **`heavyq completion bash|zsh|fish`**: shell completion scripts for commands, subcommands, flags and their
+  values (`--remote local|auto`, `--scope ...`, paths); after `--` they complete the program you queue. They run
+  on bash 3.2 (macOS) and need no bash-completion package.
+- **Man page** `heavyq(1)`, generated at release by `tools/mangen` and shipped in every archive as
+  `man/man1/heavyq.1`. The help blocks, completions and man page are generated from one command table
+  (`internal/cli/command_table_*.go`); tests fail when it and the code or the usage text disagree.
+- **JSON Schemas** in `schema/` for `heavyq.toml`, the user config and `heavyq status --json`, generated from the
+  Go types by `tools/schemagen` (a separate module, so the main module keeps its single dependency). Add
+  `#:schema https://raw.githubusercontent.com/LysCongThanh/heavyq/main/schema/heavyq.schema.json` as the first line
+  of a file for completion, hover help and errors in Taplo-based editors
+  ([docs/configuration.md](docs/configuration.md#editor-support-json-schemas)). CI regenerates them and fails on a
+  difference.
 - **Steer: a brief after compaction and a stop gate that wants proof** ([docs/steer.md](docs/steer.md),
   `internal/steer`).
   - **`heavyq brief [--json]`**: the goal, the asking lane's items, the one next command, a red gate, items that need

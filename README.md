@@ -16,7 +16,7 @@ also a priority, resource-aware queue that keeps six agents from running six tes
 ![An agent claims all tests pass. heavyq gate status says NOT PROVEN after an edit (exit 1), gate run passes, gate status says PROVEN (exit 0). Recorded from real runs.](docs/proof.gif)
 
 ```bash
-go install github.com/LysCongThanh/heavyq@latest   # or a binary from Releases, see docs/install.md
+curl -fsSL https://github.com/LysCongThanh/heavyq/releases/latest/download/install.sh | sh   # checks the sha256; or: go install github.com/LysCongThanh/heavyq@latest, see docs/install.md
 heavyq hook install claude                         # Claude Code agents use the queue without being told
 heavyq init --agents-md                            # write heavyq.toml, tell agents to run the gate first
 ```
@@ -76,7 +76,7 @@ machines. It listens on loopback only. See [docs/dashboard.md](docs/dashboard.md
 
 | Topic | Page |
 |---|---|
-| Install, verify a release | [docs/install.md](docs/install.md) |
+| Install (script, `go install`, archives), verify signatures, completions, man page | [docs/install.md](docs/install.md) |
 | The queue: priorities, slots, resource gate, quickstart | [docs/queue.md](docs/queue.md) |
 | Gates, `heavyq.toml`, what "proven" means | [docs/gates.md](docs/gates.md) |
 | Claude Code hook (zero config) and what it relies on | [docs/claude-code-hook.md](docs/claude-code-hook.md), [docs/claude-code.md](docs/claude-code.md) |
@@ -90,6 +90,7 @@ machines. It listens on loopback only. See [docs/dashboard.md](docs/dashboard.md
 | Mentor: break repeat failures, measured with a holdout (`heavyq mentor`) | [docs/mentor.md](docs/mentor.md) |
 | Dashboard, JSON snapshot, control API | [docs/dashboard.md](docs/dashboard.md) |
 | Configuration and environment variables | [docs/configuration.md](docs/configuration.md) |
+| Editor support: JSON Schemas for `heavyq.toml`, the user config and `status --json` | [docs/configuration.md](docs/configuration.md#editor-support-json-schemas) |
 | Exit codes | [docs/exit-codes.md](docs/exit-codes.md) |
 | Work items: claim, prove and finish (`heavyq item`) | [docs/items.md](docs/items.md) |
 | Steer: the brief after compaction, the stop gate (`heavyq steer off\|guard\|destroy`), the delivery canary | [docs/steer.md](docs/steer.md) |

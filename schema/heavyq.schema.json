@@ -1,0 +1,159 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/LysCongThanh/heavyq/main/schema/heavyq.schema.json",
+  "definitions": {
+    "Pool": {
+      "oneOf": [
+        {
+          "required": [
+            "values"
+          ]
+        },
+        {
+          "required": [
+            "size"
+          ]
+        }
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,31}$",
+          "description": "Pool name; becomes part of the environment variable HEAVYQ_\u003cNAME\u003e."
+        },
+        "values": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^\\s*\\d+\\s*-\\s*\\d+\\s*$"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                  },
+                  {
+                    "type": "integer"
+                  }
+                ]
+              },
+              "type": "array",
+              "maxItems": 65535,
+              "minItems": 1
+            }
+          ],
+          "description": "A range \"4100-4199\", or a list of names or integers."
+        },
+        "size": {
+          "type": "integer",
+          "maximum": 1024,
+          "minimum": 1,
+          "description": "A capacity-only pool: the values are 1..size."
+        },
+        "port": {
+          "type": "boolean",
+          "description": "true: the values are TCP ports, probed before they are handed out. Absent: a pool called \"port\" or ending in \"_port\" is a port pool."
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "description": "A named pool of values handed out with --needs: ports, database names, browser seats."
+    },
+    "Anchor": {
+      "properties": {
+        "file": {
+          "type": "string",
+          "description": "Checklist file, relative to the repository root (default .heavyq/anchor.md)."
+        },
+        "extra": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "Extra read-only sources, as globs relative to the repository root."
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "description": "The anchor checklist: the work items of `heavyq item`."
+    },
+    "Gate": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,39}$",
+          "description": "Gate name: lower case, used in lane names, file names and `heavyq gate run \u003cname\u003e`."
+        },
+        "run": {
+          "items": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "type": "array",
+          "minItems": 1,
+          "description": "Shell commands, run in order with `sh -c`. Each must pass on this exact tree for the gate to be proven."
+        },
+        "prio": {
+          "type": "integer",
+          "maximum": 9,
+          "minimum": 1,
+          "description": "Queue priority of the gate's commands; 1 runs first.",
+          "default": 3
+        },
+        "light": {
+          "type": "boolean",
+          "description": "Light job: may use the light slots and jump ahead into them."
+        },
+        "remote": {
+          "type": "string",
+          "description": "Where to run: \"local\", \"auto\" (best machine) or the name of a [[remote]] of the user config.",
+          "default": "local"
+        },
+        "needs": {
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,31}(:[0-9]+)?$"
+          },
+          "type": "array",
+          "description": "Pool values every command holds while it runs, for example [\"pg\", \"port:2\"]. A gate with needs runs on this machine."
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "name",
+        "run"
+      ],
+      "description": "A named list of shell commands that must all pass on the current code (heavyq gate status, heavyq gate run)."
+    }
+  },
+  "properties": {
+    "gate": {
+      "items": {
+        "$ref": "#/definitions/Gate"
+      },
+      "type": "array"
+    },
+    "pool": {
+      "items": {
+        "$ref": "#/definitions/Pool"
+      },
+      "type": "array"
+    },
+    "anchor": {
+      "$ref": "#/definitions/Anchor"
+    }
+  },
+  "additionalProperties": false,
+  "type": "object",
+  "title": "heavyq.toml",
+  "description": "heavyq.toml at the repository root: the gates that say what \"proven\" means, named pools and the anchor checklist."
+}
+
