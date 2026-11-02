@@ -23,6 +23,9 @@ resource_gate = false
 [local]
 heavy_slots = 6
 light_slots = 1
+job_mb = 1
+light_mb = 1
+max_load_ratio = 64
 [[pool]]
 name = "pg"
 values = ["app_wt1", "app_wt2"]

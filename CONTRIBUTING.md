@@ -50,6 +50,17 @@ The remote path is tested through a `sh -c` transport, which runs the same code 
   `internal/ledgerindex` (a 100,000-record ledger; skipped under `-short` and `-race`).
 - **Test with real things.** Spawn real processes, take real locks, push to real (temporary) git repos.
   Fake `/proc` only where a real process can't produce the case (see `procinfo_test.go`).
+- **Tests never depend on the load of the machine they run on.** heavyq stamps the machine reading (load,
+  free RAM) on every ledger record and classes a failure that started over a limit as `under_load`, so a
+  busy CI box or laptop would turn a test's plain failure into one. The e2e rig's `baseConfig` is therefore
+  calm (`job_mb = 1`, `light_mb = 1`, `max_load_ratio = 64`: a value of 0 means "the default", so use 1);
+  a test that asserts a failure class, a red gate, a loop or a proof starts from it and never drops those
+  keys. To assert `under_load` on purpose, either use `loadedConfig` (a RAM budget no machine has) or pin
+  the reading with the test-only override: `HEAVYQ_TEST=1 HEAVYQ_TEST_FAKE_METRICS="load1=9,free_mb=99999,cores=8"`
+  (rig helper `h.fakeMetrics`, in `internal/metrics/test_override.go`). It is honored only when
+  `HEAVYQ_TEST` is exactly `1` and every key parses (`load1`, `free_mb`, `total_mb`, `cores`); anything else
+  is ignored and the real machine is read. Never set it outside tests. To check a change, run the affected
+  tests in a loop while the machine is busy (`stress-ng --cpu 0`, or a few `while :; do :; done` shells).
 - **Agent output is a budget.** Anything a run prints in agent mode costs an agent context: keep the digest
   under 4 KB, `why` under 600 bytes, the `help agents` card under 900. The tests in `docs/agent-mode.md` enforce it.
   The e2e rig strips `CLAUDECODE` and friends from the child environment; a test of agent mode adds one back.

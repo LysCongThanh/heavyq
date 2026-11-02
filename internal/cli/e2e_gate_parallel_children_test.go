@@ -13,7 +13,7 @@ import (
 	"github.com/LysCongThanh/heavyq/internal/history"
 )
 
-const parallelConfig = "[queue]\npoll = \"50ms\"\nresource_gate = false\n[local]\nheavy_slots = 3\nlight_slots = 1\n"
+const parallelConfig = "[queue]\npoll = \"50ms\"\nresource_gate = false\n[local]\nheavy_slots = 3\nlight_slots = 1\n" + calmLimits
 
 // blockingGate commits a gate "ready" of two commands that print a line, wait
 // for a file (a-go, b-go) and print another. Returns the gate process helper.

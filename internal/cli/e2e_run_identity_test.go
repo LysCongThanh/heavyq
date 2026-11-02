@@ -11,7 +11,7 @@ import (
 
 // identityConfig puts FEATURE_X on the cache.env allowlist: its value is part
 // of the identity of a run (#46).
-const identityConfig = calmConfig + "[cache]\nenv = [\"FEATURE_X\"]\n"
+const identityConfig = baseConfig + "[cache]\nenv = [\"FEATURE_X\"]\n"
 
 // oneCommandGate commits a heavyq.toml with a single-command gate "ready".
 func oneCommandGate(t *testing.T, h *rig) {

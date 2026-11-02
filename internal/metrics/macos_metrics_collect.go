@@ -16,12 +16,19 @@ const commandTimeout = 5 * time.Second
 // Host measures the machine heavyq runs on: macOS through sysctl and
 // vm_stat (no cgo), everything else from procRoot like Local. A failing
 // command yields Known=false, so the gate degrades to slots only exactly as
-// it does on a platform that cannot be measured.
+// it does on a platform that cannot be measured. The e2e tests may pin the
+// reading (see test_override.go).
 func Host(procRoot string) Metrics {
+	var m Metrics
 	if runtime.GOOS == "darwin" {
-		return localMacOS()
+		m = localMacOS()
+	} else {
+		m = Local(procRoot)
 	}
-	return Local(procRoot)
+	if fake, ok := fakeFromEnv(m); ok {
+		return fake
+	}
+	return m
 }
 
 // localMacOS samples the local Mac.
