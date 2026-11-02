@@ -13,6 +13,31 @@ var moreCommands = []commandSpec{
 		Docs: "history.md",
 	},
 	{
+		Name:     "brief",
+		Summary:  "the thread of this repository for this lane, in at most 300 tokens",
+		Synopsis: []string{"heavyq [--config FILE] brief [--json]"},
+		Flags:    []flagSpec{jsonFlag("machine-readable output (schema in docs/steer.md)")},
+		Notes: "The goal, the lane's items and their status, the next command, a red gate, items that need a human and one\n" +
+			"machine-pressure line. The SessionStart hook injects it at startup, resume and after compaction.",
+		Docs: "steer.md",
+	},
+	{
+		Name:    "steer",
+		Summary: "show or set the stop gate mode of this repository (off, guard, destroy)",
+		Synopsis: []string{
+			"heavyq steer",
+			"heavyq steer off|guard|destroy [--apply] [--scope local|project|user]",
+		},
+		NextWord: []string{"off", "guard", "destroy"},
+		Flags: []flagSpec{
+			{Long: "apply", Help: "destroy: set the Claude Code Stop-hook block cap to 0 in the Claude Code settings"},
+			{Long: "scope", Value: "SCOPE", Choices: []string{"local", "project", "user"}, Help: "with --apply: local, project or user settings"},
+		},
+		Notes: "off: no stop gate (default). guard: Stop blocks while this lane holds claimed items not proven on this tree.\n" +
+			"destroy: no cap, and SubagentStop, TaskCompleted and TeammateIdle are gated too. HEAVYQ_STEER=off is the kill switch.",
+		Docs: "steer.md",
+	},
+	{
 		Name:     "receipts",
 		Summary:  "summarise what heavyq did over a window of the ledger",
 		Synopsis: []string{"heavyq receipts [--day|--week|--month] [--share] [--json]"},
@@ -42,15 +67,22 @@ var moreCommands = []commandSpec{
 		Synopsis: []string{
 			"heavyq [--config FILE] hook claude-pretooluse",
 			"heavyq [--config FILE] hook claude-posttooluse",
-			"heavyq [--config FILE] hook install claude [--scope local|project|user] [--print] [--force]",
+			"heavyq [--config FILE] hook claude-sessionstart",
+			"heavyq [--config FILE] hook claude-stop [Stop|SubagentStop|TaskCompleted|TeammateIdle]",
+			"heavyq [--config FILE] hook install claude [--scope local|project|user] [--print] [--force] [--features queue,brief,stop]",
 			"heavyq [--config FILE] hook uninstall claude [--scope local|project|user] [--print]",
 		},
 		Subs: []subSpec{
 			{Name: "claude-pretooluse", Summary: "called by Claude Code; reads the hook JSON on stdin, fails open"},
 			{Name: "claude-posttooluse", Summary: "the mentor: PostToolUse and PostToolUseFailure hook; reads JSON on stdin, fails open"},
+			{Name: "claude-sessionstart", Summary: "SessionStart hook: injects the brief; called by Claude Code, fails open"},
+			{Name: "claude-stop", Args: "[event]", Summary: "the stop gate (Stop, SubagentStop, TaskCompleted, TeammateIdle); called by Claude Code, fails open",
+				NextWord: []string{"Stop", "SubagentStop", "TaskCompleted", "TeammateIdle"}},
 			{Name: "install", Args: "claude", Summary: "add the hook to Claude Code settings", NextWord: []string{"claude"}, Flags: []flagSpec{
 				scopeFlag(), {Long: "print", Help: "print the resulting settings instead of writing them"},
-				{Long: "force", Help: "install even when the heavyq Claude Code plugin is enabled (the hook would run twice)"}}},
+				{Long: "force", Help: "install even when the heavyq Claude Code plugin is enabled (the hook would run twice)"},
+				{Long: "features", Value: "LIST", Choices: []string{"queue", "brief", "stop", "queue,brief,stop"},
+					Help: "hooks to install, comma separated: queue, brief, stop (exactly these; others of heavyq's are removed; default queue)"}}},
 			{Name: "uninstall", Args: "claude", Summary: "remove the hook again", NextWord: []string{"claude"}, Flags: []flagSpec{
 				scopeFlag(), {Long: "print", Help: "print the resulting settings instead of writing them"}}},
 		},
