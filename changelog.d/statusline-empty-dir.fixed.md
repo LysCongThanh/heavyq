@@ -1,1 +1,0 @@
-- `heavyq statusline` no longer treats an empty or malformed stdin as "the repository this process runs in". Without a directory it says nothing, unless a working-directory fallback is configured.
