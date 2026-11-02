@@ -31,21 +31,21 @@ prio = 3
 # no `sh -c '...'` to type, which agent harnesses that vet commands refuse (#123). `go test -run` that matches
 # no test exits 0, so each proof also greps for the test's own PASS line: the test must exist and pass.
 [[gate]]
-name = "flow-collectors"
-run  = ["go test -count=1 -run '^TestReplaySerialCIConvoy$' -v ./internal/flow/... | grep -q -- '--- PASS: TestReplaySerialCIConvoy'"]
+name = "proof-scope"
+run  = ["go test -count=1 -run '^TestE2EDocsCommitKeepsScopedProof$' -v ./internal/cli | grep -q -- '--- PASS: TestE2EDocsCommitKeepsScopedProof'"]
 
 [[gate]]
-name = "cli-race-fast"
-run  = ["timeout 300 go test -race -count=1 ./internal/cli/..."]
+name = "recap-accuracy"
+run  = ["go test -count=1 -run '^TestE2ERecapCountsEveryProof$' -v ./internal/cli | grep -q -- '--- PASS: TestE2ERecapCountsEveryProof'"]
 
 [[gate]]
-name = "permission-matcher"
-run  = ["go test -count=1 -run '^TestPermissionMatcherCorpus$' -v ./internal/preflight | grep -q -- '--- PASS: TestPermissionMatcherCorpus'"]
+name = "next-claim"
+run  = ["go test -count=1 -run '^TestE2EItemNextRefusesPathOverlap$' -v ./internal/cli | grep -q -- '--- PASS: TestE2EItemNextRefusesPathOverlap'"]
 
 [[gate]]
-name = "size-gate"
-run  = ["go test -count=1 -run '^TestE2EClaimRefusesOversizedItem$' -v ./internal/cli | grep -q -- '--- PASS: TestE2EClaimRefusesOversizedItem'"]
+name = "tick-free-done"
+run  = ["go test -count=1 -run '^TestE2EItemDoneFromWorktreeLeavesAnchor$' -v ./internal/cli | grep -q -- '--- PASS: TestE2EItemDoneFromWorktreeLeavesAnchor'"]
 
 [[gate]]
-name = "proof-remote"
-run  = ["go test -count=1 -run '^TestE2EItemDoneRunUsesProofRemote$' -v ./internal/cli | grep -q -- '--- PASS: TestE2EItemDoneRunUsesProofRemote'"]
+name = "stance-hygiene"
+run  = ["go test -count=1 -run '^TestStanceDirIgnoresNonStanceFiles$' -v ./internal/stance | grep -q -- '--- PASS: TestStanceDirIgnoresNonStanceFiles'"]
