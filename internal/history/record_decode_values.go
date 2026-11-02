@@ -114,7 +114,7 @@ func unescape(raw []byte) (string, bool) {
 			if i+4 >= len(raw) {
 				return "", false
 			}
-			n, err := strconv.ParseUint(string(raw[i+1:i+5]), 16, 32)
+			n, err := strconv.ParseUint(string(raw[i+1:i+5]), 16, 16)
 			if err != nil || (n >= 0xD800 && n <= 0xDFFF) {
 				return "", false
 			}
