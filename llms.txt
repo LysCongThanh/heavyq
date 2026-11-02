@@ -6,7 +6,17 @@ Typical use: `heavyq <prio> [--lane NAME] [--light] [--cache] [--max-wait DUR] -
 
 ## Docs
 
-- [README](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/README.md): install, quickstart, flags, configuration table, exit codes, platform support
+- [README](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/README.md): the proof demo, install, Run / Prove / Steer in one screen, index of the docs
+- [Install](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/install.md): go install, release binaries, verifying checksums and provenance
+- [The queue](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/queue.md): priority tickets, heavy/light slots, resource gate, `status`, quickstart
+- [Configuration](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/configuration.md): every config key and environment variable
+- [Exit codes](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/exit-codes.md): stable exit codes
+- [Spare machines](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/remote.md): SSH remotes, exact-commit runs, placement
+- [Cache and coalescing](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/cache-and-coalescing.md): one run per commit, replayed results
+- [History ledger](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/history.md): JSONL record fields: commit, tree, session, item, gate
+- [Claude Code hook (setup)](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/claude-code-hook.md): `heavyq hook install claude`, what gets wrapped, fail-open behaviour
+- [Comparison](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/comparison.md): pueue, task-spooler, GNU parallel, flock
+- [Platform support](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/platform-support.md): Linux and macOS differences
 - [Claude Code hook](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/claude-code.md): how the PreToolUse hook rewrites commands and what it relies on
 - [Gates (heavyq.toml)](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/gates.md): per-repo gate format, the zero-config detected gate and `heavyq init`, `gate status` (`--json` schema, exit codes) and `gate run`, what counts as proven, trust model
 - [Stances](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/stances.md): thinking modes as files: TOML-frontmatter format, repo > user > built-in precedence, the five built-ins, compact renderer, `heavyq stance ls|show`

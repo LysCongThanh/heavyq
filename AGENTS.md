@@ -43,7 +43,7 @@ this exact code is proven). CI runs the same gate.
 - **Dashboard security model** (`docs/dashboard.md`): loopback only, token, `Host`/`Origin` checks, CSP
   `default-src 'none'`. Do not loosen any of these. Keep the page free of external resources.
 - **Redaction**: anything that shows command lines goes through `internal/redact`.
-- **Docs move with behaviour**: flags, config keys and exit codes change in README.md and CHANGELOG.md
+- **Docs move with behaviour**: flags, config keys and exit codes change in README.md, docs/ (configuration.md, exit-codes.md) and CHANGELOG.md
   (Keep a Changelog) in the same PR.
 
 ## Commits and PRs

@@ -10,5 +10,5 @@
 
 - [ ] PR title is a conventional commit (`feat:`, `fix:`, `docs:` ...); it becomes the squash commit
 - [ ] `go test -race ./...` and `golangci-lint run` pass
-- [ ] User-visible change: README (flags, config table, exit codes) and `CHANGELOG.md` updated
+- [ ] User-visible change: Docs (README, `docs/`: flags, config table, exit codes) and `CHANGELOG.md` updated
 - [ ] Exit codes 2, 75, 76, 77, 78, 255 keep their meaning; the hook still fails open

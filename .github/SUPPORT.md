@@ -8,5 +8,5 @@
   [feature request](https://github.com/LysCongThanh/heavyq/issues/new?template=feature_request.yml).
 - **A security problem:** never in public. See [SECURITY.md](../SECURITY.md).
 
-Before asking, check the [README](../README.md) (flags, config table, exit codes) and
-[docs/](../docs/).
+Before asking, check the [README](../README.md) and
+[docs/](../docs/) (flags, config table, exit codes).

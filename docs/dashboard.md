@@ -5,6 +5,31 @@ API below. It prints a link of the form `http://127.0.0.1:PORT/#token=TOKEN`. Th
 every start, lives only in the URL fragment (never sent in requests as a URL), and must be sent as
 `Authorization: Bearer TOKEN` on every API call.
 
+![heavyq dashboard: machines, running and waiting jobs with reasons, usage outside the queue](dashboard.png)
+
+```bash
+heavyq dash              # read-only; prints http://127.0.0.1:PORT/#token=...
+heavyq dash --control    # the page can also cancel jobs, change priorities, pause machines
+heavyq status --json     # the same state, machine-readable (schema 1, with the story as sentences)
+```
+
+The dashboard answers, in this order: is the machine OK, what runs and what it costs, **who waits and
+why** (a reason per waiting job and per machine, plus the anti-starvation countdown), what eats the
+machine *outside* the queue (by executable: often the agents themselves), and how the last hour went
+(wait p50/p95, give-ups, forced admissions, cache hits, busiest lanes).
+
+There is no daemon. `heavyq dash` reads the same queue files as `heavyq status`, and actions are requests
+that the job's own heavyq process applies on its next poll. The same actions work from a terminal:
+
+```bash
+heavyq cancel 48213        # by the pid shown in status: a waiting job leaves the queue, a running one is stopped
+heavyq reprio 50122 2      # a waiting job moves to priority 2 (keeps its place among equals)
+heavyq pause buildbox      # no new jobs start there; running jobs finish
+heavyq resume buildbox
+```
+
+Open `http://127.0.0.1:PORT/#demo` from any `heavyq dash` to see the page with sample data.
+
 ## Security model
 
 - Listens on loopback only (`127.0.0.1`, `::1`, `localhost`); other addresses are refused.

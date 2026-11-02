@@ -32,6 +32,11 @@ versions follow [Semantic Versioning](https://semver.org/).
 - `heavyq hook install claude` refuses (exit 2, with a `next:` line) when the user, project or local settings
   enable `heavyq@heavyq`, because the plugin already runs the same hook and two rewriting hooks have no defined
   winner. `--force` installs anyway; `--print` and `uninstall` are never refused.
+### Changed
+
+- **README is a short hero** (tagline, a 14-second proof GIF recorded from real runs, install, Run / Prove / Steer).
+  The reference sections moved into `docs/` (`queue.md`, `remote.md`, `configuration.md`, `exit-codes.md`, ...) unchanged.
+  `docs/tapes/proof.tape` records the GIF; the `demo` workflow re-records it on release tags.
 
 ## [0.4.0] - 2026-11-02
 
