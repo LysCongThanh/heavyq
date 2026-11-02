@@ -25,7 +25,9 @@ func TestMatchRule(t *testing.T) {
 		{"go test:*", "go testing", false},
 		{"go test:*", "go build", false},
 		{"go test *", "go test ./a", true},
-		{"go test *", "go test", false},
+		{"go test *", "go test", true}, // a trailing " *" also matches the bare command (recorded)
+		{"* --help *", "npm --help", false},
+		{"* --help *", "npm --help x", true},
 		{"npm run build", "npm run build", true},
 		{"npm run build", "npm run build --x", false},
 		{"git * main", "git push origin main", true},
