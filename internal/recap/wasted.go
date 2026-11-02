@@ -94,6 +94,8 @@ func contains(l []string, s string) bool {
 func human(sec float64) string {
 	d := time.Duration(sec * float64(time.Second))
 	switch {
+	case d < time.Second:
+		return "<1s"
 	case d < time.Minute:
 		return d.Round(time.Second).String()
 	case d < time.Hour:

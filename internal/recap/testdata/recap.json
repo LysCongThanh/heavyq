@@ -59,7 +59,7 @@
   "claimed_unproven": [
     {
       "id": "doc-3",
-      "text": "doc-3  ticked, no proof declared",
+      "text": "doc-3  no proof declared",
       "lane": "docs",
       "action": "heavyq item done doc-3 --run"
     }

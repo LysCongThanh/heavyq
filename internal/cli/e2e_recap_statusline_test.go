@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/LysCongThanh/heavyq/internal/recap"
+	"github.com/LysCongThanh/heavyq/internal/tui/render"
 )
 
 // withStdin runs heavyq in dir with stdin, returning its exit code, stdout and stderr.
@@ -45,7 +46,7 @@ func TestE2ERecapOfARealRepository(t *testing.T) {
 	h.env = append(h.env, "HEAVYQ_NOTIFY=off")
 	app, _ := itemRepo(t, h, itemAnchor, "", nil)
 	for _, step := range [][]string{{"item", "claim", "web-item"}, {"gate", "run", "web"}, {"item", "done", "web-item"},
-		{"item", "block", "ui-item", "needs: a Stripe test key"}} {
+		{"item", "block", "plain-item", "needs: a Stripe test key"}} {
 		if rc, out, errOut := h.inDir(app, nil, step...); rc != 0 {
 			t.Fatalf("%v: rc=%d\n%s%s", step, rc, out, errOut)
 		}
@@ -60,7 +61,7 @@ func TestE2ERecapOfARealRepository(t *testing.T) {
 	if rc != 0 {
 		t.Fatalf("recap rc=%d\n%s%s", rc, out, errOut)
 	}
-	for _, want := range []string{"1/5 proven", "forecast unknown", "next: heavyq item claim ui-item", "merged into main (1)",
+	for _, want := range []string{"1/5 proven", "forecast unknown", "next: heavyq item claim plain-item", "merged into main (1)",
 		"claimed, unproven (1)", "hand-ticked", "blocked (1)", "needs: a Stripe test key", "wasted (1)", "failed 2x", "heavyq why app"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("recap lacks %q:\n%s", want, out)
@@ -81,8 +82,8 @@ func TestE2ERecapOfARealRepository(t *testing.T) {
 		t.Fatalf("recap --json rc=%d err=%v\n%s%s", rc, err, out, errOut)
 	}
 	if r.Schema != 1 || r.Progress.Total != 5 || r.Progress.Proven != 1 || r.MergeRef != "main" || len(r.Merged) != 1 ||
-		len(r.Blocked) != 1 || r.Blocked[0].Action != "heavyq item claim ui-item" || len(r.Wasted) != 1 || r.Wasted[0].Count != 2 ||
-		r.Best == nil || r.Best.Command != "heavyq item claim ui-item" || r.Forecast.Status != "unknown" {
+		len(r.Blocked) != 1 || r.Blocked[0].Action != "heavyq item claim plain-item" || len(r.Wasted) != 1 || r.Wasted[0].Count != 2 ||
+		r.Best == nil || r.Best.Command != "heavyq item claim plain-item" || r.Forecast.Status != "unknown" {
 		t.Errorf("recap --json: %s", out)
 	}
 
@@ -116,7 +117,7 @@ func TestE2EStatuslineAndRecapShareTheFlowState(t *testing.T) {
 		!strings.Contains(out, "▲ CI wait") || !strings.Contains(out, "✓ on track · ~") || strings.Count(out, "\n") != 1 {
 		t.Fatalf("segment rc=%d stderr=%q\n%q", rc, errOut, out)
 	}
-	if rc, out, _ := h.withStdin(app, in, nil, "statusline", "--ascii"); rc != 0 || !strings.HasPrefix(out, "# 5/8 proven  ! 1 needs you  ^ CI wait") {
+	if rc, out, _ := h.withStdin(app, in, nil, "statusline", "--ascii"); rc != 0 || !strings.HasPrefix(render.StripSGR(out), "# 5/8 proven  ! 1 needs you  ^ CI wait") {
 		t.Errorf("ascii: rc=%d %q", rc, out)
 	}
 	rc, wrapped, _ := h.withStdin(app, in, nil, "statusline", "--wrap", "echo first; echo second")

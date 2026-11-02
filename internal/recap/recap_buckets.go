@@ -27,7 +27,7 @@ func claimedUnproven(it Item) Line {
 	if it.State == itemstatus.Stale {
 		why = "proven on older code, the code changed since"
 	} else if it.Reason != "" {
-		why = "ticked, " + clean(it.Reason, 50)
+		why = clean(it.Reason, 60) // the derived reason already says "ticked, ..."
 	}
 	return Line{ID: it.ID, Lane: it.Lane, Text: it.ID + "  " + why, Action: "heavyq item done " + it.ID + " --run"}
 }
