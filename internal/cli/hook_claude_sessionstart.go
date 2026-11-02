@@ -82,6 +82,7 @@ func handleSessionStart(cfgPath string, explicit bool, in hook.Input) (hookReply
 	if stanceText != "" {
 		text += "\n" + stanceText
 	}
+	text = appendNudge(text, preflightNudge(common, in.SessionID, facts, now)) // a long session with no run span, once (docs/preflight.md)
 	out, err := hook.ContextOutput("SessionStart", text)
 	if err != nil {
 		return hookReply{}, err
