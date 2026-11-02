@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/LysCongThanh/heavyq/internal/flow"
+	"github.com/LysCongThanh/heavyq/internal/flowstate"
 	"github.com/LysCongThanh/heavyq/internal/forecast"
 )
 
@@ -19,73 +21,63 @@ const sample = `{"schema":1,"repo":"/r","updated":"2026-11-02T14:00:00Z","goal":
 "lanes":[{"lane":"api","state":"proving","item":"login-api","since":"2026-11-02T13:30:00Z"}],
 "session":{"model":"m","agent_version":"2.1","rate_limits":{"five_hour_pct":61,"seven_day_pct":20}}}`
 
-func writeState(t *testing.T, body string) string {
+var now = time.Date(2026, 11, 2, 14, 0, 0, 0, time.UTC)
+
+func readSample(t *testing.T, body string) *flow.Snapshot {
 	t.Helper()
 	p := filepath.Join(t.TempDir(), "state.json")
 	if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	return p
-}
-
-func TestReadContractSample(t *testing.T) {
-	s, err := Read(writeState(t, sample))
+	s, err := flowstate.ReadFile(p)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if s.Items.Total != 8 || s.Items.Proven != 5 || s.NeedCount() != 1 || s.AllProven() || s.Empty() {
-		t.Errorf("counts wrong: %+v", s.Items)
-	}
-	if s.Constraint == nil || s.Constraint.State != "ci_wait" || !s.Constraint.Significant {
-		t.Errorf("constraint: %+v", s.Constraint)
-	}
-	if s.RunInfo() != nil {
-		t.Error("a null run must read as no run")
-	}
-	if s.Throughput.N != 9 || s.Session.RateLimits.FiveHourPct != 61 {
-		t.Errorf("throughput/session: %+v %+v", s.Throughput, s.Session)
-	}
-}
-
-func TestReadRejects(t *testing.T) {
-	if _, err := Read(filepath.Join(t.TempDir(), "none.json")); err != ErrNoState {
-		t.Errorf("missing file: %v, want ErrNoState", err)
-	}
-	for name, body := range map[string]string{"schema 2": `{"schema":2}`, "garbage": `{nope`, "empty": ``} {
-		if _, err := Read(writeState(t, body)); err == nil || err == ErrNoState {
-			t.Errorf("%s: err %v, want a parse or schema error", name, err)
-		}
-	}
-}
-
-func TestRunInfoToleratesUnknownShapes(t *testing.T) {
-	run := `{"id":"r1","started":"2026-11-02T10:00:00Z","expected_end":"2026-11-02T16:00:00Z","goal":"g","items":8,"parallel":3}`
-	s, err := Read(writeState(t, strings.Replace(sample, `"run":null`, `"run":`+run, 1)))
-	if err != nil {
-		t.Fatal(err)
-	}
-	r := s.RunInfo()
-	if r == nil || r.ID != "r1" || r.ExpectedEnd.Hour() != 16 {
-		t.Fatalf("run: %+v", r)
-	}
-	// A run whose field has another type is ignored; the state still reads.
-	s, err = Read(writeState(t, strings.Replace(sample, `"run":null`, `"run":{"id":7}`, 1)))
-	if err != nil || s.RunInfo() != nil {
-		t.Errorf("odd run: err %v, info %+v", err, s.RunInfo())
-	}
+	return s
 }
 
 func TestForecastAdapter(t *testing.T) {
-	s, _ := Read(writeState(t, sample))
-	now := time.Date(2026, 11, 2, 14, 0, 0, 0, time.UTC)
-	f := s.Forecast(now)
+	s := readSample(t, sample)
+	f := Forecast(s, now)
 	// 3 remaining x 30 min / 2 running lanes = 45 min.
 	if f.Status != forecast.OnTrack || f.ETA != now.Add(45*time.Minute) || f.Confidence != forecast.ConfMedium {
 		t.Errorf("forecast: %+v", f)
 	}
-	s.Throughput = nil
-	if f := s.Forecast(now); f.Status != forecast.Unknown {
+	s.Throughput = flow.Throughput{}
+	if f := Forecast(s, now); f.Status != forecast.Unknown {
 		t.Errorf("no throughput must be unknown, got %+v", f)
+	}
+}
+
+// throughput.last_proof is what makes at_risk-by-stall possible: lanes work, the
+// median is 30 minutes and nothing was proven for over twice that.
+func TestForecastUsesLastProofForStall(t *testing.T) {
+	stalled := strings.Replace(sample, `"n":9}`, `"n":9,"last_proof":"2026-11-02T12:50:00Z"}`, 1)
+	if f := Forecast(readSample(t, stalled), now); f.Status != forecast.AtRisk || !strings.Contains(f.Reason, "no proof for") {
+		t.Errorf("70 minutes without a proof, median 30: %+v", f)
+	}
+	fresh := strings.Replace(sample, `"n":9}`, `"n":9,"last_proof":"2026-11-02T13:40:00Z"}`, 1)
+	if f := Forecast(readSample(t, fresh), now); f.Status != forecast.OnTrack {
+		t.Errorf("a proof 20 minutes ago is on track: %+v", f)
+	}
+	null := strings.Replace(sample, `"n":9}`, `"n":9,"last_proof":null}`, 1)
+	if f := Forecast(readSample(t, null), now); f.Status != forecast.OnTrack {
+		t.Errorf("a null last_proof cannot tell a stall: %+v", f)
+	}
+}
+
+func TestForecastBoundsByTheRunsExpectedEnd(t *testing.T) {
+	run := `"run":{"id":"r1","started":"2026-11-02T10:00:00Z","expected_end":"2026-11-02T14:20:00Z","goal":"g","items":8,"parallel":3}`
+	s := readSample(t, strings.Replace(sample, `"run":null`, run, 1))
+	if f := Forecast(s, now); f.Status != forecast.AtRisk {
+		t.Errorf("45 minutes of work left, the run ends in 20: %+v", f)
+	}
+}
+
+func TestNotifyFactsKeyAndRedactNeeds(t *testing.T) {
+	facts := NotifyFacts(readSample(t, sample), now)
+	if len(facts.Needs) != 1 || !strings.HasPrefix(facts.Needs[0].Text, "doc-7: permission_prompt") || facts.Proven != 5 || facts.Total != 8 {
+		t.Errorf("%+v", facts)
 	}
 }
 

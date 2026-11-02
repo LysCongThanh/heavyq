@@ -78,6 +78,9 @@ type Event struct {
 type External struct {
 	Item string
 	Span Span
+	// Files are the paths a conflict-resolving merge conflicted in (a
+	// ConflictRework span); empty for the other states.
+	Files []string
 }
 
 // Collector is the signature of such a collector. repo is the work tree root;
@@ -113,6 +116,11 @@ type Input struct {
 	Hooks    []Event
 	External []External
 	Session  *SessionInfo
+	// Baseline is what the constraint finder has learned is normal; nil on
+	// the first ever computation. Snapshot.Baseline is the next one to keep.
+	Baseline *Baseline
+	// Run is the open run span of internal/runspan, nil when none is.
+	Run *RunInfo
 }
 
 func (in Input) window() time.Duration {

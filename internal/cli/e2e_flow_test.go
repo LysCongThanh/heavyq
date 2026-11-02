@@ -6,13 +6,15 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/LysCongThanh/heavyq/internal/flow"
+	"github.com/LysCongThanh/heavyq/internal/runspan"
 )
 
 // The rig turns the automatic flow refresh off (HEAVYQ_FLOW=off) so the other end-to-end tests do not pay for it;
 // the flow tests turn it on for the hook or the run they are about.
-var flowOn = []string{"HEAVYQ_FLOW=on"}
+var flowOn = []string{"HEAVYQ_FLOW=on", "HEAVYQ_FLOW_GH=off"} // gh is never called from a test
 
 func permissionRequestJSON(cwd, session, command string) string {
 	return jsonString(map[string]any{"session_id": session, "cwd": cwd, "hook_event_name": "PermissionRequest",
@@ -274,5 +276,32 @@ func TestE2EHookInstallFlowFeature(t *testing.T) {
 		if !strings.Contains(string(b), want) {
 			t.Errorf("settings lack %s:\n%s", want, b)
 		}
+	}
+}
+
+// The open run span of internal/runspan is the "run" of the state, and the constraint finder's baseline is written
+// into it so that the next refresh learns from this one.
+func TestE2EFlowStateCarriesTheRunSpanAndTheBaseline(t *testing.T) {
+	h := newRig(t, baseConfig)
+	app := steerRepo(t, h)
+	common := gitOutput(t, h, app, "rev-parse", "--path-format=absolute", "--git-common-dir")
+	if s := h.flowSnapshot(app); s.RunInfo() != nil {
+		t.Fatalf("no span declared, yet run = %s", s.Run)
+	}
+	end := time.Now().Add(2 * time.Hour).UTC().Truncate(time.Second)
+	if _, err := runspan.Open(common, runspan.Span{ID: "night-1", Goal: "ship it", Items: []string{"a", "b"}, Parallel: 2, ExpectedEnd: &end}, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	if rc, out, errOut := h.inDir(app, flowOn, "4", "--lane", "app", "--session", "sess-1", "--", "sleep", "1"); rc != 0 {
+		t.Fatalf("rc=%d %s%s", rc, out, errOut)
+	}
+	h.mustRun(app, 0, "flow", "refresh")
+	s := h.flowSnapshot(app)
+	r := s.RunInfo()
+	if r == nil || r.ID != "night-1" || r.Items != 2 || r.Parallel != 2 || r.Goal != "ship it" || r.ExpectedEnd == nil || !r.ExpectedEnd.Equal(end) {
+		t.Fatalf("run in state.json: %s", s.Run)
+	}
+	if s.Baseline == nil {
+		t.Fatalf("a window with lead time must leave a baseline in the state: %+v", s.Fleet)
 	}
 }

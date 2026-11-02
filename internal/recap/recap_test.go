@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/LysCongThanh/heavyq/internal/flowview"
+	"github.com/LysCongThanh/heavyq/internal/flowstate"
 	"github.com/LysCongThanh/heavyq/internal/history"
 	"github.com/LysCongThanh/heavyq/internal/itemstatus"
 )
@@ -37,7 +37,7 @@ func fixtureFacts(t *testing.T) Facts {
 	if err := os.WriteFile(p, []byte(stateJSON), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	st, err := flowview.Read(p)
+	st, err := flowstate.ReadFile(p)
 	if err != nil {
 		t.Fatal(err)
 	}

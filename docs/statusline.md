@@ -111,5 +111,6 @@ after 14 days. The ledger joins its `agent` and `model` fields on it, and the fl
 
 `Segment(state, now, theme)` is pure; the golden segments (idle, busy, needs you, at risk, done, unknown, empty and
 no state, each in `NO_COLOR` and ASCII) are in `internal/statusline/testdata/golden`. After an intended change:
-`go test ./internal/statusline -update`, then read the diff. The flow state is read through `internal/flowview`, a
-minimal reader of schema 1 that is replaced by `internal/flow` when that lands.
+`go test ./internal/statusline -update`, then read the diff. The flow state is read with `flowstate.ReadFile` into
+the `flow.Snapshot` that writes it (one set of types, no second parser); `internal/flowview` keeps the file-system
+repository finder and the forecast adapter, which takes `throughput.last_proof` for "at risk" by stall.

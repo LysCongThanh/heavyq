@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/LysCongThanh/heavyq/internal/flow"
 	"github.com/LysCongThanh/heavyq/internal/flowview"
 	"github.com/LysCongThanh/heavyq/internal/forecast"
 	"github.com/LysCongThanh/heavyq/internal/tui/render"
@@ -49,15 +50,15 @@ func Pick(th Theme, g Glyph) string {
 // and says more only when there is something to act on or look at:
 //
 //	◆ 5/8 proven  ⚑ 1 needs you  ▲ CI wait  ✓ on track · ~16:40
-func Segment(st *flowview.State, now time.Time, th Theme) render.Line {
+func Segment(st *flow.Snapshot, now time.Time, th Theme) render.Line {
 	if st == nil || st.Empty() {
 		return nil
 	}
-	fc := st.Forecast(now)
+	fc := flowview.Forecast(st, now)
 	needs := st.NeedCount()
 	constraint := ""
-	if c := st.Constraint; c != nil && c.Significant && c.State != "" && c.State != "none" {
-		constraint = ConstraintLabel(c.State)
+	if c := st.Constraint; c.Significant && c.State != "" && c.State != "none" {
+		constraint = ConstraintLabel(string(c.State))
 	}
 	notable := needs > 0 || constraint != "" || fc.Status == forecast.AtRisk
 
@@ -78,7 +79,7 @@ func Segment(st *flowview.State, now time.Time, th Theme) render.Line {
 }
 
 // compose joins the parts with two spaces.
-func compose(st *flowview.State, fc forecast.Result, now time.Time, th Theme, word bool, needs int, constraint string) render.Line {
+func compose(st *flow.Snapshot, fc forecast.Result, now time.Time, th Theme, word bool, needs int, constraint string) render.Line {
 	var parts []render.Line
 	loud := word || needs > 0 || constraint != "" // quiet segments are tighter: "◆ 5/8 ✓ ~16:40"
 	one := func(style render.Style, text string) render.Line { return render.Line{{Text: text, Style: style}} }

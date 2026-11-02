@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/LysCongThanh/heavyq/internal/flowview"
+	"github.com/LysCongThanh/heavyq/internal/flow"
 )
 
 // StaleAfter: a flow state older than this is refreshed in the background.
@@ -18,7 +18,7 @@ const refreshEvery = 15 * time.Second
 // NeedsRefresh says whether a state that exists has gone stale. A repository
 // with no state at all is left alone: heavyq has never been used there, and
 // the status line must not start touching every repository an agent opens.
-func NeedsRefresh(st *flowview.State, now time.Time) bool {
+func NeedsRefresh(st *flow.Snapshot, now time.Time) bool {
 	return st != nil && now.Sub(st.Updated) > StaleAfter
 }
 
