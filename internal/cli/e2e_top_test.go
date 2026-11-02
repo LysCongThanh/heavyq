@@ -80,7 +80,7 @@ func TestTopRefusesBadInputAndNonTerminals(t *testing.T) {
 // The control actions behind --control are the dashboard's: they reach the
 // real mailbox and refuse what the dashboard refuses.
 func TestTopActionsUseTheControlMailboxWithTheDashboardChecks(t *testing.T) {
-	h := newRig(t, baseConfig)
+	h := newSerialRig(t, baseConfig) // t.Setenv below
 	hold := h.start("5", "--lane", "holder", "--", "sh", "-c", h.gateFile("go"))
 	h.running(1)
 	wait := h.start("6", "--lane", "later", "--", "true")
