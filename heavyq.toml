@@ -11,3 +11,15 @@ run  = [
   "go test -race -count=1 ./...",
 ]
 prio = 3
+
+# The gate of the fast CI tier (every pull request, `heavyq gate run fast`): the same commands without the race
+# detector, and the end-to-end tests drive a heavyq binary built without it (HEAVYQ_TEST_NORACE=1), which takes
+# the suite from about 9 minutes to under 3. `ready` stays the full proof; CI runs it on main and nightly.
+[[gate]]
+name = "fast"
+run  = [
+  "gofmt -l . | (! grep .)",
+  "go vet ./...",
+  "env HEAVYQ_TEST_NORACE=1 go test -count=1 ./...",
+]
+prio = 3
