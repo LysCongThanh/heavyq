@@ -68,21 +68,23 @@ var moreCommands = []commandSpec{
 			"heavyq [--config FILE] hook claude-pretooluse",
 			"heavyq [--config FILE] hook claude-posttooluse",
 			"heavyq [--config FILE] hook claude-sessionstart",
+			"heavyq [--config FILE] hook claude-userpromptsubmit",
 			"heavyq [--config FILE] hook claude-stop [Stop|SubagentStop|TaskCompleted|TeammateIdle]",
-			"heavyq [--config FILE] hook install claude [--scope local|project|user] [--print] [--force] [--features queue,brief,stop]",
+			"heavyq [--config FILE] hook install claude [--scope local|project|user] [--print] [--force] [--features queue,brief,stop,stance]",
 			"heavyq [--config FILE] hook uninstall claude [--scope local|project|user] [--print]",
 		},
 		Subs: []subSpec{
 			{Name: "claude-pretooluse", Summary: "called by Claude Code; reads the hook JSON on stdin, fails open"},
 			{Name: "claude-posttooluse", Summary: "the mentor: PostToolUse and PostToolUseFailure hook; reads JSON on stdin, fails open"},
 			{Name: "claude-sessionstart", Summary: "SessionStart hook: injects the brief; called by Claude Code, fails open"},
+			{Name: "claude-userpromptsubmit", Summary: "UserPromptSubmit hook: enters a stance on a keyword and injects it once; called by Claude Code, fails open"},
 			{Name: "claude-stop", Args: "[event]", Summary: "the stop gate (Stop, SubagentStop, TaskCompleted, TeammateIdle); called by Claude Code, fails open",
 				NextWord: []string{"Stop", "SubagentStop", "TaskCompleted", "TeammateIdle"}},
 			{Name: "install", Args: "claude", Summary: "add the hook to Claude Code settings", NextWord: []string{"claude"}, Flags: []flagSpec{
 				scopeFlag(), {Long: "print", Help: "print the resulting settings instead of writing them"},
 				{Long: "force", Help: "install even when the heavyq Claude Code plugin is enabled (the hook would run twice)"},
-				{Long: "features", Value: "LIST", Choices: []string{"queue", "brief", "stop", "queue,brief,stop"},
-					Help: "hooks to install, comma separated: queue, brief, stop (exactly these; others of heavyq's are removed; default queue)"}}},
+				{Long: "features", Value: "LIST", Choices: []string{"queue", "brief", "stop", "stance", "queue,brief,stop,stance"},
+					Help: "hooks to install, comma separated: queue, brief, stop, stance (exactly these; others of heavyq's are removed; default queue)"}}},
 			{Name: "uninstall", Args: "claude", Summary: "remove the hook again", NextWord: []string{"claude"}, Flags: []flagSpec{
 				scopeFlag(), {Long: "print", Help: "print the resulting settings instead of writing them"}}},
 		},
@@ -108,17 +110,44 @@ var moreCommands = []commandSpec{
 	},
 	{
 		Name:    "stance",
-		Summary: "list and show stances (short documents describing a way of thinking)",
+		Summary: "stances: ways of thinking, entered on evidence or a keyword, with trust and a decision record",
 		Synopsis: []string{
 			"heavyq stance ls [--json]",
 			"heavyq stance show <name> [--json]",
+			"heavyq stance enter <name> [--item ID] [--why TEXT]",
+			"heavyq stance exit [--item ID] [--force]",
+			"heavyq stance off",
+			"heavyq stance status [--json]",
+			"heavyq stance stats [--json]",
 		},
 		Subs: []subSpec{
 			{Name: "ls", Summary: "list stances", Flags: []flagSpec{jsonFlag("machine-readable output")}},
 			{Name: "show", Args: "<name>", Summary: "print one stance", Flags: []flagSpec{jsonFlag("machine-readable output")}},
+			{Name: "enter", Args: "<name>", Summary: "put this lane into a stance and print its compact form", Flags: []flagSpec{
+				{Long: "item", Value: "ID", Help: "item whose decision record applies (default: the lane's leased item)"},
+				{Long: "why", Value: "TEXT", Help: "the reason, shown as \"why now\""}}},
+			{Name: "exit", Summary: "leave the stance (a decision record may be required)", Flags: []flagSpec{
+				{Long: "force", Help: "leave even though the exit condition is not met (logged)"}}},
+			{Name: "off", Summary: "leave the stance and mute stances for this lane until the next enter"},
+			{Name: "status", Summary: "the lane's stance, its decision record and the evidence now", Flags: []flagSpec{jsonFlag("machine-readable output")}},
+			{Name: "stats", Summary: "time and runs to proof after each stance, against the lane's baseline", Flags: []flagSpec{jsonFlag("machine-readable output")}},
 		},
-		Notes: "Sources, highest precedence first: <repo>/.heavyq/stances/*.md, the user's stances directory, built-in.",
-		Docs:  "stances.md",
+		Notes: "Sources, highest precedence first: <repo>/.heavyq/stances/*.md (only once trusted with heavyq trust), the user's\n" +
+			"stances directory, built-in. enter, exit, off, status and stats act on the lane of the current directory.\n" +
+			"HEAVYQ_STANCES=off turns every stance off for a process.",
+		Docs: "stances.md",
+	},
+	{
+		Name:     "trust",
+		Summary:  "trust this repository's own stances (a content hash; an edit asks again)",
+		Synopsis: []string{"heavyq trust [--list|--revoke]"},
+		Flags: []flagSpec{
+			{Long: "list", Help: "list trusted repositories"},
+			{Long: "revoke", Help: "forget this repository"},
+		},
+		Notes: "Stances in .heavyq/stances are listed but never injected until you run this from your own terminal\n" +
+			"(it is refused under a coding agent). Your own and the built-in stances need no trust.",
+		Docs: "stances.md",
 	},
 	{
 		Name:     "doctor",

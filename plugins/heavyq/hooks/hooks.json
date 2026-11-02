@@ -67,6 +67,17 @@
           }
         ]
       }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'command -v heavyq >/dev/null 2>&1 && exec heavyq hook claude-userpromptsubmit || exit 0'",
+            "timeout": 10
+          }
+        ]
+      }
     ]
   }
 }

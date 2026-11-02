@@ -10,7 +10,8 @@ import (
 // LaneRuns returns the newest records of lane, oldest first: at most
 // LaneRecords of them from the index (one small file), or the lane's share of
 // the newest TailWindow ledger records when the index cannot answer. It is the
-// read behind detectors that need a short run of one lane (internal/mentor).
+// read behind detectors that need a short run of one lane (internal/mentor,
+// internal/stance triggers).
 // A lane without records yields nil.
 func LaneRuns(ledgerPath, lane string) ([]history.Record, Source, error) {
 	if m, dir, ok := readFresh(ledgerPath); ok {

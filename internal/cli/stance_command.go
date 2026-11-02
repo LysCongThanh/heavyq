@@ -15,10 +15,17 @@ import (
 const stanceUsage = `usage:
   heavyq stance ls [--json]
   heavyq stance show <name> [--json]
+  heavyq stance enter <name> [--item ID] [--why TEXT]   put this lane into a stance and print its compact form
+  heavyq stance exit [--item ID] [--force]              leave it (a decision record may be required)
+  heavyq stance off                                     leave it and mute stances for this lane until the next enter
+  heavyq stance status [--json]                         the lane's stance, its decision record and the evidence now
+  heavyq stance stats [--json]                          time and runs to proof after each stance, against the lane's baseline
+  heavyq trust [--list|--revoke]                        trust this repository's own stances (a content hash)
 
 Stances are short documents describing a way of thinking. Sources, highest
-precedence first: <repo>/.heavyq/stances/*.md, the user's stances directory
-($XDG_CONFIG_HOME/heavyq/stances or ~/.config/heavyq/stances), built-in.
+precedence first: <repo>/.heavyq/stances/*.md (only once trusted), the user's stances
+directory ($XDG_CONFIG_HOME/heavyq/stances or ~/.config/heavyq/stances), built-in.
+HEAVYQ_STANCES=off turns every stance off for a process. See docs/stances.md.
 `
 
 // stanceListEntry is one element of `stance ls --json`.
@@ -28,19 +35,26 @@ type stanceListEntry struct {
 	Path         string `json:"path"`
 	Description  string `json:"description"`
 	InjectTokens int    `json:"inject_tokens"`
+	// Untrusted: from a repository whose stances were not trusted; listed, never injected.
+	Untrusted bool `json:"untrusted,omitempty"`
 }
 
-// stanceCommand implements `heavyq stance ls|show`: read-only views of the
-// stances in effect for the current directory. It needs no config file, so
-// it works even when the config is broken.
+// stanceCommand implements `heavyq stance ...`. ls and show are read-only views
+// of the stances in effect for the current directory; enter, exit, off, status
+// and stats act on the lane (stance_lane_command.go). None needs a config
+// file, so they work even when the config is broken.
 func stanceCommand(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
 		fmt.Fprint(stderr, stanceUsage)
 		return ExitUsage
 	}
 	sub, rest := args[0], args[1:]
-	if sub != "ls" && sub != "show" {
-		fmt.Fprintf(stderr, "heavyq: unknown stance command %q (ls, show)\n\n%s", sub, stanceUsage)
+	switch sub {
+	case "enter", "exit", "off", "status", "stats":
+		return stanceLaneCommand(sub, rest, stdout, stderr)
+	case "ls", "show":
+	default:
+		fmt.Fprintf(stderr, "heavyq: unknown stance command %q (ls, show, enter, exit, off, status, stats)\n\n%s", sub, stanceUsage)
 		return ExitUsage
 	}
 	fs := flag.NewFlagSet("stance "+sub, flag.ContinueOnError)
@@ -67,23 +81,25 @@ func stanceCommand(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "heavyq:", err)
 		return ExitUsage
 	}
-	all, err := stance.Load(stance.DefaultDirs(cwd))
+	set, err := stance.DefaultEnv(cwd).LoadSet(cwd)
+	all := set.All
 	if err != nil {
 		fmt.Fprintln(stderr, "heavyq: invalid stance file(s):")
 		fmt.Fprintln(stderr, err)
 		return ExitUsage
 	}
 	if sub == "ls" {
-		return stanceList(all, *asJSON, stdout, stderr)
+		return stanceList(set, *asJSON, stdout, stderr)
 	}
 	return stanceShow(all, names[0], *asJSON, stdout, stderr)
 }
 
-func stanceList(all []stance.Stance, asJSON bool, stdout, stderr io.Writer) int {
+func stanceList(set stance.Set, asJSON bool, stdout, stderr io.Writer) int {
+	all := set.All
 	if asJSON {
 		out := make([]stanceListEntry, len(all))
 		for i, s := range all {
-			out[i] = stanceListEntry{s.Name, string(s.Source), s.Path, s.Description, s.InjectTokens}
+			out[i] = stanceListEntry{s.Name, string(s.Source), s.Path, s.Description, s.InjectTokens, set.Untrusted(s)}
 		}
 		return writeStanceJSON(out, stdout, stderr)
 	}
@@ -93,6 +109,9 @@ func stanceList(all []stance.Stance, asJSON bool, stdout, stderr io.Writer) int 
 		src := string(s.Source)
 		if s.Source != stance.SourceBuiltin {
 			src += " " + s.Path
+		}
+		if set.Untrusted(s) {
+			src += " (untrusted: run heavyq trust)"
 		}
 		fmt.Fprintf(tw, "%s\t%s\t%s\n", s.Name, src, s.Description)
 	}

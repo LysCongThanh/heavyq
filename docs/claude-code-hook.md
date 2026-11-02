@@ -7,7 +7,7 @@ heavyq hook install claude                    # this project, just you: .claude/
 heavyq hook install claude --scope project    # this project, committed: .claude/settings.json
 heavyq hook install claude --scope user       # every project: ~/.claude/settings.json
 heavyq hook install claude --print            # show the merged settings, write nothing
-heavyq hook install claude --features queue,brief,stop   # also the SessionStart brief and the stop gate (docs/steer.md)
+heavyq hook install claude --features queue,brief,stop   # also the SessionStart brief and the stop gate (docs/steer.md); add ,stance for stances (docs/stances.md)
 heavyq hook uninstall claude
 ```
 

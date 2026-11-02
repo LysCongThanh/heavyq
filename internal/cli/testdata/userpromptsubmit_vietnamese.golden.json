@@ -1,0 +1,6 @@
+{
+  "hookSpecificOutput": {
+    "hookEventName": "UserPromptSubmit",
+    "additionalContext": "[heavyq · stance dot-pha] why now: you asked for it (\"đột phá\" in your prompt)\nnext: viết đáp án từ đầu trước khi đọc thiết kế hiện tại\n- Hãy lùi lại và nghĩ từ gốc vấn đề, không chắp vá.\n- Liệt kê ít nhất 3 phương án, có một phương án triệt để.\nfull: heavyq stance show dot-pha"
+  }
+}

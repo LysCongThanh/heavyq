@@ -53,6 +53,8 @@ var Features = []Feature{
 			{"TaskCompleted", "", "claude-stop TaskCompleted", stopFamilyTimeoutSecs},
 			{"TeammateIdle", "", "claude-stop TeammateIdle", stopFamilyTimeoutSecs},
 		}},
+	{Name: "stance", Summary: "UserPromptSubmit: switch the lane into a stance on a keyword (or evidence) and inject it once; the brief carries it after compaction",
+		specs: []hookSpec{{"UserPromptSubmit", "", "claude-userpromptsubmit", stopFamilyTimeoutSecs}}},
 }
 
 // DefaultFeatures is what install does without --features: the queue hook only.

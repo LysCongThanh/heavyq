@@ -44,8 +44,9 @@ usage:
   heavyq history [-n N] [-v]
   heavyq receipts [--day|--week|--month] [--share] [--json]
   heavyq [--config FILE] cache ls|stats|clear
-  heavyq [--config FILE] hook claude-pretooluse | claude-posttooluse | claude-sessionstart | claude-stop | install claude [--features queue,brief,stop] | uninstall claude
-  heavyq stance ls | show <name> [--json]
+  heavyq [--config FILE] hook claude-pretooluse | claude-posttooluse | claude-sessionstart | claude-stop | claude-userpromptsubmit | install claude [--features queue,brief,stop,stance] | uninstall claude
+  heavyq stance ls | show <name> | enter <name> | exit | off | status | stats
+  heavyq trust [--list|--revoke]
   heavyq [--config FILE] mentor stats [--json] | mute <rule> | unmute <rule>
   heavyq doctor [--reindex]
   heavyq completion bash|zsh|fish
@@ -122,6 +123,8 @@ func Main(args []string, stdout, stderr io.Writer) int {
 		return receiptsCommand(args[1:], stdout, stderr)
 	case "stance":
 		return stanceCommand(args[1:], stdout, stderr)
+	case "trust":
+		return trustCommand(args[1:], stdout, stderr)
 	case "mentor":
 		return mentorCommand(cfgPath, explicit, args[1:], stdout, stderr)
 	case "steer":

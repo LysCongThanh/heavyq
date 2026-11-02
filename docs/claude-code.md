@@ -29,7 +29,7 @@ What the plugin contains:
   ```
   sh -c 'command -v heavyq >/dev/null 2>&1 && exec heavyq hook claude-pretooluse || exit 0'
   ```
-  plus the hooks of the `brief` and `stop` features ([steer.md](steer.md)), each behind the same guard (timeout
+  plus the hooks of the `brief`, `stop` and `stance` features ([steer.md](steer.md), [stances.md](stances.md)), each behind the same guard (timeout
   10 s, matcher `startup|resume|compact` for SessionStart):
   ```
   sh -c 'command -v heavyq >/dev/null 2>&1 && exec heavyq hook claude-sessionstart || exit 0'
@@ -37,6 +37,7 @@ What the plugin contains:
   sh -c 'command -v heavyq >/dev/null 2>&1 && exec heavyq hook claude-stop SubagentStop || exit 0'
   sh -c 'command -v heavyq >/dev/null 2>&1 && exec heavyq hook claude-stop TaskCompleted || exit 0'
   sh -c 'command -v heavyq >/dev/null 2>&1 && exec heavyq hook claude-stop TeammateIdle || exit 0'
+  sh -c 'command -v heavyq >/dev/null 2>&1 && exec heavyq hook claude-userpromptsubmit || exit 0'
   ```
   Without `heavyq` on `PATH` every hook exits 0 and prints nothing, so a teammate who has the plugin but not the
   binary sees no error and no change. With it, the stop-family hooks do nothing until you run `heavyq steer guard`

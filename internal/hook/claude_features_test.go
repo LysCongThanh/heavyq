@@ -78,12 +78,12 @@ func TestInstallAllFeaturesIsIdempotentAndComplete(t *testing.T) {
 	if err != nil || !changed {
 		t.Fatalf("changed=%v err=%v", changed, err)
 	}
-	want := []string{"PreToolUse", "SessionStart", "Stop", "SubagentStop", "TaskCompleted", "TeammateIdle"}
+	want := []string{"PreToolUse", "SessionStart", "Stop", "SubagentStop", "TaskCompleted", "TeammateIdle", "UserPromptSubmit"}
 	if got := events(t, b); !reflect.DeepEqual(got, want) {
 		t.Fatalf("events %v, want %v\n%s", got, want, b)
 	}
 	for _, c := range []string{testBin + " hook claude-pretooluse", testBin + " hook claude-sessionstart", testBin + " hook claude-stop\"",
-		testBin + " hook claude-stop SubagentStop", testBin + " hook claude-stop TaskCompleted", testBin + " hook claude-stop TeammateIdle"} {
+		testBin + " hook claude-stop SubagentStop", testBin + " hook claude-stop TaskCompleted", testBin + " hook claude-stop TeammateIdle", testBin + " hook claude-userpromptsubmit"} {
 		if !strings.Contains(string(b), c) {
 			t.Errorf("missing %s in\n%s", c, b)
 		}
@@ -144,7 +144,7 @@ func TestInstallIsDeclarativeAndKeepsForeignHooks(t *testing.T) {
 func TestInstallMovedBinaryReplacesEveryEntry(t *testing.T) {
 	b, _, _ := MergeEntries(nil, EntriesFor("/old/heavyq", allFeatures()))
 	b2, changed, err := MergeEntries(b, EntriesFor("/new/heavyq", allFeatures()))
-	if err != nil || !changed || strings.Contains(string(b2), "/old/heavyq") || strings.Count(string(b2), "/new/heavyq") != 6 {
+	if err != nil || !changed || strings.Contains(string(b2), "/old/heavyq") || strings.Count(string(b2), "/new/heavyq") != 7 {
 		t.Fatalf("%v %v\n%s", changed, err, b2)
 	}
 }
