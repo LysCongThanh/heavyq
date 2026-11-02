@@ -29,6 +29,7 @@ func doctorCommand(args []string, stdout, stderr io.Writer) (rc int) {
 	defer func() {
 		if rc != ExitUsage {
 			printBriefDelivery(stdout) // informational: never changes the exit code
+			printNestedWorkTreesHint(stdout)
 		}
 	}()
 	path := history.DefaultPath()

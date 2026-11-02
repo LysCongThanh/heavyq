@@ -125,25 +125,51 @@ func TestUninitialisedSubmoduleDoesNotBlockTheIdentity(t *testing.T) {
 	}
 }
 
-// Review: an untracked nested repository is one opaque directory entry; its
-// edits never changed the id.
-func TestNestedUntrackedRepositoryIsUnknown(t *testing.T) {
+// An untracked nested repository is another repository: git lists it as one
+// opaque directory, and its files are not files of this work tree, so neither
+// its presence nor its edits change the id (#127).
+func TestNestedUntrackedRepositoryIsLeftOut(t *testing.T) {
 	dir := repoWithFiles(t)
 	clean := workTreeID(t, dir)
 	nested := filepath.Join(dir, "vendor", "lib")
 	gitIn(t, dir, "init", "-q", "-b", "main", nested)
-	write(t, filepath.Join(nested, "x.txt"), "one\n")
 	for _, body := range []string{"one\n", "two\n"} {
 		write(t, filepath.Join(nested, "x.txt"), body)
-		if id := workTreeID(t, dir); id.ID != "" || !id.Dirty {
-			t.Fatalf("nested repo (%q): %+v, want unknown", body, id)
+		if id := workTreeID(t, dir); id != clean {
+			t.Fatalf("nested repo (%q): %+v, want the clean id %+v", body, id, clean)
 		}
 	}
-	if err := os.RemoveAll(filepath.Join(dir, "vendor")); err != nil {
-		t.Fatal(err)
+	// Its neighbours still count: an untracked file next to it makes the tree dirty, and known.
+	write(t, filepath.Join(dir, "vendor", "mine.txt"), "mine\n")
+	if id := workTreeID(t, dir); id.ID == "" || !id.Dirty || id == clean {
+		t.Fatalf("untracked file beside a nested repo: %+v, want a dirty id", id)
 	}
+}
+
+// #127: Claude Code puts the work trees of its agents in .claude/worktrees
+// inside the repository. A dirty one, or one with an untracked file, must not
+// make the main checkout unprovable or dirty.
+func TestLinkedWorkTreesInsideTheRepositoryAreLeftOut(t *testing.T) {
+	dir := repoWithFiles(t)
+	clean := workTreeID(t, dir)
+	for _, rel := range []string{".claude/worktrees/x", "elsewhere/wt"} {
+		wt := filepath.Join(dir, filepath.FromSlash(rel))
+		gitIn(t, dir, "worktree", "add", "-q", "-b", "br-"+filepath.Base(wt), wt)
+		write(t, filepath.Join(wt, "a.txt"), "edited in the linked work tree\n")
+		write(t, filepath.Join(wt, "new.txt"), "untracked in the linked work tree\n")
+		if id := workTreeID(t, dir); id != clean {
+			t.Fatalf("dirty linked work tree at %s: %+v, want the clean id %+v", rel, id, clean)
+		}
+	}
+	// An agent work tree that is not a repository yet (a plain folder under .claude/worktrees) is left out too.
+	write(t, filepath.Join(dir, ".claude", "worktrees", "scratch", "f.txt"), "x\n")
 	if id := workTreeID(t, dir); id != clean {
-		t.Fatalf("after removing it: %+v, want %+v", id, clean)
+		t.Fatalf("plain folder under .claude/worktrees: %+v, want %+v", id, clean)
+	}
+	// The work tree itself still counts.
+	write(t, filepath.Join(dir, "a.txt"), "edited in the main checkout\n")
+	if id := workTreeID(t, dir); id.ID == "" || !id.Dirty || id == clean {
+		t.Fatalf("edit in the main checkout: %+v, want a dirty id", id)
 	}
 }
 

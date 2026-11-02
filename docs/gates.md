@@ -173,6 +173,14 @@ another only in bookkeeping files has the same id as it, but it is a heavyq iden
 object exists: nothing is written to the repository. The edits part leaves the same paths out of the diff and
 of the untracked listing.
 
+**Other checkouts inside the work tree.** The untracked listing also leaves out every directory that holds
+its own `.git` (a linked work tree of this repository, a clone, any nested repository) and everything under
+`.claude/worktrees/`, where Claude Code puts the work trees of its agents. Their files are not files of this
+checkout, so an agent editing there never makes the main checkout dirty or unprovable. A submodule recorded in
+the index is not one of these: changes inside it still make the tree unknown. `git status` still lists such
+directories; `heavyq doctor` and `heavyq init` print the line that hides them from it:
+`echo '.claude/worktrees/' >> "$(git rev-parse --git-path info/exclude)"`.
+
 ### Run identity
 
 Every ledger record carries a `run_id`, the single definition of "the same run" that the result cache, proof,
@@ -237,7 +245,7 @@ Each command is classified by those runs. The first row that applies wins:
 A gate is proven when every command is. Everything else fails closed:
 
 - A command with no matching record is `missing`.
-- If the tree cannot be identified (not a repository, no commit yet, a submodule or nested repository with
+- If the tree cannot be identified (not a repository, no commit yet, a submodule with
   changes of its own, more untracked content than heavyq can digest) nothing is provable. `gate status` says
   why and exits 1, and `gate run` refuses to start.
 - An older record without `run_id` does not prove a command when `cache.env` is set (see Run identity).
