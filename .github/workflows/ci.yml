@@ -154,6 +154,12 @@ jobs:
           distribution: goreleaser
           version: "~> v2"
           args: release --snapshot --clean
+      - name: archives hold the man page and the install script is listed in checksums.txt
+        run: |
+          for a in dist/heavyq_*.tar.gz; do
+            tar -tzf "$a" | grep -qx 'man/man1/heavyq.1' || { echo "::error::$a has no man/man1/heavyq.1"; exit 1; }
+          done
+          grep -q ' install.sh$' dist/checksums.txt || { echo "::error::install.sh is not in checksums.txt"; exit 1; }
 
   govulncheck:
     runs-on: ubuntu-latest

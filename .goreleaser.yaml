@@ -5,6 +5,8 @@ project_name: heavyq
 before:
   hooks:
     - go mod tidy
+    # heavyq(1), generated from the command table; shipped in every archive (see archives.files).
+    - go run ./tools/mangen -version {{ .Version }} -date {{ .CommitDate }} -o man/heavyq.1
 
 builds:
   - main: .
@@ -20,7 +22,13 @@ builds:
 archives:
   - formats: [tar.gz]
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
-    files: [LICENSE, README.md, examples/**/*]
+    files:
+      - LICENSE
+      - README.md
+      - examples/**/*
+      - src: man/*.1
+        dst: man/man1
+        strip_parent: true
 
 checksum:
   name_template: checksums.txt
