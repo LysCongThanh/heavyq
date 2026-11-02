@@ -34,6 +34,8 @@ usage:
   heavyq [--config FILE] why [lane]
   heavyq [--config FILE] gate status [name] [--json] | run [name] [--parallel] [--keep-going] [--lane NAME]
   heavyq [--config FILE] item ls [--all] | claim <id>|--next | release <id> | done <id> [--run] | block <id> "needs: ..."
+  heavyq [--config FILE] brief [--json]
+  heavyq steer [off|guard|destroy] [--apply]
   heavyq init [--agents-md] [--force] [--print]
   heavyq [--config FILE] dash [--control] [--addr 127.0.0.1:0] [--open]
   heavyq cancel <ticket|pid>
@@ -42,7 +44,7 @@ usage:
   heavyq history [-n N] [-v]
   heavyq receipts [--day|--week|--month] [--share] [--json]
   heavyq [--config FILE] cache ls|stats|clear
-  heavyq [--config FILE] hook claude-pretooluse | claude-posttooluse | install claude | uninstall claude
+  heavyq [--config FILE] hook claude-pretooluse | claude-posttooluse | claude-sessionstart | claude-stop | install claude [--features queue,brief,stop] | uninstall claude
   heavyq stance ls | show <name> [--json]
   heavyq [--config FILE] mentor stats [--json] | mute <rule> | unmute <rule>
   heavyq doctor [--reindex]
@@ -122,6 +124,8 @@ func Main(args []string, stdout, stderr io.Writer) int {
 		return stanceCommand(args[1:], stdout, stderr)
 	case "mentor":
 		return mentorCommand(cfgPath, explicit, args[1:], stdout, stderr)
+	case "steer":
+		return steerCommand(args[1:], stdout, stderr)
 	case "doctor":
 		return doctorCommand(args[1:], stdout, stderr)
 	case "hook":
@@ -150,6 +154,8 @@ func Main(args []string, stdout, stderr io.Writer) int {
 		return gateCommand(cfg, args[1:], stdout, stderr)
 	case "item":
 		return itemCommand(cfg, args[1:], stdout, stderr)
+	case "brief":
+		return briefCommand(cfg, args[1:], stdout, stderr)
 	case "cancel", "reprio", "pause", "resume":
 		return controlCommand(cfg, args[0], args[1:], stdout, stderr)
 	}

@@ -54,6 +54,8 @@ heavyq gate run       # run what is not proven yet, through the queue, cached
 
 **Steer.** When the caller is an agent, heavyq says little and ends with a digest the agent can act on.
 Work items (`heavyq item ls|claim|release|done|block`: claim, prove, finish) are in [docs/items.md](docs/items.md).
+`heavyq brief` is the thread of the work in 300 tokens, injected after every compaction; `heavyq steer guard` adds a
+Stop gate that will not let an agent stop while the item it holds is unproven ([docs/steer.md](docs/steer.md)).
 
 ```
 heavyq: FAIL go test ./... · exit 1 · tree 3f2a9c1d7b0e · 12s
@@ -91,6 +93,7 @@ machines. It listens on loopback only. See [docs/dashboard.md](docs/dashboard.md
 | Editor support: JSON Schemas for `heavyq.toml`, the user config and `status --json` | [docs/configuration.md](docs/configuration.md#editor-support-json-schemas) |
 | Exit codes | [docs/exit-codes.md](docs/exit-codes.md) |
 | Work items: claim, prove and finish (`heavyq item`) | [docs/items.md](docs/items.md) |
+| Steer: the brief after compaction, the stop gate (`heavyq steer off\|guard\|destroy`), the delivery canary | [docs/steer.md](docs/steer.md) |
 | Stances, leases, anchor | [docs/stances.md](docs/stances.md), [docs/leases.md](docs/leases.md), [docs/anchor.md](docs/anchor.md) |
 | Comparison with pueue, task-spooler, `flock` | [docs/comparison.md](docs/comparison.md) |
 | Platform support (Linux, macOS) | [docs/platform-support.md](docs/platform-support.md) |

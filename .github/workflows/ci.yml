@@ -120,7 +120,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {pkg: hook, targets: "FuzzParse FuzzDecideRewrite FuzzDecideStdin"}
+          - {pkg: hook, targets: "FuzzParse FuzzDecideRewrite FuzzDecideStdin FuzzParseInput FuzzMergeEntries"}
+          - {pkg: steer, targets: "FuzzClaimsDone"}
           - {pkg: redact, targets: "FuzzCommand"}
           - {pkg: anchor, targets: "FuzzParse FuzzSetChecked"}
           - {pkg: repoconfig, targets: "FuzzParse"}

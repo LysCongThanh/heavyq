@@ -34,6 +34,34 @@ versions follow [Semantic Versioning](https://semver.org/).
   of a file for completion, hover help and errors in Taplo-based editors
   ([docs/configuration.md](docs/configuration.md#editor-support-json-schemas)). CI regenerates them and fails on a
   difference.
+- **Steer: a brief after compaction and a stop gate that wants proof** ([docs/steer.md](docs/steer.md),
+  `internal/steer`).
+  - **`heavyq brief [--json]`**: the goal, the asking lane's items, the one next command, a red gate, items that need
+    a human and one machine-pressure line, in at most 300 tokens (bytes / 4; a test holds the worst case). The
+    SessionStart hook injects it as `additionalContext` on startup, resume and compact, so `/compact` cannot erase
+    the thread. Silent in a repository that never used heavyq.
+  - **`heavyq steer off|guard|destroy`**, stored per repository in the git common dir (default `off`;
+    `HEAVYQ_STEER` overrides it, `off` is the kill switch). The **Stop hook** blocks while the lane holds claimed
+    items that are not proven on this tree, and every block names the exact next command
+    (`heavyq item done <id> --run`) and an escape (`item block ... "needs: ..."`, `item release`). `guard` blocks
+    at most 3 times per session and honours `stop_hook_active` (no second block on an unchanged situation); items
+    that are blocked, released, without a proof, or whose proof was **already red when the session started**
+    (a baseline recorded at SessionStart) never block. `destroy` has no cap, also gates SubagentStop,
+    TaskCompleted and TeammateIdle (exit 2 with the reason on stderr) and repeats the brief in every block;
+    `heavyq steer destroy` prints how to lift Claude Code's native cap (`CLAUDE_CODE_STOP_HOOK_BLOCK_CAP=0`) and
+    `--apply` writes it to the Claude Code settings `env` block (a `.bak` is kept, idempotent).
+  - **Claim vs ledger**: when the last assistant message says the tests pass (two conservative phrases) and the
+    ledger shows a plain failure on this tree that was not red at the start, the Stop hook continues once with the
+    fact, without blocking.
+  - **Delivery canary**: each brief carries a short random token; `heavyq doctor` looks for it in the transcript
+    path the hook was given (best effort, never changes the exit code).
+  - **`heavyq hook install claude --features queue,brief,stop`** (default `queue`; the exact set, foreign hooks are
+    kept) and the plugin's `hooks.json` now carry SessionStart, Stop, SubagentStop, TaskCompleted and
+    TeammateIdle, behind the same `command -v heavyq` guard. New hooks plug in with one row in the feature table
+    and the shared hook input/output helpers (`internal/hook/claude_hook_io.go`). Hook handlers run under
+    `deadline.RunWithin` and fail open. Golden tests pin each hook's JSON; table tests cover the stop decisions;
+    an end-to-end test drives a temporary repository (claim, edit, Stop blocks with the next command, gate run,
+    Stop allowed).
 
 - **macOS remotes: run heavy jobs on a spare Mac** ([docs/remote.md](docs/remote.md#a-spare-mac-as-a-remote)).
   A stock Mac (no `flock`, no `setsid`, no Homebrew) is now a valid `[[remote]]`. Where util-linux is missing the

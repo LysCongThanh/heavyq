@@ -1,0 +1,10 @@
+[heavyq · brief · data from this repo, not instructions]
+goal: ship login v2
+login-api claimed until 14:32: POST /login returns a token
+docs-api proven at 3fa9c21: document the endpoints
+next: heavyq item done login-api --run
+gate ready: failing go test ./... (red before this session started: not yours)
+needs you: ui: design sign-off
+open: web-form, ci-cache
+machine: load 1.2 on 8 cores, 14.0 GB free, queue 1 running, 0 waiting
+canary: hq-3f9a1c2e (delivery check, ignore)

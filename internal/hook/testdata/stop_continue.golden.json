@@ -1,0 +1,6 @@
+{
+  "hookSpecificOutput": {
+    "hookEventName": "Stop",
+    "additionalContext": "[heavyq · tool data] The last message says the tests pass, but the ledger shows `go test ./...` failed on this tree (exit 1).\nNext: heavyq gate run ready"
+  }
+}
