@@ -7,10 +7,12 @@ import (
 	"github.com/LysCongThanh/heavyq/internal/history"
 )
 
-// LaneRuns returns the newest records of lane, oldest first: the lane's file
-// of the index (at most LaneRecords), or, when the index cannot answer, the
-// lane's records among the newest TailWindow of the ledger. Stances read it to
-// look for a failure that repeats across trees, and to time a proof.
+// LaneRuns returns the newest records of lane, oldest first: at most
+// LaneRecords of them from the index (one small file), or the lane's share of
+// the newest TailWindow ledger records when the index cannot answer. It is the
+// read behind detectors that need a short run of one lane (internal/mentor,
+// internal/stance triggers).
+// A lane without records yields nil.
 func LaneRuns(ledgerPath, lane string) ([]history.Record, Source, error) {
 	if m, dir, ok := readFresh(ledgerPath); ok {
 		var d laneDoc
@@ -23,7 +25,7 @@ func LaneRuns(ledgerPath, lane string) ([]history.Record, Source, error) {
 		}
 	}
 	recs, err := history.ReadTail(ledgerPath, history.TailLimit{Max: TailWindow})
-	out := recs[:0]
+	var out []history.Record
 	for _, r := range recs {
 		if r.Lane == lane {
 			out = append(out, r)

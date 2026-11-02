@@ -9,34 +9,34 @@ import (
 	"github.com/LysCongThanh/heavyq/internal/history"
 )
 
-func TestLaneRunsFromIndexAndFromTail(t *testing.T) {
+func TestLaneRunsIndexAndFallbackAgree(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "history-2026-11.jsonl")
 	at := time.Date(2026, 11, 2, 8, 0, 0, 0, time.UTC)
-	for i, lane := range []string{"a", "b", "a", "a"} {
-		at = at.Add(time.Minute)
-		r := history.Record{End: at, Lane: lane, Cmd: "go test", Exit: i % 2}
-		if err := Append(path, r); err != nil {
+	for i := 0; i < 6; i++ {
+		lane := []string{"a", "b"}[i%2]
+		rec := history.Record{ID: history.NewID(at), End: at.Add(time.Duration(i) * time.Minute), Lane: lane, Cmd: "x"}
+		if err := Append(path, rec); err != nil {
 			t.Fatal(err)
 		}
 	}
-	got, src, err := LaneRuns(path, "a")
-	if err != nil || src != FromIndex || len(got) != 3 || got[0].End.After(got[2].End) {
-		t.Fatalf("index: %d records from %s, %v", len(got), src, err)
+	fromIndex, src, err := LaneRuns(path, "a")
+	if err != nil || src != FromIndex || len(fromIndex) != 3 {
+		t.Fatalf("index: %d %v %v", len(fromIndex), src, err)
 	}
-	if got, _, _ := LaneRuns(path, "nobody"); len(got) != 0 {
-		t.Errorf("unknown lane has %d records", len(got))
+	if none, src, err := LaneRuns(path, "never"); err != nil || src != FromIndex || len(none) != 0 {
+		t.Fatalf("unknown lane: %d %v %v", len(none), src, err)
 	}
-	// A line written behind the index's back makes it stale: the tail answers.
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0o600)
-	if err != nil {
+	// Break the index: the answer comes from the ledger tail and is the same.
+	if err := os.Remove(filepath.Join(Dir(path), "meta.json")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.WriteString(`{"end":"2026-11-02T09:00:00Z","lane":"a","cmd":"x"}` + "\n"); err != nil {
-		t.Fatal(err)
+	fromTail, src, err := LaneRuns(path, "a")
+	if err != nil || src != FromTail || len(fromTail) != len(fromIndex) {
+		t.Fatalf("tail: %d %v %v", len(fromTail), src, err)
 	}
-	f.Close()
-	got, src, err = LaneRuns(path, "a")
-	if err != nil || src != FromTail || len(got) != 4 {
-		t.Fatalf("tail: %d records from %s, %v", len(got), src, err)
+	for i := range fromTail {
+		if fromTail[i].ID != fromIndex[i].ID {
+			t.Fatalf("record %d differs: %s vs %s", i, fromTail[i].ID, fromIndex[i].ID)
+		}
 	}
 }

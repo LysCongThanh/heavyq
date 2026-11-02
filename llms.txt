@@ -14,6 +14,7 @@ Typical use: `heavyq <prio> [--lane NAME] [--light] [--cache] [--max-wait DUR] -
 - [Exit codes](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/exit-codes.md): stable exit codes
 - [Spare machines](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/remote.md): SSH remotes, exact-commit runs, placement
 - [Cache and coalescing](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/cache-and-coalescing.md): one run per commit, replayed results
+- [Receipts](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/receipts.md): `heavyq receipts --share`, a rounded summary with no names
 - [History ledger](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/history.md): JSONL record fields: commit, tree, session, item, gate
 - [Claude Code hook (setup)](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/claude-code-hook.md): `heavyq hook install claude`, what gets wrapped, fail-open behaviour
 - [Comparison](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/comparison.md): pueue, task-spooler, GNU parallel, flock

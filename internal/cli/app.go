@@ -39,10 +39,12 @@ usage:
   heavyq cancel <ticket|pid> | reprio <ticket|pid> <1-9>
   heavyq [--config FILE] pause|resume <machine>
   heavyq history [-n N] [-v]
+  heavyq receipts [--day|--week|--month] [--share] [--json]
   heavyq [--config FILE] cache ls|stats|clear
-  heavyq [--config FILE] hook claude-pretooluse | install claude | uninstall claude
+  heavyq [--config FILE] hook claude-pretooluse | claude-posttooluse | claude-userpromptsubmit | install claude | uninstall claude
   heavyq stance ls | show <name> | enter <name> | exit | off | status | stats
   heavyq trust [--list|--revoke]
+  heavyq [--config FILE] mentor stats [--json] | mute <rule> | unmute <rule>
   heavyq doctor [--reindex]
   heavyq help [agents]
   heavyq version
@@ -106,10 +108,14 @@ func Main(args []string, stdout, stderr io.Writer) int {
 		return 0
 	case "history":
 		return historyCommand(args[1:], stdout, stderr)
+	case "receipts":
+		return receiptsCommand(args[1:], stdout, stderr)
 	case "stance":
 		return stanceCommand(args[1:], stdout, stderr)
 	case "trust":
 		return trustCommand(args[1:], stdout, stderr)
+	case "mentor":
+		return mentorCommand(cfgPath, explicit, args[1:], stdout, stderr)
 	case "doctor":
 		return doctorCommand(args[1:], stdout, stderr)
 	case "hook":
@@ -140,7 +146,7 @@ func Main(args []string, stdout, stderr io.Writer) int {
 		return controlCommand(cfg, args[0], args[1:], stdout, stderr)
 	}
 	if p, err := strconv.Atoi(args[0]); err != nil || p < 1 || p > 9 {
-		fmt.Fprintf(stderr, "heavyq: first argument must be a priority 1-9 or a command (status, why, gate, item, init, dash, history, cache, hook, stance, trust, doctor, cancel, reprio, pause, resume, version)\n\n%s", usage)
+		fmt.Fprintf(stderr, "heavyq: first argument must be a priority 1-9 or a command (status, why, gate, item, init, dash, history, receipts, cache, hook, stance, trust, mentor, doctor, cancel, reprio, pause, resume, version)\n\n%s", usage)
 		return ExitUsage
 	}
 	return runCommand(cfg, args, stderr)
