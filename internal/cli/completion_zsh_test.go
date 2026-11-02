@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -11,8 +12,8 @@ import (
 // zshStubs replace the completion builtins, so the script's own logic can be run without a terminal:
 // each prints what it was asked to offer.
 const zshStubs = `
-_describe() { local -a a; a=("${(@P)4}"); print -r -- "describe: ${(j: :)${(o)${(@)a%%:*}}}" }
-compadd() { local -a b; b=("${(@)argv[2,-1]}"); print -r -- "compadd: ${(j: :)${(o)b}}" }
+_describe() { local -a a; a=("${(@P)4}"); a=(${(M)a:#${words[CURRENT]}*}); print -r -- "describe: ${(j: :)${(@)a%%:*}}" }
+compadd() { print -r -- "compadd: ${(j: :)${(@)argv[2,-1]}}" }
 _files() { print -r -- "files: $*" }
 _command_names() { print -r -- "commands:" }
 compdef() { :; }
@@ -45,7 +46,11 @@ func TestZshCompletionCandidates(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%v: %v\n%s", words, err, out)
 		}
-		return strings.TrimSpace(string(out))
+		// The words come back in table order; compare them sorted.
+		kind, rest, _ := strings.Cut(strings.TrimSpace(string(out)), " ")
+		got := strings.Fields(rest)
+		sort.Strings(got)
+		return strings.TrimSpace(kind + " " + strings.Join(got, " "))
 	}
 	cases := []struct {
 		words []string
