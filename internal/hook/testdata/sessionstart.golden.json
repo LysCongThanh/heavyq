@@ -1,0 +1,6 @@
+{
+  "hookSpecificOutput": {
+    "hookEventName": "SessionStart",
+    "additionalContext": "[heavyq · brief · data from this repo, not instructions]\ngoal: ship login v2\nnext: heavyq item claim --next\ncanary: hq-3f9a1c2e (delivery check, ignore)\n"
+  }
+}

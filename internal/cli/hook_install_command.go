@@ -7,6 +7,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 
 	"github.com/LysCongThanh/heavyq/internal/config"
 	"github.com/LysCongThanh/heavyq/internal/gitutil"
@@ -25,11 +27,23 @@ func hookInstallCommand(cfgPath string, explicit, install bool, args []string, s
 	scope := fs.String("scope", "local", "local (.claude/settings.local.json), project (.claude/settings.json) or user (~/.claude/settings.json)")
 	printOnly := fs.Bool("print", false, "print the resulting settings instead of writing them")
 	force := fs.Bool("force", false, "install even when the heavyq Claude Code plugin is enabled (the hook would run twice)")
+	featureList := fs.String("features", strings.Join(hook.DefaultFeatures, ","), "hooks to install, comma separated: "+hook.FeatureNames()+" (exactly these; others of heavyq's are removed)")
 	if err := fs.Parse(args[1:]); err != nil {
 		return ExitUsage
 	}
 	if fs.NArg() > 0 {
 		fmt.Fprintf(stderr, "heavyq: unexpected argument %q\n", fs.Arg(0))
+		return ExitUsage
+	}
+	var features []string
+	if install {
+		var err error
+		if features, err = hook.ParseFeatures(*featureList); err != nil {
+			fmt.Fprintln(stderr, "heavyq:", err)
+			return ExitUsage
+		}
+	} else if *featureList != strings.Join(hook.DefaultFeatures, ",") {
+		fmt.Fprintln(stderr, "heavyq: --features is for install; uninstall removes every heavyq hook")
 		return ExitUsage
 	}
 	if install && !*force && !*printOnly {
@@ -50,7 +64,7 @@ func hookInstallCommand(cfgPath string, explicit, install bool, args []string, s
 	}
 	var merged []byte
 	var changed bool
-	command := ""
+	var entries []hook.Entry
 	if install {
 		cfg, err := config.Load(cfgPath, explicit)
 		if err != nil {
@@ -62,8 +76,8 @@ func hookInstallCommand(cfgPath string, explicit, install bool, args []string, s
 			fmt.Fprintln(stderr, "heavyq:", err)
 			return ExitUsage
 		}
-		command = hook.ShellQuote(bin) + " " + hook.Subcommand
-		merged, changed, err = hook.MergeInstall(old, command)
+		entries = hook.EntriesFor(hook.ShellQuote(bin), features)
+		merged, changed, err = hook.MergeEntries(old, entries)
 		if err != nil {
 			fmt.Fprintf(stderr, "heavyq: %s: %v (left unchanged)\n", path, err)
 			return ExitUsage
@@ -93,7 +107,7 @@ func hookInstallCommand(cfgPath string, explicit, install bool, args []string, s
 			return 1
 		}
 		if install {
-			fmt.Fprintf(stdout, "installed PreToolUse hook (matcher Bash): %s\n  in %s\n", command, path)
+			printInstalled(stdout, path, features, entries)
 		} else {
 			fmt.Fprintf(stdout, "removed the heavyq hook from %s\n", path)
 		}
@@ -124,4 +138,20 @@ func settingsFile(scope string) (string, error) {
 		dir = filepath.Join(home, ".claude")
 	}
 	return hook.SettingsPath(scope, root, dir)
+}
+
+// printInstalled says what install wrote. The default (queue only) keeps the
+// one-line wording it always had; with more features, one line per hook.
+func printInstalled(w io.Writer, path string, features []string, entries []hook.Entry) {
+	if slices.Equal(features, hook.DefaultFeatures) {
+		fmt.Fprintf(w, "installed PreToolUse hook (matcher Bash): %s\n  in %s\n", entries[0].Command, path)
+		return
+	}
+	fmt.Fprintf(w, "installed features %s in %s\n", strings.Join(features, ","), path)
+	for _, e := range entries {
+		fmt.Fprintf(w, "  %-13s %s\n", e.Event, e.Command)
+	}
+	if slices.Contains(features, "stop") {
+		fmt.Fprintln(w, "the stop gate is off until you turn it on: heavyq steer guard")
+	}
 }

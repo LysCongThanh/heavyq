@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "goal": "ship login v2",
+  "lane": "api",
+  "mine": [
+    {
+      "id": "login-api",
+      "state": "claimed",
+      "text": "POST /login returns a token",
+      "until": "14:32"
+    },
+    {
+      "id": "docs-api",
+      "state": "proven",
+      "text": "document the endpoints",
+      "commit": "3fa9c21"
+    }
+  ],
+  "next": "heavyq item done login-api --run",
+  "open": [
+    "web-form",
+    "ci-cache"
+  ],
+  "blocked": [
+    {
+      "id": "ui",
+      "needs": "design sign-off"
+    }
+  ],
+  "gate": {
+    "name": "ready",
+    "failing": [
+      "go test ./..."
+    ],
+    "pre_existing": true
+  },
+  "machine": "load 1.2 on 8 cores, 14.0 GB free, queue 1 running, 0 waiting",
+  "canary": "hq-3f9a1c2e"
+}

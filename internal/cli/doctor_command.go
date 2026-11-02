@@ -14,7 +14,7 @@ import (
 // heavyq keeps on disk. For now that is the ledger index (docs/ledger.md): its
 // state and size, and with --reindex a rebuild from the ledger. Exit 0 when the
 // index is fresh (or was rebuilt), 1 when it is stale or missing, 2 on usage.
-func doctorCommand(args []string, stdout, stderr io.Writer) int {
+func doctorCommand(args []string, stdout, stderr io.Writer) (rc int) {
 	fs := flag.NewFlagSet("doctor", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	reindex := fs.Bool("reindex", false, "rebuild the ledger index from the ledger")
@@ -26,6 +26,11 @@ func doctorCommand(args []string, stdout, stderr io.Writer) int {
 		fs.Usage()
 		return ExitUsage
 	}
+	defer func() {
+		if rc != ExitUsage {
+			printBriefDelivery(stdout) // informational: never changes the exit code
+		}
+	}()
 	path := history.DefaultPath()
 	if path == "" {
 		fmt.Fprintln(stderr, "heavyq: no state directory (set $HEAVYQ_HISTORY or $XDG_STATE_HOME)")

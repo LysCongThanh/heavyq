@@ -4,7 +4,7 @@ An **anchor** is a short, reviewable list of what is left to do, kept in git. It
 items, and each item can say how it is proven. The default file is `.heavyq/anchor.md`.
 
 > Status: this page describes the file format and the reader/rewriter (`internal/anchor`). `heavyq item`
-> ([items.md](items.md)) uses them; `heavyq brief` and the stop gate come later in v0.5.
+> ([items.md](items.md)) uses them; `heavyq brief` and the stop gate ([steer.md](steer.md)) read it too.
 
 ## Format
 
