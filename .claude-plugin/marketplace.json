@@ -1,0 +1,15 @@
+{
+  "name": "heavyq",
+  "description": "heavyq: queue heavy shell commands and prove a gate once per code state",
+  "owner": {
+    "name": "LysCongThanh",
+    "url": "https://github.com/LysCongThanh"
+  },
+  "plugins": [
+    {
+      "name": "heavyq",
+      "source": "./plugins/heavyq",
+      "description": "Routes heavy Bash commands (tests, builds) through the heavyq queue and teaches agents the gate. Needs the heavyq binary on PATH."
+    }
+  ]
+}

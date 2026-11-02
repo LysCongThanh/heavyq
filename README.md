@@ -75,6 +75,18 @@ Or download a binary from [Releases](https://github.com/LysCongThanh/heavyq/rele
 Each release ships SHA-256 checksums, an SPDX SBOM per archive, and GitHub build provenance:
 `gh attestation verify <archive> --repo LysCongThanh/heavyq`.
 
+### Claude Code plugin
+
+Install the binary first, then the plugin (the hook and a small skill) in Claude Code:
+
+```
+/plugin marketplace add LysCongThanh/heavyq
+/plugin install heavyq@heavyq
+```
+
+Use the plugin or `heavyq hook install claude`, not both: the installer refuses while the plugin is enabled
+(`--force` overrides). See [docs/claude-code.md](docs/claude-code.md#install-as-a-claude-code-plugin).
+
 ## Quickstart
 
 ```bash
