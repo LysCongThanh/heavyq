@@ -9,7 +9,6 @@ import (
 
 	"github.com/LysCongThanh/heavyq/internal/config"
 	"github.com/LysCongThanh/heavyq/internal/gitutil"
-	"github.com/LysCongThanh/heavyq/internal/history"
 	"github.com/LysCongThanh/heavyq/internal/proof"
 	"github.com/LysCongThanh/heavyq/internal/repoconfig"
 	"github.com/LysCongThanh/heavyq/internal/runident"
@@ -17,11 +16,6 @@ import (
 
 // defaultGate is the gate used when none is named and heavyq.toml has it.
 const defaultGate = "ready"
-
-// ledgerWindow bounds how many ledger records a proof check reads. Older runs
-// cannot prove anything: a proof must be recent enough to be found, and a
-// missing one only costs a (cached) re-run.
-const ledgerWindow = 20000
 
 const gateUsage = `usage:
   heavyq [--config FILE] gate status [name] [--json]
@@ -183,12 +177,13 @@ func subjectOf(cfg *config.Config, root string) proof.Subject {
 // evaluateGate is the proof state of t's gate on the code in its repository
 // right now, read from the ledger.
 func evaluateGate(cfg *config.Config, t *gateTarget, stderr io.Writer) proof.Gate {
-	recs, err := history.ReadLast(history.DefaultPath(), ledgerWindow)
+	subj := subjectOf(cfg, t.repo.Root)
+	recs, err := proofRecords(subj)
 	if err != nil {
 		// Fail closed: an unreadable ledger might hide a later failure, so
 		// nothing is proven from a partial read.
 		fmt.Fprintln(stderr, "heavyq: ledger unreadable, so nothing can be proven:", err)
 		recs = nil
 	}
-	return proof.Evaluate(t.gate.Name, t.gate.Run, subjectOf(cfg, t.repo.Root), recs)
+	return proof.Evaluate(t.gate.Name, t.gate.Run, subj, recs)
 }

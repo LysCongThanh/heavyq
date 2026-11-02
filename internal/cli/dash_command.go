@@ -44,7 +44,12 @@ func dashCommand(cfg *config.Config, args []string, stdout, stderr io.Writer) in
 	srv, err := dash.New(dash.Options{
 		Control: *ctl, Interval: *interval, Version: version(), Host: host, Mailbox: controlBox(),
 		Snapshot: func() (snapshot.Snapshot, error) { return buildSnapshot(cfg, probes, cpuSampleInterval) },
-		History:  func(n int) ([]history.Record, error) { return history.ReadLast(history.DefaultPath(), n) },
+		History: func(n int) ([]history.Record, error) {
+			return history.ReadTail(history.DefaultPath(), history.TailLimit{Max: n})
+		},
+		HistorySince: func(since time.Time) ([]history.Record, error) {
+			return history.ReadTail(history.DefaultPath(), history.TailLimit{Since: since})
+		},
 		Ticket: func(id string) (bool, bool) {
 			t, ok := q.Find(id)
 			return ok, ok && t.Running
