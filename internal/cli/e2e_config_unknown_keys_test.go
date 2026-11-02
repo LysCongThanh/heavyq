@@ -11,12 +11,11 @@ import (
 func TestE2EUserConfigWithFutureKeysStillRuns(t *testing.T) {
 	h := newRig(t, baseConfig+"\n[queue_v9]\nlanes = 12\n\n[hook]\nfuture_knob = true\n")
 
-	rc, out, errOut := h.runSplit("version")
-	if rc != 0 || out == "" || strings.Count(errOut, "warning") != 1 || !strings.Contains(errOut, `queue_v9 (line `) || !strings.Contains(errOut, "hook.future_knob") {
+	if rc, out, errOut := h.runSplit("version"); rc != 0 || out == "" {
 		t.Fatalf("version rc=%d\nstdout: %s\nstderr: %s", rc, out, errOut)
 	}
-	rc, out, errOut = h.runSplit("3", "--", "true")
-	if rc != 0 || strings.Count(errOut, "warning") != 1 {
+	rc, out, errOut := h.runSplit("3", "--", "true")
+	if rc != 0 || strings.Count(errOut, "warning") != 1 || !strings.Contains(errOut, `queue_v9 (line `) || !strings.Contains(errOut, "hook.future_knob") {
 		t.Fatalf("heavyq 3 -- true rc=%d\nstdout: %s\nstderr: %s", rc, out, errOut)
 	}
 
