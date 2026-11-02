@@ -23,6 +23,9 @@ Every key is optional. [`examples/config.toml`](../examples/config.toml) has eve
 | `remote.work_dir` | `".heavyq"` | remote directory (relative to the remote home) |
 | `remote.git_url` | `"<ssh>:<work_dir>/git"` | where bare repos are pushed |
 | `remote.cache_hook` | `""` | shell run in the worktree before the command; gets `HEAVYQ_CACHE_DIR`, `HEAVYQ_WORKTREE` |
+| `pool.name` | required | `[[pool]]`: a named resource handed out with `--needs`; `[a-z][a-z0-9_]{0,31}`. See [pools](pools.md) |
+| `pool.values` / `pool.size` | one required | a range `"4100-4199"` or a list of names or integers / a capacity (values `1..size`) |
+| `pool.port` | by name | `true` = TCP ports (probed, never in the ephemeral range); default: the pool is called `port` or ends in `_port` |
 | `hook.enabled` | `true` | `false` = the Claude Code hook never rewrites |
 | `hook.permission` | `""` | `""` = rewritten commands go through Claude Code's permission flow; `"allow"` = approve them |
 | `hook.max_wait` | `"5m"` | `--max-wait` added to rewritten commands (and to the Bash tool timeout) |
@@ -41,4 +44,5 @@ auto-place), `HEAVYQ_DIR` (queue dir; default `$XDG_RUNTIME_DIR/heavyq`, else `/
 mode), `HEAVYQ_HISTORY` (one history file;
 default: monthly files in `$XDG_STATE_HOME/heavyq`), `HEAVYQ_CONFIG`, `XDG_CACHE_HOME` (result
 cache), `CLAUDE_CONFIG_DIR` (`--scope user` target). Commands run locally get `HEAVYQ_MACHINE`, `HEAVYQ_SLOT`,
-`HEAVYQ_LANE` and `HEAVYQ_ACTIVE=1` (the hook never rewrites while it is set).
+`HEAVYQ_LANE` and `HEAVYQ_ACTIVE=1` (the hook never rewrites while it is set), plus `HEAVYQ_<POOL>` /
+`HEAVYQ_<POOL>_N` for each value leased with `--needs` ([pools](pools.md)).

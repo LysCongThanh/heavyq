@@ -83,6 +83,7 @@ func (r *run) runLocal(c *claim) int {
 	cmd.WaitDelay = 10 * time.Second
 	subreaper := becomeSubreaper()
 	cmd.Env = append(os.Environ(), "HEAVYQ_MACHINE=local", "HEAVYQ_SLOT="+c.slot, "HEAVYQ_LANE="+r.me.Lane, "HEAVYQ_ACTIVE=1")
+	cmd.Env = append(cmd.Env, c.lease.Env()...) // the pool values this run holds
 	// Slot and mutex descriptors are close-on-exec: the command (and any
 	// daemon it leaves behind) never holds a slot. The slot is released when
 	// this process exits.

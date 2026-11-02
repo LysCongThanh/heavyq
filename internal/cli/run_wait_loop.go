@@ -83,7 +83,7 @@ func (r *run) round(headSince *time.Time) (*claim, int, int, []*queue.Ticket, er
 	if pos == 0 {
 		return nil, 0, 0, nil, fmt.Errorf("our ticket disappeared from %s", r.q.Path)
 	}
-	opps, _ := schedule.Opportunities(r.me, ahead, slotCounts(r.cfg))
+	opps, _ := schedule.Opportunities(r.me, skipPoolBlocked(r.setForAhead(ahead), r.me, ahead), slotCounts(r.cfg))
 	head := false
 	for _, op := range opps {
 		head = head || op.Head
@@ -103,7 +103,7 @@ func (r *run) round(headSince *time.Time) (*claim, int, int, []*queue.Ticket, er
 		waited = time.Since(*headSince)
 	}
 	c, _ := evaluate(evalInput{cfg: r.cfg, ticket: r.me, snap: snap, probes: r.probes,
-		opps: opps, headWait: waited, needsRAM: r.opts.NeedsRAM})
+		opps: opps, headWait: waited, needsRAM: r.opts.NeedsRAM, poolSet: r.poolSet})
 	if c != nil && c.machine != config.LocalName && r.pl.defaultMode && !r.stillSafeRemotely() {
 		c = nil // the repo changed while waiting: no remote this round
 	}
@@ -111,8 +111,9 @@ func (r *run) round(headSince *time.Time) (*claim, int, int, []*queue.Ticket, er
 		return nil, pos, len(snap.Waiting), ahead, nil
 	}
 	r.me.Forced = c.forced
+	r.me.Pools = c.lease.Values()
 	if err := r.q.Claim(r.me, c.machine, c.slot); err != nil {
-		c.lock.Release()
+		c.releaseAll()
 		return nil, 0, 0, nil, err
 	}
 	return c, pos, len(snap.Waiting), ahead, nil

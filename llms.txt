@@ -10,6 +10,7 @@ Typical use: `heavyq <prio> [--lane NAME] [--light] [--cache] [--max-wait DUR] -
 - [Install](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/install.md): go install, release binaries, verifying checksums and provenance
 - [The queue](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/queue.md): priority tickets, heavy/light slots, resource gate, `status`, quickstart
 - [Configuration](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/configuration.md): every config key and environment variable
+- [Pools](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/pools.md): named ports, databases and browsers leased per run with `--needs`, all or none
 - [Exit codes](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/exit-codes.md): stable exit codes
 - [Spare machines](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/remote.md): SSH remotes, exact-commit runs, placement
 - [Cache and coalescing](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/cache-and-coalescing.md): one run per commit, replayed results
@@ -19,7 +20,6 @@ Typical use: `heavyq <prio> [--lane NAME] [--light] [--cache] [--max-wait DUR] -
 - [Platform support](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/platform-support.md): Linux and macOS differences
 - [Claude Code hook](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/claude-code.md): how the PreToolUse hook rewrites commands and what it relies on
 - [Gates (heavyq.toml)](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/gates.md): per-repo gate format, the zero-config detected gate and `heavyq init`, `gate status` (`--json` schema, exit codes) and `gate run`, what counts as proven, trust model
-- [Items](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/items.md): `heavyq item ls|claim|release|done|block`: the anchor checklist, leases and proofs joined: status derivation, who you are (lane, session), `done` only on proof, `--json` schema, Tower `blocked` exception
 - [Stances](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/stances.md): thinking modes as files: TOML-frontmatter format, repo > user > built-in precedence, the five built-ins, compact renderer, `heavyq stance ls|show`
 - [Agent mode](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/agent-mode.md): when it turns on, the result digest (`PASS`/`FAIL`/`REUSED`, failure lines, `next:`), JSON form, logs, and the tested output budgets; `heavyq help agents` prints a 200-token usage card
 - [Ledger and indexes](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/ledger.md): the run ledger, the tail reader, the per-lane and per-tree indexes that keep hooks under 20 ms, `heavyq doctor --reindex`

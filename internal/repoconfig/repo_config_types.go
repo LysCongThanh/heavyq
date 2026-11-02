@@ -8,6 +8,8 @@
 // weaken a gate.
 package repoconfig
 
+import "github.com/LysCongThanh/heavyq/internal/pools"
+
 // FileName is the repo config file at the git root.
 const FileName = "heavyq.toml"
 
@@ -29,6 +31,9 @@ type Repo struct {
 	Path   string // Root/heavyq.toml; "" for a detected gate
 	Gates  []Gate // file order
 	Anchor Anchor
+	// Pools are the [[pool]] tables of the file; they replace pools of the
+	// same name in the user's config.
+	Pools []pools.Pool
 }
 
 // Gate is a named list of commands that must all pass on the current tree.
@@ -38,6 +43,9 @@ type Gate struct {
 	Prio   int      // 1 runs first; DefaultPrio when unset
 	Light  bool     // may use the light slots
 	Remote string   // "local" | "auto" | <remote name>; DefaultRemote when unset
+	// Needs are pool values every command of the gate holds while it runs
+	// ("pg", "port:2"). A gate with needs runs on this machine.
+	Needs []string
 	// Detected marks the default gate Detect made up from files at the git
 	// root because the repository has no heavyq.toml; Sources names those
 	// files. Both are zero for a gate read from a file.
@@ -74,8 +82,9 @@ func (r *Repo) Where() string {
 // rawFile mirrors the TOML layout before validation. Prio is a pointer so
 // that "absent" (default 3) differs from an explicit, invalid 0.
 type rawFile struct {
-	Gate   []rawGate  `toml:"gate"`
-	Anchor *rawAnchor `toml:"anchor"`
+	Gate   []rawGate    `toml:"gate"`
+	Pool   []pools.Spec `toml:"pool"`
+	Anchor *rawAnchor   `toml:"anchor"`
 }
 
 type rawGate struct {
@@ -84,6 +93,7 @@ type rawGate struct {
 	Prio   *int     `toml:"prio"`
 	Light  bool     `toml:"light"`
 	Remote string   `toml:"remote"`
+	Needs  []string `toml:"needs"`
 }
 
 type rawAnchor struct {

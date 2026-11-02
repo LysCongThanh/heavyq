@@ -4,7 +4,11 @@
 // (local machine only, 2 heavy slots, 1 light slot).
 package config
 
-import "time"
+import (
+	"time"
+
+	"github.com/LysCongThanh/heavyq/internal/pools"
+)
 
 // Duration wraps time.Duration so TOML values like "15m" decode naturally.
 type Duration struct{ time.Duration }
@@ -26,9 +30,14 @@ type Config struct {
 	Remotes []MachineConfig `toml:"remote"`
 	Hook    HookConfig      `toml:"hook"`
 	Cache   CacheConfig     `toml:"cache"`
+	// PoolSpecs are the [[pool]] tables as written; normalize validates them
+	// into Pools. A pool of the same name in heavyq.toml replaces the user's.
+	PoolSpecs []pools.Spec `toml:"pool"`
 
 	// Path is the file the config was loaded from ("" when defaults only).
 	Path string `toml:"-"`
+	// Pools are the validated [[pool]] tables, in file order.
+	Pools []pools.Pool `toml:"-"`
 }
 
 // QueueConfig holds queue-wide behaviour.

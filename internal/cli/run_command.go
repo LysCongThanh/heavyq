@@ -11,6 +11,7 @@ import (
 	"github.com/LysCongThanh/heavyq/internal/config"
 	"github.com/LysCongThanh/heavyq/internal/history"
 	"github.com/LysCongThanh/heavyq/internal/ledgerindex"
+	"github.com/LysCongThanh/heavyq/internal/pools"
 	"github.com/LysCongThanh/heavyq/internal/procinfo"
 	"github.com/LysCongThanh/heavyq/internal/queue"
 )
@@ -40,6 +41,8 @@ type run struct {
 	maxRSSMB int
 	// out words the run's own output and keeps what the command printed (agent mode, --digest).
 	out runOutput
+	// poolSet is the pools the run's needs refer to (nil without --needs).
+	poolSet *pools.Set
 }
 
 func runCommand(cfg *config.Config, args []string, stderr io.Writer) int {
@@ -56,9 +59,6 @@ func runCommand(cfg *config.Config, args []string, stderr io.Writer) int {
 	if err != nil {
 		return usageFail(stderr, mode, err)
 	}
-
-	defer renewLaneLeases(o.Lane) // a run in a lane keeps that lane's item claims alive (fail-open)
-
 	if o.Session == "" { // explicit flag and $HEAVYQ_SESSION win over the hook's file
 		o.Session = q.ReadSession(o.Lane, time.Now(), history.ValidTag)
 	}
@@ -86,6 +86,9 @@ func runCommand(cfg *config.Config, args []string, stderr io.Writer) int {
 		Pid: os.Getpid(), Start: start, Lane: o.Lane, Prio: o.Prio, Light: o.Light,
 		Target: pl.target, Candidates: pl.candidates, Since: r.t0, Cmd: queue.TruncateCmd(o.Argv),
 	}
+	if err := r.preparePools(); err != nil {
+		return usageFail(stderr, mode, err)
+	}
 	if err := q.Add(r.me); err != nil {
 		return usageFail(stderr, mode, err)
 	}
@@ -98,7 +101,7 @@ func runCommand(cfg *config.Config, args []string, stderr io.Writer) int {
 		r.digestNotRun(rc)
 		return rc
 	}
-	defer c.lock.Release()
+	defer c.releaseAll()
 	return r.execute(c)
 }
 

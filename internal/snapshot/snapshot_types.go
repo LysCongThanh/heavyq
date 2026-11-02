@@ -32,10 +32,9 @@ type Snapshot struct {
 	// there is nothing to say.
 	Gates      []LaneGate  `json:"gates"`
 	Exceptions []Exception `json:"exceptions"`
-	// Items is what each lane holds or waits on in the work items
-	// (`heavyq item`): claimed, proven (not yet done) and blocked items. Added
-	// within schema 1; an empty array when no lane has any.
-	Items []LaneItems `json:"items"`
+	// Pools are the named pools (ports, databases, ...) with who holds what;
+	// an empty array when none is configured. Added within schema 1.
+	Pools []Pool `json:"pools"`
 }
 
 // Config is the part of the configuration a viewer needs to interpret values.
@@ -84,6 +83,22 @@ type Slot struct {
 	Lane   string `json:"lane,omitempty"`
 }
 
+// Pool is a named pool of values that runs hold while they run.
+type Pool struct {
+	Name     string `json:"name"`
+	Capacity int    `json:"capacity"` // values a run can get (a port pool leaves out the ephemeral range)
+	Held     int    `json:"held"`     // values held by running tickets
+	// Holders lists the held values, in the pool's order.
+	Holders []PoolHolder `json:"holders"`
+}
+
+// PoolHolder is one held pool value.
+type PoolHolder struct {
+	Value  string `json:"value"`
+	Lane   string `json:"lane"`
+	Ticket string `json:"ticket"` // ticket id of the holder
+}
+
 // Ticket is what running and waiting entries share.
 type Ticket struct {
 	ID         string    `json:"id"` // stable for the ticket's life; used by control actions
@@ -95,7 +110,11 @@ type Ticket struct {
 	Candidates []string  `json:"candidates"`
 	Cmd        string    `json:"cmd"`   // secrets redacted
 	Since      time.Time `json:"since"` // enqueued
-	WaitS      float64   `json:"wait_s"`
+	// Needs are the pool values it asks for ("pg", "port:2"); absent without any.
+	Needs []string `json:"needs,omitempty"`
+	// Pools are the values a running ticket holds, by pool.
+	Pools map[string][]string `json:"pools,omitempty"`
+	WaitS float64             `json:"wait_s"`
 	// CancelRequested: an operator asked to stop it; its process applies
 	// the request within about a poll interval.
 	CancelRequested bool `json:"cancel_requested"`

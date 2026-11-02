@@ -77,11 +77,10 @@ Exceptions are facts heavyq measured, never what an agent claims. They are compu
 | `red_gate` | the latest conclusive run of a gate command on the lane's current tree failed (`heavyq gate status` says the same), and it is not classed `flaky` or `under_load` | critical | `run`: `cd <worktree> && heavyq gate run <gate>` |
 | `loop` | the same command failed at least 2 times on the same tree in a lane within 30 minutes | critical | `cancel` the lane's job, if it has one |
 | `starved` | the head of the queue waited more than 2/3 of `force_after` and nothing would take it, or a lane gave up in the last hour | warning | `raise` the head's priority by one |
-| `blocked` | a lane recorded `heavyq item block <id> "needs: ..."` and nobody claimed the item since | critical | `run`: `heavyq item claim <id>`, once the need is met |
 | `machine` | a machine is unreachable or paused, or processes outside the queue hold more than 40% of the local RAM | warning | `resume` for a paused machine |
 
 Each exception is `{id, kind, severity, lane?, machine?, text, evidence{at, tree, cmd, count, gate,
-item, detail}, action{kind, target, value, command}?}`. `text` is one sentence; `evidence` fields that do not
+detail}, action{kind, target, value, command}?}`. `text` is one sentence; `evidence` fields that do not
 apply are absent; `action.command` is always the command to type.
 
 `gates[]` is what the red-gate check read: per lane that ran in the last hour, the main gate's `state`
@@ -112,8 +111,6 @@ Fields may be added within schema 1; renaming or removing one bumps `schema`.
   `generated_at`. The page renders `story` when present and falls back to its own copy of the logic for older
   servers.
 - `gates[]` and `exceptions[]`: the Tower, described above.
-- `items[]`: per lane, the work items it holds or waits on (`heavyq item`, see [items.md](items.md)):
-  `{lane, repo, items:[{id, state: claimed|proven|blocked, commit?, needs?, at?}]}`.
 
 ## Control without the dashboard
 

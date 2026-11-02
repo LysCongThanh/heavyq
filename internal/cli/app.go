@@ -33,7 +33,6 @@ usage:
   heavyq [--config FILE] status [--json]
   heavyq [--config FILE] why [lane]
   heavyq [--config FILE] gate status [name] [--json] | run [name] [--parallel] [--keep-going] [--lane NAME]
-  heavyq [--config FILE] item ls [--all] | claim <id>|--next | release <id> | done <id> [--run] | block <id> "needs: ..."
   heavyq init [--agents-md] [--force] [--print]
   heavyq [--config FILE] dash [--control] [--addr 127.0.0.1:0] [--open]
   heavyq cancel <ticket|pid> | reprio <ticket|pid> <1-9>
@@ -56,6 +55,8 @@ run flags:
   --ref REF            commit to run remotely (default: HEAD)
   --base-ref R/B       also recreate refs/remotes/R/B remotely (e.g. origin/main)
   --with REPO[@REF]    sibling repo needed next to the main one (repeatable)
+  --needs POOL[:N],..  hold N values of named pools ([[pool]] in the config or heavyq.toml)
+                       while it runs, all or none; exported as HEAVYQ_<POOL>[_N]; local only
   --cache              reuse the result of an identical run on the same clean
                        commit, or wait for one that is running right now
   --session ID         who ran it, recorded in history (default: $HEAVYQ_SESSION,
@@ -129,13 +130,11 @@ func Main(args []string, stdout, stderr io.Writer) int {
 		return whyCommand(cfg, args[1:], stdout, stderr)
 	case "gate":
 		return gateCommand(cfg, args[1:], stdout, stderr)
-	case "item":
-		return itemCommand(cfg, args[1:], stdout, stderr)
 	case "cancel", "reprio", "pause", "resume":
 		return controlCommand(cfg, args[0], args[1:], stdout, stderr)
 	}
 	if p, err := strconv.Atoi(args[0]); err != nil || p < 1 || p > 9 {
-		fmt.Fprintf(stderr, "heavyq: first argument must be a priority 1-9 or a command (status, why, gate, item, init, dash, history, cache, hook, stance, doctor, cancel, reprio, pause, resume, version)\n\n%s", usage)
+		fmt.Fprintf(stderr, "heavyq: first argument must be a priority 1-9 or a command (status, why, gate, init, dash, history, cache, hook, stance, doctor, cancel, reprio, pause, resume, version)\n\n%s", usage)
 		return ExitUsage
 	}
 	return runCommand(cfg, args, stderr)

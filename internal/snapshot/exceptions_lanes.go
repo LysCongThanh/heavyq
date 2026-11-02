@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/LysCongThanh/heavyq/internal/history"
+	"github.com/LysCongThanh/heavyq/internal/pools"
 )
 
 // loops: the same run failed at least twice on the same tree in a lane
@@ -106,8 +107,14 @@ func starved(s Snapshot, recs []history.Record, now time.Time) []Exception {
 			ID: fmt.Sprintf("%s|%s|%d", KindStarved, lane, n), Evidence: Evidence{At: lastGaveUp[lane], Count: n}}
 		var clauses []string
 		if head != nil && head.Lane == lane {
-			clauses = append(clauses, fmt.Sprintf("has waited %s at the head of the queue (the bypass applies at %s)",
-				dur(head.WaitS), dur(s.Config.ForceAfterS)))
+			if why := poolReason(head.Reasons); why != "" {
+				// The RAM and load bypass does not skip a pool: say what holds it.
+				clauses = append(clauses, fmt.Sprintf("has waited %s at the head of the queue, %s", dur(head.WaitS), why))
+				e.Evidence.Detail = why
+			} else {
+				clauses = append(clauses, fmt.Sprintf("has waited %s at the head of the queue (the bypass applies at %s)",
+					dur(head.WaitS), dur(s.Config.ForceAfterS)))
+			}
 			e.Evidence.At, e.Evidence.Cmd = head.Since, head.Cmd
 			if head.Prio > 1 {
 				e.Action = &Action{Kind: ActionRaise, Target: head.ID, Value: head.Prio - 1,
@@ -136,6 +143,17 @@ func longWaitingHead(s Snapshot) *Waiting {
 		}
 	}
 	return nil
+}
+
+// poolReason returns the first wait reason that comes from a pool ("waiting
+// for pg: 3/3 held by a, b, c"), or "".
+func poolReason(reasons map[string]string) string {
+	for _, mr := range sortedReasons(reasons) {
+		if pools.IsReason(mr.reason) {
+			return mr.reason
+		}
+	}
+	return ""
 }
 
 func times(n int) string {

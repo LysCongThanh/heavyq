@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/LysCongThanh/heavyq/internal/config"
+	"github.com/LysCongThanh/heavyq/internal/pools"
 )
 
 // gateName is the shape of a gate name: short, lower case, safe to use in
@@ -32,6 +33,11 @@ func (r *Repo) fill(raw rawFile) error {
 		seen[g.Name] = true
 		r.Gates = append(r.Gates, g)
 	}
+	ps, err := pools.Build(raw.Pool)
+	if err != nil {
+		return err
+	}
+	r.Pools = ps
 	if raw.Anchor != nil {
 		a, err := raw.Anchor.validate()
 		if err != nil {
@@ -79,6 +85,15 @@ func (rg rawGate) validate() (Gate, error) {
 			return Gate{}, err
 		}
 		g.Remote = rg.Remote
+	}
+	if len(rg.Needs) > 0 {
+		if _, err := pools.ParseNeedList(rg.Needs); err != nil {
+			return Gate{}, fmt.Errorf("needs: %w", err)
+		}
+		if g.Remote != config.LocalName && g.Remote != remoteAuto {
+			return Gate{}, fmt.Errorf("needs pool values of this machine, so remote %q is not possible (use %q)", g.Remote, config.LocalName)
+		}
+		g.Needs = rg.Needs
 	}
 	return g, nil
 }

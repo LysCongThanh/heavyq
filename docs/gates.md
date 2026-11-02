@@ -91,6 +91,7 @@ run    = ["gofmt -l . | (! grep .)",   # required, non-empty, run in order
 prio   = 3                             # optional, 1-9, default 3
 light  = false                         # optional, may use the light slots
 remote = "local"                       # optional: local (default) | auto | <remote name>
+needs  = ["pg", "port:2"]              # optional: pool values each command holds while it runs (see pools.md)
 
 [anchor]                               # reserved: accepted, not used yet
 file  = ".heavyq/anchor.md"
@@ -104,6 +105,8 @@ extra = ["plans/*/phase-*.md"]
 | `gate.prio` | integer | `3` | 1-9; 1 runs first |
 | `gate.light` | bool | `false` | |
 | `gate.remote` | string | `"local"` | `local`, `auto`, or a remote name (`[A-Za-z0-9][A-Za-z0-9._-]{0,63}`). Whether the remote exists is checked against your own config when the gate runs. |
+| `gate.needs` | list of strings | none | `pool` or `pool:N` entries, each pool once; every command of the gate holds them while it runs, see [pools](pools.md). With `needs`, `remote` must be `local` or `auto` (the run stays local). |
+| `pool` | tables | none | `[[pool]]` tables, as in the user config; a pool here replaces the user's pool of the same name. See [pools](pools.md). |
 | `anchor.file` | string | none | relative path inside the repository |
 | `anchor.extra` | list of strings | none | relative globs inside the repository |
 
