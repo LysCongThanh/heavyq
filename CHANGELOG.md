@@ -5,6 +5,12 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **README is a short hero** (tagline, a 14-second proof GIF recorded from real runs, install, Run / Prove / Steer).
+  The reference sections moved into `docs/` (`queue.md`, `remote.md`, `configuration.md`, `exit-codes.md`, ...) unchanged.
+  `docs/tapes/proof.tape` records the GIF; the `demo` workflow re-records it on release tags.
+
 ## [0.4.0] - 2026-11-02
 
 ### Added

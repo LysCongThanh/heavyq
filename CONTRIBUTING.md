@@ -82,7 +82,7 @@ people don't do the same work.
 - One topic per PR, with a test that fails without the change.
 - The PR title is a conventional commit (`feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `ci:`, `build:`);
   a check enforces it, and it becomes the squash commit.
-- If you change behaviour, update the README (flags, config table, exit codes) and the `Unreleased`
+- If you change behaviour, update the docs (README, docs/queue.md, docs/configuration.md, docs/exit-codes.md) and the `Unreleased`
   section of `CHANGELOG.md` in the same PR. The changelog section becomes the release notes.
 
 ## Reporting security issues

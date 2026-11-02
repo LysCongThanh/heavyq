@@ -5,7 +5,8 @@ top level; in a linked worktree, that worktree's own copy). A **gate** is a name
 must all pass on the current code.
 
 `heavyq gate status` tells you whether the code checked out now is proven, and `heavyq gate run`
-proves it. Without a `heavyq.toml`, a default gate is [detected](#no-heavyqtoml-the-detected-gate).
+proves it. `gate status` reads the run ledger, answers in about 20 ms and runs nothing. Without a
+`heavyq.toml`, a default gate is [detected](#no-heavyqtoml-the-detected-gate).
 
 ## No `heavyq.toml`: the detected gate
 
