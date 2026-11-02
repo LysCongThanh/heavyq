@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/LysCongThanh/heavyq/internal/slots"
 )
 
 func testSet(t *testing.T, ps ...Pool) *Set {
@@ -146,4 +148,29 @@ func freePort(t *testing.T, not int) int {
 	}
 	t.Fatal("no free port")
 	return 0
+}
+
+// A ticket whose shortfall is visible without locking never takes a value,
+// not even for a moment: a waiting ticket must not hold ports round after
+// round while another pool is full (#87).
+func TestAcquireTakesNothingWhenAShortfallIsVisible(t *testing.T) {
+	s := testSet(t, Pool{Name: "port", Port: true, Values: []string{"4100", "4101"}}, plain("pg", "a"))
+	held := false
+	s.Bound = func(port int) bool {
+		if slots.Busy(s.lockPath("port", strconv.Itoa(port))) {
+			held = true // probed while holding the value: a take, not a look
+		}
+		return false
+	}
+	pg, _, _ := s.Acquire([]Need{{"pg", 1}})
+	defer pg.Release()
+	for range 3 {
+		_, short, err := s.Acquire([]Need{{"port", 2}, {"pg", 1}})
+		if err != nil || short == nil || short.Pool != "pg" {
+			t.Fatalf("want a shortfall on pg, got %+v, %v", short, err)
+		}
+	}
+	if held {
+		t.Fatal("a ticket short of pg took ports before giving up")
+	}
 }
