@@ -112,7 +112,14 @@ if [ "$verify" = 1 ]; then
     || die "no signature for this release (releases before the first signed one have none)"
   cosign verify-blob --bundle "$tmp/checksums.txt.sigstore.json" \
     --certificate-identity-regexp "$SIGNER_RE" --certificate-oidc-issuer "$OIDC_ISSUER" \
-    "$tmp/checksums.txt" >/dev/null 2>&1 || die "cosign signature of checksums.txt is not valid"
+    "$tmp/checksums.txt" >/dev/null 2>&1 || {
+    # cosign 2 cannot read the bundle format the release workflow writes ("bundle does not contain cert").
+    cv=$(cosign version 2>/dev/null | sed -n 's/^GitVersion:[[:space:]]*v\{0,1\}//p' | head -n 1)
+    case "$cv" in
+      [012].*) die "cosign ${cv} cannot read these signature bundles; verifying needs cosign 3 or later" ;;
+    esac
+    die "cosign signature of checksums.txt is not valid"
+  }
   say "cosign signature of checksums.txt verified"
 fi
 

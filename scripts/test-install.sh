@@ -91,6 +91,8 @@ check "--verify pins identity and issuer" 0 sh -c "grep -q 'certificate-identity
 printf '#!/bin/sh\nexit 1\n' >"$stub/cosign"
 check "--verify refuses a bad signature" fail env PATH="$stub:$PATH" HEAVYQ_RELEASE_BASE="file://$good" sh "$installer" --version 9.9.9 --prefix "$work/p8" --verify
 check "nothing installed after a bad signature" fail test -e "$work/p8/bin/heavyq"
+printf '#!/bin/sh\n[ "$1" = version ] && { echo "GitVersion:    v2.4.1"; exit 0; }\nexit 1\n' >"$stub/cosign"
+check "--verify names cosign 3 when an old cosign fails" 0 sh -c "env PATH='$stub:$PATH' HEAVYQ_RELEASE_BASE='file://$good' sh '$installer' --version 9.9.9 --prefix '$work/p8b' --verify 2>&1 | grep -q 'cosign 3 or later'"
 rm -f "$good/checksums.txt.sigstore.json"
 check "--verify fails when the release has no signature" fail env PATH="$stub:$PATH" HEAVYQ_RELEASE_BASE="file://$good" sh "$installer" --version 9.9.9 --prefix "$work/p9" --verify
 
