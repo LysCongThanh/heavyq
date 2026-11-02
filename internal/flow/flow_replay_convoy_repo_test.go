@@ -26,18 +26,22 @@ type gitStep struct {
 }
 
 // git runs git in the repository at a given time and fails the test on a
-// non-zero exit, unless allowFail (a merge that conflicts exits 1).
-func (r *convoyRepo) git(at time.Time, allowFail bool, args ...string) error {
+// non-zero exit.
+func (r *convoyRepo) git(at time.Time, args ...string) {
 	r.t.Helper()
+	if out, err := r.gitMayFail(at, args...); err != nil {
+		r.t.Fatalf("git %v: %v\n%s", args, err, out)
+	}
+}
+
+// gitMayFail is git for the one call allowed to fail: a merge that conflicts
+// exits 1.
+func (r *convoyRepo) gitMayFail(at time.Time, args ...string) ([]byte, error) {
 	cmd := exec.Command("git", append([]string{"-C", r.dir, "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null"}, args...)...)
 	stamp := at.UTC().Format(time.RFC3339)
 	cmd.Env = append(os.Environ(), "GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@example.com", "GIT_COMMITTER_NAME=t",
 		"GIT_COMMITTER_EMAIL=t@example.com", "GIT_AUTHOR_DATE="+stamp, "GIT_COMMITTER_DATE="+stamp)
-	out, err := cmd.CombinedOutput()
-	if err != nil && !allowFail {
-		r.t.Fatalf("git %v: %v\n%s", args, err, out)
-	}
-	return err
+	return cmd.CombinedOutput()
 }
 
 func (r *convoyRepo) write(files map[string]string) {
@@ -65,8 +69,8 @@ func hot(slot string) map[string]string {
 func (r *convoyRepo) commit(at time.Time, msg string, files map[string]string) {
 	r.t.Helper()
 	r.write(files)
-	r.git(at, false, "add", "-A")
-	r.git(at, false, "commit", "-q", "-m", msg)
+	r.git(at, "add", "-A")
+	r.git(at, "commit", "-q", "-m", msg)
 }
 
 // buildConvoyRepo creates the repository and replays the plan into it, in the
@@ -77,18 +81,18 @@ func buildConvoyRepo(t *testing.T, c convoy) string {
 	if err := os.MkdirAll(r.dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	r.git(minute(-60), false, "init", "-q", "-b", "main")
+	r.git(minute(-60), "init", "-q", "-b", "main")
 	r.commit(minute(-60), "initial", hot("base"))
 
 	var steps []gitStep
 	for _, p := range c.PRs {
 		steps = append(steps,
 			gitStep{p.Start, func() {
-				r.git(p.Start, false, "checkout", "-q", "-b", p.Branch(), "main")
+				r.git(p.Start, "checkout", "-q", "-b", p.Branch(), "main")
 				r.commit(p.Commits[0], "feat: "+p.ID, mergeFiles(hot("pr-"+p.ID), map[string]string{"internal/" + p.ID + "/impl.go": "package x\n"}))
 			}},
 			gitStep{p.Commits[1], func() {
-				r.git(p.Commits[1], false, "checkout", "-q", p.Branch())
+				r.git(p.Commits[1], "checkout", "-q", p.Branch())
 				r.commit(p.Commits[1], "wip: "+p.ID, map[string]string{"internal/" + p.ID + "/impl.go": "package x // wip\n"})
 			}})
 		for _, at := range p.Merges {
@@ -98,13 +102,13 @@ func buildConvoyRepo(t *testing.T, c convoy) string {
 	for _, m := range c.MainCommits {
 		if strings.HasPrefix(m.Label, "landed-") { // a squash merge: the pull request's changes in one commit on main
 			steps = append(steps, gitStep{m.At, func() {
-				r.git(m.At, false, "checkout", "-q", "main")
+				r.git(m.At, "checkout", "-q", "main")
 				r.commit(m.At, m.Label+" (#1)", hot(m.Label))
 			}})
 			continue
 		}
 		steps = append(steps, gitStep{m.At, func() {
-			r.git(m.At, false, "checkout", "-q", "main")
+			r.git(m.At, "checkout", "-q", "main")
 			r.commit(m.At, "chore: "+m.Label, hot(m.Label))
 		}})
 	}
@@ -119,13 +123,13 @@ func buildConvoyRepo(t *testing.T, c convoy) string {
 // conflicts by keeping both sides, as a person would.
 func (r *convoyRepo) mergeMain(p *convoyPR, at time.Time) {
 	r.t.Helper()
-	r.git(at, false, "checkout", "-q", p.Branch())
-	if err := r.git(at, true, "merge", "--no-edit", "--no-ff", "main"); err == nil {
+	r.git(at, "checkout", "-q", p.Branch())
+	if _, err := r.gitMayFail(at, "merge", "--no-edit", "--no-ff", "main"); err == nil {
 		r.t.Fatalf("%s: the merge of main at %v must conflict in the hot files (a plan error)", p.ID, at)
 	}
 	r.write(hot(fmt.Sprintf("pr-%s+main@%s", p.ID, at.Format("15:04"))))
-	r.git(at, false, "add", "-A")
-	r.git(at, false, "commit", "-q", "--no-edit")
+	r.git(at, "add", "-A")
+	r.git(at, "commit", "-q", "--no-edit")
 }
 
 func mergeFiles(a, b map[string]string) map[string]string {
