@@ -1,0 +1,422 @@
+{
+  "schema": 1,
+  "generated_at": "2026-11-02T12:04:29Z",
+  "version": "0.5.0-dev",
+  "host": "workstation",
+  "config": {
+    "path": "",
+    "resource_gate": true,
+    "force_after_s": 1200,
+    "hold_for_s": 120,
+    "poll_s": 2,
+    "remote_down_max_s": 600
+  },
+  "machines": [
+    {
+      "name": "local",
+      "reachable": true,
+      "paused": false,
+      "metrics_known": true,
+      "cores": 8,
+      "load1": 12.3,
+      "max_load": 16.0,
+      "free_mb": 9830,
+      "total_mb": 32768,
+      "reserved_mb": 0,
+      "job_mb": 8000,
+      "light_mb": 500,
+      "reserve_mb": 1500,
+      "slots": [
+        {
+          "name": "heavy-1",
+          "kind": "heavy",
+          "state": "held",
+          "lane": "docs",
+          "ticket": "t-docs"
+        },
+        {
+          "name": "heavy-2",
+          "kind": "heavy",
+          "state": "free"
+        },
+        {
+          "name": "light-1",
+          "kind": "light",
+          "state": "free"
+        }
+      ],
+      "admits": ""
+    },
+    {
+      "name": "linuxi",
+      "reachable": true,
+      "paused": false,
+      "metrics_known": true,
+      "cores": 6,
+      "load1": 16.0,
+      "max_load": 9.0,
+      "free_mb": 5530,
+      "total_mb": 0,
+      "reserved_mb": 0,
+      "job_mb": 8000,
+      "light_mb": 500,
+      "reserve_mb": 1500,
+      "slots": [
+        {
+          "name": "heavy-1",
+          "kind": "heavy",
+          "state": "held",
+          "lane": "api",
+          "ticket": "t-api"
+        },
+        {
+          "name": "heavy-2",
+          "kind": "heavy",
+          "state": "free"
+        },
+        {
+          "name": "light-1",
+          "kind": "light",
+          "state": "free"
+        }
+      ],
+      "admits": "load 16.00 >= 9.0 (1.50 x 6 cores)"
+    },
+    {
+      "name": "mac",
+      "reachable": true,
+      "paused": false,
+      "metrics_known": true,
+      "cores": 8,
+      "load1": 1.5,
+      "max_load": 12.0,
+      "free_mb": 8500,
+      "total_mb": 0,
+      "reserved_mb": 0,
+      "job_mb": 8000,
+      "light_mb": 500,
+      "reserve_mb": 1500,
+      "slots": [
+        {
+          "name": "heavy-1",
+          "kind": "heavy",
+          "state": "free"
+        },
+        {
+          "name": "heavy-2",
+          "kind": "heavy",
+          "state": "free"
+        },
+        {
+          "name": "light-1",
+          "kind": "light",
+          "state": "free"
+        }
+      ],
+      "admits": ""
+    }
+  ],
+  "running": [
+    {
+      "id": "4-00000000000000000001-4001-api",
+      "pid": 4001,
+      "lane": "api",
+      "prio": 4,
+      "light": false,
+      "target": "auto",
+      "candidates": [
+        "linuxi"
+      ],
+      "cmd": "go test -race ./...",
+      "since": "2026-11-02T12:03:19Z",
+      "wait_s": 2.0,
+      "cancel_requested": false,
+      "machine": "linuxi",
+      "slot": "heavy-1",
+      "claimed_at": "2026-11-02T12:03:21Z",
+      "run_s": 68.0,
+      "forced": false,
+      "cpu_pct": 0,
+      "rss_mb": 0
+    },
+    {
+      "id": "5-00000000000000000002-4002-docs",
+      "pid": 4002,
+      "lane": "docs",
+      "prio": 5,
+      "light": false,
+      "target": "local",
+      "candidates": [
+        "local"
+      ],
+      "cmd": "npm run build",
+      "since": "2026-11-02T12:02:00Z",
+      "wait_s": 0.0,
+      "cancel_requested": false,
+      "machine": "local",
+      "slot": "heavy-1",
+      "claimed_at": "2026-11-02T12:02:00Z",
+      "run_s": 149.0,
+      "forced": false,
+      "cpu_pct": 210,
+      "rss_mb": 1800
+    }
+  ],
+  "waiting": [
+    {
+      "id": "4-00000000000000000003-4003-agent-ad17ea",
+      "pid": 4003,
+      "lane": "agent-ad17ea",
+      "prio": 4,
+      "light": false,
+      "target": "auto",
+      "candidates": [
+        "linuxi"
+      ],
+      "cmd": "go test ./internal/cli",
+      "since": "2026-11-02T11:50:29Z",
+      "wait_s": 840.0,
+      "cancel_requested": false,
+      "position": 1,
+      "reasons": {
+        "linuxi": "load 16.00 >= 9.0 (1.50 x 6 cores)"
+      },
+      "bypass_in_s": 360.0
+    },
+    {
+      "id": "4-00000000000000000004-4004-web",
+      "pid": 4004,
+      "lane": "web",
+      "prio": 4,
+      "light": false,
+      "target": "auto",
+      "candidates": [
+        "linuxi"
+      ],
+      "cmd": "npm run e2e",
+      "since": "2026-11-02T12:03:51Z",
+      "wait_s": 38.0,
+      "cancel_requested": false,
+      "needs": [
+        "pg"
+      ],
+      "position": 2,
+      "reasons": {
+        "linuxi": "load 16.00 >= 9.0 (1.50 x 6 cores)"
+      },
+      "bypass_in_s": -1
+    }
+  ],
+  "coalesced": [],
+  "cpu": {
+    "available": true,
+    "interval_ms": 500,
+    "lanes": [
+      {
+        "name": "docs",
+        "procs": 9,
+        "cpu_pct": 210,
+        "rss_mb": 1800
+      }
+    ],
+    "outside": [
+      {
+        "name": "chrome",
+        "procs": 33,
+        "cpu_pct": 35,
+        "rss_mb": 7680
+      },
+      {
+        "name": "code",
+        "procs": 14,
+        "cpu_pct": 12,
+        "rss_mb": 2900
+      },
+      {
+        "name": "slack",
+        "procs": 6,
+        "cpu_pct": 2,
+        "rss_mb": 980
+      }
+    ],
+    "outside_total": {
+      "name": "outside",
+      "procs": 71,
+      "cpu_pct": 61,
+      "rss_mb": 18432
+    }
+  },
+  "story": [
+    {
+      "text": "2 agents wait because linuxi is over its load limit: agent-ad17ea is first and the bypass applies in 6m.",
+      "parts": [
+        {
+          "text": "2 agents wait because linuxi is over its load limit: agent-ad17ea is first and the bypass applies in 6m."
+        }
+      ]
+    },
+    {
+      "text": "Outside the queue, 33 chrome processes hold 7.5 GB, everything else 11 GB.",
+      "parts": [
+        {
+          "text": "Outside the queue, 33 chrome processes hold 7.5 GB, everything else 11 GB."
+        }
+      ]
+    }
+  ],
+  "gates": [
+    {
+      "lane": "api",
+      "gate": "ready",
+      "tree": "3f2a9c1d77e0",
+      "state": "failed",
+      "failed": [
+        {
+          "cmd": "go test ./...",
+          "at": "2026-11-02T12:01:00Z",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "lane": "web",
+      "gate": "ready",
+      "tree": "9be01a44c2d1",
+      "state": "proven"
+    },
+    {
+      "lane": "docs",
+      "gate": "ready",
+      "tree": "77c0de11aa90",
+      "state": "proven"
+    },
+    {
+      "lane": "infra",
+      "gate": "ready",
+      "tree": "5d5d5d5d5d5d",
+      "state": "proven"
+    },
+    {
+      "lane": "mobile",
+      "gate": "ready",
+      "tree": "0a0a0a0a0a0a",
+      "state": "proven"
+    },
+    {
+      "lane": "agent-ad17ea",
+      "gate": "ready",
+      "tree": "c0ffee123456",
+      "state": "unproven"
+    }
+  ],
+  "exceptions": [
+    {
+      "id": "red_gate|api|3f2a9c1d77e0|go test ./...|2",
+      "kind": "red_gate",
+      "severity": "critical",
+      "lane": "api",
+      "text": "api fails the gate ready on tree 3f2a9c1: go test ./... failed 2 times.",
+      "evidence": {
+        "at": "2026-11-02T12:01:00Z",
+        "tree": "3f2a9c1d77e0",
+        "cmd": "go test ./...",
+        "count": 2,
+        "gate": "ready"
+      },
+      "action": {
+        "kind": "run",
+        "target": "ready",
+        "command": "cd /work/api && heavyq gate run ready"
+      }
+    },
+    {
+      "id": "starved|agent-ad17ea|0",
+      "kind": "starved",
+      "severity": "warning",
+      "lane": "agent-ad17ea",
+      "text": "agent-ad17ea has waited 14m at the head of the queue (the bypass applies at 20m).",
+      "evidence": {
+        "at": "2026-11-02T11:50:29Z",
+        "cmd": "go test ./internal/cli"
+      },
+      "action": {
+        "kind": "raise",
+        "target": "4-00000000000000000003-4003-agent-ad17ea",
+        "value": 3,
+        "command": "heavyq reprio '4-00000000000000000003-4003-agent-ad17ea' 3"
+      }
+    },
+    {
+      "id": "blocked|docs|doc-7|1a2b3c4d",
+      "kind": "blocked",
+      "severity": "critical",
+      "lane": "docs",
+      "text": "docs is blocked on item `doc-7`: needs a Stripe test key.",
+      "evidence": {
+        "at": "2026-11-02T12:00:00Z",
+        "item": "doc-7",
+        "detail": "a Stripe test key"
+      },
+      "action": {
+        "kind": "run",
+        "target": "doc-7",
+        "command": "heavyq item claim doc-7"
+      }
+    }
+  ],
+  "pools": [
+    {
+      "name": "pg",
+      "capacity": 3,
+      "held": 2,
+      "holders": [
+        {
+          "value": "pg-1",
+          "lane": "web",
+          "ticket": "4-00000000000000000004-4004-web"
+        },
+        {
+          "value": "pg-2",
+          "lane": "api",
+          "ticket": "4-00000000000000000001-4001-api"
+        }
+      ]
+    },
+    {
+      "name": "port",
+      "capacity": 100,
+      "held": 1,
+      "holders": [
+        {
+          "value": "4101",
+          "lane": "docs",
+          "ticket": "5-00000000000000000002-4002-docs"
+        }
+      ]
+    }
+  ],
+  "items": [
+    {
+      "lane": "api",
+      "repo": "api",
+      "items": [
+        {
+          "id": "i-12",
+          "state": "claimed"
+        }
+      ]
+    },
+    {
+      "lane": "docs",
+      "repo": "docs",
+      "items": [
+        {
+          "id": "doc-7",
+          "state": "blocked",
+          "needs": "a Stripe test key",
+          "at": "2026-11-02T12:00:00Z"
+        }
+      ]
+    }
+  ]
+}

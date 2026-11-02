@@ -1,0 +1,7 @@
+heavyq  idle, 4 proven                                                                                                                          12:04:31  2s ago
+NOTHING NEEDS YOU                                                                                         | MACHINES -------------------------------------------
+LANES --------------------------------------------------------------------------------------------------- |   local  ▪▪|▪▪▫▫▫  21.5G free  load 0.6/16.0
+  no jobs running or waiting                                                                              |   mac    ▪▪▪▪|▫▫▫  8.9G free  load 0.2/12.0
+                                                                                                          |   The queue is empty: nothing runs and nothing
+                                                                                                          |   waits.
+⏎ why  / filter  m mode full  ? help  q quit  read-only: --control to act

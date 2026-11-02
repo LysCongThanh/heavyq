@@ -51,6 +51,8 @@ jobs:
       - run: go build ./... && go vet ./...
       - name: macOS subset
         run: go test -race -count=1 ./internal/metrics/... ./internal/procinfo/... ./internal/cli/... -run 'Metrics|Breakdown|Descendants|Cancel|Status|PS|Parse|Host|StartTime|Local'
+      - name: heavyq top (terminal, width, render, input, loop)
+        run: go test -race -count=1 ./internal/tui/...
 
   # install.sh (attached to every release) on both platforms it supports: against a local fake release
   # (checksum match, mismatch, tampering, --verify plumbing) and against the real v0.3.0 and latest releases.
@@ -127,6 +129,7 @@ jobs:
           - {pkg: repoconfig, targets: "FuzzParse"}
           - {pkg: config, targets: "FuzzParse"}
           - {pkg: history, targets: "FuzzReadLast FuzzDecodeRecord"}
+          - {pkg: tui/input, targets: "FuzzParserNeverPanicsAndAlwaysDrains"}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

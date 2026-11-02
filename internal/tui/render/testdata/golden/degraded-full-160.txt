@@ -1,0 +1,8 @@
+heavyq  1 running, 1 waiting                                                                                                                    12:04:31  2s ago
+NEEDS YOU (2) ------------------------------------------------------------------------------------------- | MACHINES -------------------------------------------
+  ▲ machine  linuxi  paused by an operator                                           heavyq resume linuxi |   local   ▪▫▫▫|▫▫▫  1.2G free  load 3.0/16.0
+  ▲ machine  mac  ssh: connect timed out                                                                  |   linuxi  ▪▪▪|▪▪▪▪  19.5G free  load 0.4/9.0  PAUSED
+LANES --------------------------------------------------------------------------------------------------- |   mac     unreachable
+  ● run   api   p4  linuxi/h1  1m10s   [cancelling]  [forced]  go test -race ./...                        |   1 agent waits because linuxi is paused.
+  ○ wait  web   p4  #1 auto    40s     paused by an operator  (bypass in 14m)  npm run e2e                |
+⏎ why  / filter  m mode full  ? help  q quit  read-only: --control to act

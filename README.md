@@ -89,6 +89,7 @@ machines. It listens on loopback only. See [docs/dashboard.md](docs/dashboard.md
 | Pools: ports, databases, browsers handed out to parallel agents | [docs/pools.md](docs/pools.md) |
 | Mentor: break repeat failures, measured with a holdout (`heavyq mentor`) | [docs/mentor.md](docs/mentor.md) |
 | Dashboard, JSON snapshot, control API | [docs/dashboard.md](docs/dashboard.md) |
+| `heavyq top`: a terminal monitor for a tmux pane, with display modes | [docs/top.md](docs/top.md) |
 | Configuration and environment variables | [docs/configuration.md](docs/configuration.md) |
 | Editor support: JSON Schemas for `heavyq.toml`, the user config and `status --json` | [docs/configuration.md](docs/configuration.md#editor-support-json-schemas) |
 | Exit codes | [docs/exit-codes.md](docs/exit-codes.md) |

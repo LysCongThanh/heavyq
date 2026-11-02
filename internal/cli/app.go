@@ -38,6 +38,7 @@ usage:
   heavyq steer [off|guard|destroy] [--apply]
   heavyq init [--agents-md] [--force] [--print]
   heavyq [--config FILE] dash [--control] [--addr 127.0.0.1:0] [--open]
+  heavyq [--config FILE] top [--control] [--mode full|focus|lanes|machines|line] [--interval 2s] [--line] [--once]
   heavyq cancel <ticket|pid>
   heavyq reprio <ticket|pid> <1-9>
   heavyq [--config FILE] pause|resume <machine>
@@ -151,6 +152,8 @@ func Main(args []string, stdout, stderr io.Writer) int {
 		return cacheCommand(cfg, args[1:], stdout, stderr)
 	case "dash":
 		return dashCommand(cfg, args[1:], stdout, stderr)
+	case "top":
+		return topCommand(cfg, args[1:], stdout, stderr)
 	case "why":
 		return whyCommand(cfg, args[1:], stdout, stderr)
 	case "gate":

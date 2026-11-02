@@ -1,0 +1,4 @@
+heavyq  idle, 4 proven                                          12:04:31  2s ago
+LANES --------------------------------------------------------------------------
+  no jobs running or waiting
+⏎ why  / filter  m mode lanes  ? help  q quit  read-only: --control to act

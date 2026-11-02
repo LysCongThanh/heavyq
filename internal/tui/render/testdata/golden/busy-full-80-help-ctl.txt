@@ -1,0 +1,16 @@
+heavyq  2 running, 2 waiting, 4 proven, 1 unproven              12:04:31  2s ago
+KEYS ---------------------------------------------------------------------------
+  j k  arrows   move the selection
+  g G           first and last row
+  Tab           jump to the next section
+  Enter         why: the full explanation for the selected lane
+  /             filter lanes (Enter keeps it, Esc clears it)
+  m             next display mode: full, focus, lanes, machines, line
+  r             refresh now
+  ?             this help
+  q  Ctrl-C     quit
+  y             copy the selected command to the clipboard (OSC 52)
+  c             cancel the selected job (asks y/n first)
+  + -           raise or lower a waiting job's priority
+  p             pause or resume the selected machine
+Esc back  q quit

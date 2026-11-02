@@ -1,0 +1,8 @@
+heavyq  2 running, 2 waiting, 4 proven, 1 unproven                                                                                              12:04:31  2s ago
+LANES ----------------------------------------------------------------------------------------------------------------------------------------------------------
+  state   lane          p   where      wait    run     gate            item
+  ● run   api           p4  linuxi/h1  2s      1m10s   FAILED 3f2a9c1  i-12             go test -race ./...
+  ● run   docs          p5  local/h1   0s      2m31s   proven          doc-7 (blocked)  npm run build
+  ○ wait  agent-ad17ea  p4  #1 auto    14m     -       unproven                         load 16.00 >= 9.0  (bypass in 5m58s)  go test ./internal/cli
+  ○ wait  web           p4  #2 auto    40s     -       proven                           load 16.00 >= 9.0  npm run e2e
+⏎ why  / filter  m mode lanes  ? help  q quit  read-only: --control to act
