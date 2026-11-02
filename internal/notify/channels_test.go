@@ -17,7 +17,9 @@ func fakeBin(t *testing.T, name string) (record string) {
 	t.Helper()
 	dir := t.TempDir()
 	record = filepath.Join(dir, "argv.txt")
-	script := "#!/bin/sh\nfor a in \"$@\"; do printf '%s\\n' \"$a\"; done > '" + record + "'\n"
+	// Written to a temp name and renamed, so a reader that sees the file sees all of it (a plain redirect creates it
+	// empty first and fills it argument by argument).
+	script := "#!/bin/sh\nfor a in \"$@\"; do printf '%s\\n' \"$a\"; done > '" + record + ".tmp'\nmv '" + record + ".tmp' '" + record + "'\n"
 	if err := os.WriteFile(filepath.Join(dir, name), []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}
