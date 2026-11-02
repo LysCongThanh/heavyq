@@ -1,7 +1,9 @@
 package cli
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -69,8 +71,13 @@ func hookRewriter(cfg *config.Config, root string) preflight.Rewriter {
 	opts := hook.Options{Rules: rules, Permission: cfg.Hook.Permission, MaxWait: cfg.Hook.MaxWait.Duration,
 		Binary: bin, Lane: os.Getenv("HEAVYQ_LANE"), LaneFor: worktreeLane}
 	return func(cmd string) (string, bool, bool) {
-		in, err := json.Marshal(map[string]any{"hook_event_name": "PreToolUse", "tool_name": "Bash", "cwd": root,
+		raw, err := json.Marshal(map[string]any{"hook_event_name": "PreToolUse", "tool_name": "Bash", "cwd": root,
 			"tool_input": map[string]any{"command": cmd}})
+		if err != nil {
+			return cmd, false, false
+		}
+		// Read back through the bound the hook's own stdin has (maxHookInput).
+		in, err := io.ReadAll(io.LimitReader(bytes.NewReader(raw), maxHookInput))
 		if err != nil {
 			return cmd, false, false
 		}
