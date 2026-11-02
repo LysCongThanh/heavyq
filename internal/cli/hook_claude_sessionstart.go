@@ -57,6 +57,17 @@ func handleSessionStart(cfgPath string, explicit bool, in hook.Input) (hookReply
 		}
 	}
 	b := steer.BuildBrief(facts, st)
+	// A lane's active stance rides along with the brief, so compaction cannot
+	// erase it either (internal/stance, docs/stances.md).
+	stanceText := activeStanceText(in.Cwd, itemLane(in.Cwd))
+	if b.Empty() && stanceText != "" {
+		out, err := hook.ContextOutput("SessionStart", stanceText)
+		if err != nil {
+			return hookReply{}, err
+		}
+		hookLog("claude-sessionstart (%s, %s): stance only, %d bytes", in.Source, in.SessionID, len(stanceText))
+		return hookReply{Stdout: out, After: saveSession(sessions, in.SessionID, st)}, nil
+	}
 	if b.Empty() {
 		if steer.ReadStored(common) == steer.Off {
 			return hookReply{}, nil // a repository that never steers keeps no record
@@ -67,11 +78,15 @@ func handleSessionStart(cfgPath string, explicit bool, in hook.Input) (hookReply
 		b.Canary = token
 		st.Canary, st.CanaryAt, st.Transcript = token, now, in.TranscriptPath
 	}
-	out, err := hook.ContextOutput("SessionStart", b.Render())
+	text := b.Render()
+	if stanceText != "" {
+		text += "\n" + stanceText
+	}
+	out, err := hook.ContextOutput("SessionStart", text)
 	if err != nil {
 		return hookReply{}, err
 	}
-	hookLog("claude-sessionstart (%s, %s): brief %d bytes", in.Source, in.SessionID, len(b.Render()))
+	hookLog("claude-sessionstart (%s, %s): brief %d bytes, stance %d bytes", in.Source, in.SessionID, len(b.Render()), len(stanceText))
 	return hookReply{Stdout: out, After: func() {
 		sessions.Prune(sessionRecordTTL, now)
 		saveSession(sessions, in.SessionID, st)()

@@ -195,7 +195,7 @@ read only when it is an absolute path to a regular `.jsonl` file, at most 256 Mi
 
 ## Installing
 
-`heavyq hook install claude --features queue,brief,stop` (default: `queue` only). The features are the **exact
+`heavyq hook install claude --features queue,brief,stop` (default: `queue` only; `stance` adds the UserPromptSubmit stance hook, see [stances.md](stances.md)). The features are the **exact
 set** heavyq owns in that settings file: installing a smaller set removes the hooks of the others, and foreign
 hooks are never touched. `uninstall` removes all of heavyq's. See [claude-code.md](claude-code.md) for the
 events, matchers and the plugin.

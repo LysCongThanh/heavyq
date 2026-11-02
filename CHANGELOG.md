@@ -105,8 +105,9 @@ versions follow [Semantic Versioning](https://semver.org/).
   so a personal stance with "đột phá" works). A lane's stance state and events live in the git common dir
   (`heavyq/stance/`), with each stance's cooldown and at most 3 activations per stance per
   session. New: `heavyq stance enter|exit|off|status|stats`, `heavyq trust [--list|--revoke]` and the hook
-  `heavyq hook claude-userpromptsubmit`, which injects the compact stance as `additionalContext` once, when a
-  keyword (or the lane's evidence) enters it. `HEAVYQ_STANCES=off` turns it all off. A stance with
+  `heavyq hook claude-userpromptsubmit` (install with `heavyq hook install claude --features stance`), which
+  injects the compact stance as `additionalContext` once, when a keyword (or the lane's evidence) enters it. The
+  SessionStart brief appends the lane's active stance, so it survives compaction. `HEAVYQ_STANCES=off` turns it all off. A stance with
   `exit.decision_record` ends when `.heavyq/decisions/<item>.md` has the right structure (clean-slate answer,
   an options table with at least 3 rows including the status quo and one marked radical, constraints
   classified REAL or INERTIA, a choice and a migration; structure only, never quality) or its time box runs
@@ -114,8 +115,7 @@ versions follow [Semantic Versioning](https://semver.org/).
   proof after entering, against the lane's own baseline. **Trust:** stances from a repository's
   `.heavyq/stances` are listed but never injected until you run `heavyq trust` (a content hash per
   repository, like `direnv allow`; any edit asks again; refused under a coding agent). The Go function
-  `stance.ActiveFor(lane)` returns the compact render of a lane's active stance for the SessionStart brief
-  to re-inject after compaction. New helpers: `ledgerindex.LaneRuns`, `gitutil.RecentCommits`.
+  `stance.ActiveFor(lane)` returns the compact render of a lane's active stance. New helpers: `ledgerindex.LaneRuns`, `gitutil.RecentCommits`.
 - **Named pools: ports, databases and browsers handed out to parallel agents** (`internal/pools`,
   [docs/pools.md](docs/pools.md)). `[[pool]]` tables (`name`, `values` as a range `"4100-4199"` or a list, or
   `size`) in the user config and in `heavyq.toml` (the repository's pool replaces the user's of the same name).

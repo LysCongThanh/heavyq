@@ -9,8 +9,8 @@ again, churn without a proof) or when the user asks for it, then checks whether 
 rules over the ledger index and the repository history, plus the user's keywords); a lane's stance state with
 cooldown and a cap; the exit check (a decision record, or a time box); a measurement of whether it helped; trust
 for a repository's own stances; and one hook, `heavyq hook claude-userpromptsubmit`, that enters a stance and
-injects it once. Re-injection after compaction, the exit check at Stop and the PostToolUse trigger belong to the
-SessionStart brief and the mentor layer: they call the functions documented below.
+injects it once. The SessionStart brief re-injects the active stance after compaction. The exit check at Stop and a PostToolUse
+trigger are not wired yet: they can call the functions documented below.
 
 ```
 heavyq stance ls [--json]
@@ -186,17 +186,18 @@ never committed):
 `heavyq hook claude-userpromptsubmit` (UserPromptSubmit) reads the prompt, matches the keywords of every
 injectable stance and, only when the prompt asks for nothing and the lane is in no stance, reads the evidence.
 On entry it prints `additionalContext` with the compact render once and records the state. It fails open (any
-problem: no output, exit 0, a line in `hook.log`) under a 250 ms budget and never changes or blocks a prompt.
-Installing it into Claude Code settings or the plugin is the job of `hook install` and is not part of this
-change: until then, wire it by hand with a `UserPromptSubmit` command hook that runs
-`heavyq hook claude-userpromptsubmit`.
+problem: no output, exit 0, a line in `hook.log`) under a 1 s budget and never changes or blocks a
+prompt. Install it with `heavyq hook install claude --features stance` (the feature registers `UserPromptSubmit`;
+combine it with the others, for example `--features queue,brief,stop,stance`).
 
-**Re-injection after compaction:** `stance.ActiveFor(lane string) (render string, ok bool)` returns the same
-compact render, with the evidence the lane entered on, for the lane's active stance, or `ok=false` when the
-lane is in none, is muted, is past its time box, or the stance is gone or no longer trusted. It reads one lane
-file, the stance files and the trust list, changes nothing and fails quiet, so the SessionStart(source=compact)
-brief can call it and append the text (at most `inject_tokens` x 4 bytes). `Env.ActiveFor(cwd, lane)` is the
-same over explicit directories.
+**Re-injection after compaction:** the SessionStart hook (`brief` feature) appends the lane's active stance to the
+brief, in its compact form, on startup, resume and after compaction, so compaction cannot erase it. In a
+repository with no brief it injects the stance alone. The function behind it is
+`stance.ActiveFor(lane string) (render string, ok bool)`: the same compact render, with the evidence the lane
+entered on, for the lane's active stance, or `ok=false` when the lane is in none, is muted, is past its time box,
+or the stance is gone or no longer trusted. It reads one lane file, the stance files and the trust list, changes
+nothing and fails quiet. `Env.ActiveFor(cwd, lane)` is the same over explicit directories. `HEAVYQ_STANCES=off`
+silences both hooks.
 
 ## Exit and the decision record
 

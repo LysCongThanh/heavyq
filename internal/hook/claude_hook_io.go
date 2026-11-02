@@ -30,6 +30,7 @@ type Input struct {
 	StopHookActive       bool   // Stop, SubagentStop
 	LastAssistantMessage string // Stop, SubagentStop
 	AgentID              string
+	Prompt               string // UserPromptSubmit: what the user typed
 }
 
 // ParseInput reads the common fields. An error means stdin is not a JSON object.
@@ -46,7 +47,7 @@ func ParseInput(stdin []byte) (Input, error) {
 		return s
 	}
 	in := Input{Cwd: str("cwd"), Event: str("hook_event_name"), TranscriptPath: str("transcript_path"),
-		Source: str("source"), LastAssistantMessage: str("last_assistant_message"), AgentID: str("agent_id")}
+		Source: str("source"), LastAssistantMessage: str("last_assistant_message"), AgentID: str("agent_id"), Prompt: str("prompt")}
 	if id := str("session_id"); history.ValidTag(id) {
 		in.SessionID = id
 	}
