@@ -12,7 +12,7 @@ func init() {
 			"heavyq [--config FILE] item ls [--all] [--json]",
 			"heavyq [--config FILE] item claim <id> | --next [--force] [--json]",
 			"heavyq [--config FILE] item release <id> [--force]",
-			"heavyq [--config FILE] item done <id> [--run] [--json]",
+			"heavyq [--config FILE] item done <id> [--run [--remote WHERE]] [--json]",
 			"heavyq [--config FILE] item block <id> \"needs: <what a human must provide>\"",
 		},
 		Subs: []subSpec{
@@ -25,7 +25,9 @@ func init() {
 			{Name: "release", Args: "<id>", Summary: "give an item back", Flags: []flagSpec{
 				{Long: "force", Help: "release it even if another lane holds it"}}},
 			{Name: "done", Args: "<id>", Summary: "tick an item once its proof passes on this exact code", Flags: []flagSpec{
-				{Long: "run", Help: "run the proof through the queue first"}, jsonFlag("machine-readable output")}},
+				{Long: "run", Help: "run the proof through the queue first"},
+				{Long: "remote", Value: "WHERE", Choices: []string{"local", "auto"}, Help: "with --run: local | auto | <remote name> (default: [proof] remote, else local)"},
+				jsonFlag("machine-readable output")}},
 			{Name: "block", Args: "<id> \"needs: ...\"", Summary: "record what is missing and free the item"},
 		},
 		Notes: "Items are the checklist lines of .heavyq/anchor.md. Exit: 0 ok, 1 refused (held, unproven, too big, nothing to\nclaim), 2 usage.",

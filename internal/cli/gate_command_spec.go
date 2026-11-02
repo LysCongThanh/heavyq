@@ -10,7 +10,7 @@ func init() {
 		Summary: "prove that this exact code passed the commands of a gate",
 		Synopsis: []string{
 			"heavyq [--config FILE] gate status [name] [--json]",
-			"heavyq [--config FILE] gate run [name] [--parallel] [--keep-going] [--lane NAME]",
+			"heavyq [--config FILE] gate run [name] [--parallel] [--keep-going] [--lane NAME] [--remote WHERE]",
 		},
 		Subs: []subSpec{
 			{Name: "status", Args: "[name]", Summary: "is every command proven on this exact code? (exit 0 yes, 1 no, 2 usage)",
@@ -19,6 +19,7 @@ func init() {
 				{Long: "parallel", Help: "start every unproven command at once (the queue still limits how many run)"},
 				{Long: "keep-going", Help: "run the remaining commands after one fails"},
 				{Long: "lane", Value: "NAME", Help: "lane name (default: $HEAVYQ_LANE or the repository directory name)"},
+				{Long: "remote", Value: "WHERE", Choices: []string{"local", "auto"}, Help: "local | auto | <remote name> (default: the gate's remote, else [proof] remote, else local)"},
 			}},
 		},
 		Notes: "name defaults to \"ready\", else to the only gate in heavyq.toml. Without a heavyq.toml, the gate \"ready\"\n" +

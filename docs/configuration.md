@@ -37,6 +37,7 @@ Every key is optional. [`examples/config.toml`](../examples/config.toml) has eve
 | `mentor.holdout_pct` | `20` | share of eligible mentor events logged but not shown, 0-100; `100` = shadow mode. See [mentor](mentor.md) |
 | `mentor.auto_mute` | `true` | a rule with too little lift mutes itself |
 | `mentor.min_events` / `min_lift_pp` | `200` / `10` | resolved events per arm before the lift is judged / the lift (percentage points) below which the rule is muted |
+| `proof.remote` | unset (= `"local"`) | where `item done --run` and `gate run` run proofs: `local`, `auto`, or a `[[remote]]` name; `[proof]` in a repo's `heavyq.toml` overrides it. See [items](items.md#where-the-proof-runs) |
 | `cache.ttl` | `"24h"` | cached results older than this are ignored and evicted |
 | `cache.max_size_mb` / `max_entry_mb` | `512` / `64` | total cap (oldest evicted first) / larger outputs are not stored |
 | `cache.cache_failures` | `false` | also replay non-zero exits to later runs (runs that waited always share) |

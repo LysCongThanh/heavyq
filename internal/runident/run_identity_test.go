@@ -1,6 +1,7 @@
 package runident
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -54,6 +55,28 @@ func TestIDEnvIgnoresNonAllowlistedAndNameOrder(t *testing.T) {
 	b.EnvNames, c.EnvNames = []string{"A", "B", "A"}, []string{"B", "A"}
 	if ID(b) != ID(c) {
 		t.Error("allowlist order or duplicates changed the id")
+	}
+}
+
+// A proof run on a remote must count for the same tree as one run here, so the
+// run_id may not depend on where the command ran. Input is everything ID reads:
+// pin that none of its fields names a machine, and that ID is a pure function
+// of them (the same Input gives the same id however often and wherever called).
+func TestIDDoesNotDependOnTheMachine(t *testing.T) {
+	typ := reflect.TypeOf(Input{})
+	for i := 0; i < typ.NumField(); i++ {
+		name := strings.ToLower(typ.Field(i).Name)
+		for _, machine := range []string{"machine", "remote", "host", "target", "where", "slot"} {
+			if strings.Contains(name, machine) {
+				t.Errorf("runident.Input.%s names a machine: the run_id would differ between local and remote runs", typ.Field(i).Name)
+			}
+		}
+	}
+	in := base()
+	want := ID(in)
+	t.Setenv("HOSTNAME", "linuxi")
+	if got := ID(in); got != want {
+		t.Errorf("ID changed with the host environment: %s != %s", got, want)
 	}
 }
 

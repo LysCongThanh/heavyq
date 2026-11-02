@@ -84,6 +84,11 @@ values = ["app_wt1", "app_wt2", "app_wt3"]
 name = "browser"
 size = 2                 # capacity only: the values are 1 and 2
 
+# Where `heavyq item done --run` and `heavyq gate run` run proofs. A [proof] table in a
+# repository's heavyq.toml overrides it there; --remote overrides both.
+[proof]
+remote = "local"         # "local" (default) | "auto" (scheduler picks, free slots first) | a [[remote]] name
+
 # Result cache and coalescing for --cache runs.
 [cache]
 ttl = "24h"

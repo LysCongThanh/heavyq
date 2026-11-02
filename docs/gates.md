@@ -93,6 +93,9 @@ light  = false                         # optional, may use the light slots
 remote = "local"                       # optional: local (default) | auto | <remote name>
 needs  = ["pg", "port:2"]              # optional: pool values each command holds while it runs (see pools.md)
 
+[proof]                                # optional: where proofs run (gates without a remote key, item done --run)
+remote = "auto"                        # local (default) | auto | <remote name>
+
 [anchor]                               # reserved: accepted, not used yet
 file  = ".heavyq/anchor.md"
 extra = ["plans/*/phase-*.md"]
@@ -111,6 +114,7 @@ max_proof_share = 1.0                  # share of the 30 min lease the expected 
 | `gate.remote` | string | `"local"` | `local`, `auto`, or a remote name (`[A-Za-z0-9][A-Za-z0-9._-]{0,63}`). Whether the remote exists is checked against your own config when the gate runs. |
 | `gate.needs` | list of strings | none | `pool` or `pool:N` entries, each pool once; every command of the gate holds them while it runs, see [pools](pools.md). With `needs`, `remote` must be `local` or `auto` (the run stays local). |
 | `pool` | tables | none | `[[pool]]` tables, as in the user config; a pool here replaces the user's pool of the same name. See [pools](pools.md). |
+| `proof.remote` | string | unset | `[proof]`: where `item done --run` and `gate run` run proofs for gates without their own `remote` key; `local`, `auto` or a remote name. Overrides `[proof]` of the user config. See [items](items.md#where-the-proof-runs). |
 | `anchor.file` | string | none | relative path inside the repository |
 | `anchor.extra` | list of strings | none | relative globs inside the repository |
 | `items.iterations` | integer | `3` | 1-20; proof runs an item is expected to need; `item claim` refuses an item whose proof p50 times this is over the lease budget |
@@ -305,7 +309,7 @@ object (additive changes only):
 | `commands[].passes`, `fails` | runs on this tree that exited 0 / did not (cache replays are not counted again); each omitted when 0 |
 | `commands[].reason` | why a command is `missing` (`tree unknown`, too long to match), or the evidence for its class: `flaky: 1 fail / 2 pass on this tree`, `under load: load 14.20 >= 12.00 at start`, `under load: 800 MB free < 3072 MB job budget at start`, `under load: admitted past a resource limit by the anti-starvation bypass` |
 
-## `heavyq gate run [name] [--parallel] [--keep-going] [--lane NAME]`
+## `heavyq gate run [name] [--parallel] [--keep-going] [--lane NAME] [--remote WHERE]`
 
 For each command that `gate status` would not call proven, in file order, heavyq runs the equivalent of
 
@@ -313,7 +317,9 @@ For each command that `gate status` would not call proven, in file order, heavyq
 heavyq <prio> --cache --gate <name> --remote <remote> [--light] [--lane NAME] -- sh -c '<command>'   # no --cache for a flaky command
 ```
 
-from the repository root, with the gate's `prio`, `light` and `remote`. It goes through the same queue,
+from the repository root, with the gate's `prio`, `light` and `remote`. The machine is, first set wins:
+`--remote`, the gate's `remote` key, `[proof] remote` in `heavyq.toml`, `[proof] remote` in the user config,
+`local` (see [where the proof runs](items.md#where-the-proof-runs)). It goes through the same queue,
 resource gate, result cache and in-flight coalescing as any other run, and every command is recorded in the
 ledger with `gate = <name>`. The lane is `--lane`, else `$HEAVYQ_LANE`, else the repository directory name;
 `$HEAVYQ_SESSION` and `$HEAVYQ_ITEM` tag the runs as usual.
@@ -351,9 +357,28 @@ ledger with `gate = <name>`. The lane is `--lane`, else `$HEAVYQ_LANE`, else the
 
 Runs replayed from the cache, and tickets that never ran, carry no machine reading.
 
+## Gates as the proof of an item
+
+`proof: gate:<name>` in the anchor file is the form to prefer over `proof: <shell command>`. The gate's
+commands sit in `heavyq.toml`, where a person or an agent harness can read them before running anything, and
+`heavyq gate run <name> --remote linuxi` (or `heavyq item done <id> --run --remote linuxi`, or `[proof] remote`)
+needs no `sh -c '...'` typed by hand, which a harness that vets commands refuses. "The test must exist and
+pass" is one command: `go test -run` that matches no test exits 0, so pipe it to a check for the test's own
+line:
+
+```toml
+[[gate]]
+name = "size-gate"      # the item's id
+run  = ["go test -count=1 -run '^TestE2EClaimRefusesOversizedItem$' -v ./internal/cli | grep -q -- '--- PASS: TestE2EClaimRefusesOversizedItem'"]
+```
+
+`heavyq preflight` warns about an item whose proof needs a shell and names this form.
+
 ## heavyq proves itself
 
 This repository's [`heavyq.toml`](../heavyq.toml) defines `ready` as `gofmt -l . | (! grep .)`,
 `go vet ./...` and `go test -race -count=1 ./...`. CI builds heavyq and runs `./heavyq gate run ready`, so
 a local proof and the CI proof are the same thing. Locally, `heavyq gate status` after your last edit tells
-you whether the gate has already passed on exactly this code.
+you whether the gate has already passed on exactly this code. The anchor items of the repository
+([`.heavyq/anchor.md`](../.heavyq/anchor.md)) are proven by gates of the same file, one per item with the
+item's name.

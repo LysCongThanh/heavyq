@@ -85,7 +85,7 @@ func CheckAnchor(in AnchorInput) []Finding {
 			Text: "every item is already proven: there is nothing left to run",
 			Fix:  "heavyq item ls --all"})
 	}
-	var unknown, long []string
+	var unknown, long, shelly []string
 	var total time.Duration
 	for _, it := range open {
 		switch {
@@ -100,6 +100,9 @@ func CheckAnchor(in AnchorInput) []Finding {
 				Fix:  fmt.Sprintf("edit %s: fix the proof of %s", it.Where, it.ID)})
 			continue
 		}
+		if proofNeedsShell(it.Proof) {
+			shelly = append(shelly, it.ID)
+		}
 		if !it.Est.Known {
 			unknown = append(unknown, it.ID)
 			continue
@@ -108,6 +111,11 @@ func CheckAnchor(in AnchorInput) []Finding {
 		if in.LeaseTTL > 0 && it.Est.P50 > in.LeaseTTL {
 			long = append(long, fmt.Sprintf("%s (%s)", it.ID, round(it.Est.P50)))
 		}
+	}
+	if len(shelly) > 0 {
+		out = append(out, Finding{Severity: Warn, Subject: named(shelly),
+			Text: fmt.Sprintf("the proof of %s needs `sh -c` (a pipe, quotes or another shell feature): a harness that vets commands refuses `heavyq ... -- sh -c '...'`, so an agent cannot run it by hand; a gate holds the same text and runs with `heavyq gate run <name>`", named(shelly)),
+			Fix:  fmt.Sprintf("edit heavyq.toml: add a [[gate]] with that command, then edit %s: `proof: gate:<name>`", shelly0Where(open, shelly[0]))})
 	}
 	if len(unknown) > 0 {
 		out = append(out, Finding{Severity: Warn, Subject: named(unknown),
@@ -128,6 +136,22 @@ func CheckAnchor(in AnchorInput) []Finding {
 		}
 	}
 	return out
+}
+
+// proofNeedsShell is true for a command proof (not `gate:<name>`) that only a
+// shell can run: it has a pipe, quotes, a redirect, a variable or a glob.
+func proofNeedsShell(proof string) bool {
+	return !strings.HasPrefix(proof, "gate:") && strings.ContainsAny(proof, "|&;<>()$`\"'\\*?\n")
+}
+
+// shelly0Where is the "<file>:<line>" of the item called id among items.
+func shelly0Where(items []ItemFact, id string) string {
+	for _, it := range items {
+		if it.ID == id {
+			return it.Where
+		}
+	}
+	return id
 }
 
 func countBlocked(items []ItemFact) int {

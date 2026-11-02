@@ -19,7 +19,7 @@ const itemUsage = `usage:
   heavyq [--config FILE] item ls [--all] [--json]
   heavyq [--config FILE] item claim <id> | --next [--force] [--json]
   heavyq [--config FILE] item release <id> [--force]
-  heavyq [--config FILE] item done <id> [--run] [--json]
+  heavyq [--config FILE] item done <id> [--run [--remote WHERE]] [--json]
   heavyq [--config FILE] item block <id> "needs: <what a human must provide>"
 
 Items are the checklist lines of .heavyq/anchor.md (and the read-only extra sources of heavyq.toml [anchor]).

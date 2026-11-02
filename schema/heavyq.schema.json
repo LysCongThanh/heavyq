@@ -153,6 +153,18 @@
       "additionalProperties": false,
       "type": "object",
       "description": "Limits of the claim size gate: `heavyq item claim` refuses an item whose proof is expected to outlast the lease."
+    },
+    "rawProof": {
+      "properties": {
+        "remote": {
+          "type": "string",
+          "description": "\"local\" (the default), \"auto\" (the scheduler picks among local and the configured remotes, free slots first) or the name of a [[remote]]. A gate with its own remote key keeps it; --remote wins over both.",
+          "default": "local"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "description": "Where `heavyq item done --run` and `heavyq gate run` run proofs for this repository; the user config has the same table."
     }
   },
   "properties": {
@@ -170,6 +182,9 @@
     },
     "anchor": {
       "$ref": "#/definitions/Anchor"
+    },
+    "proof": {
+      "$ref": "#/definitions/rawProof"
     },
     "items": {
       "$ref": "#/definitions/Items"

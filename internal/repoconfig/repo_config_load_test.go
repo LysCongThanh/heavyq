@@ -55,7 +55,7 @@ extra = ["plans/*/phase-*.md", "docs/**/*.md"]
 	}
 	want := []Gate{
 		{Name: "ready", Run: []string{"gofmt -l . | (! grep .)", "go vet ./...", "go test -race ./..."},
-			Prio: 2, Light: true, Remote: "auto"},
+			Prio: 2, Light: true, Remote: "auto", RemoteSet: true},
 		{Name: "smoke_1-b", Run: []string{"make smoke"}, Prio: DefaultPrio, Remote: DefaultRemote},
 	}
 	if !reflect.DeepEqual(r.Gates, want) {

@@ -30,7 +30,7 @@ type doneJSON struct {
 // under us (anchor.ErrConcurrent).
 const tickRetries = 3
 
-// itemDone implements `heavyq item done <id> [--run] [--json]`. It finishes an
+// itemDone implements `heavyq item done <id> [--run [--remote WHERE]] [--json]`. It finishes an
 // item only on proof: the item's proof must pass on the code in this work tree
 // (--run runs it through the queue first). Then, under the lease store's lock,
 // it ticks the box in the anchor file (plan-file items are never rewritten:
@@ -39,6 +39,7 @@ func itemDone(c *itemCtx, args []string) int {
 	fs := flag.NewFlagSet("item done", flag.ContinueOnError)
 	runIt := fs.Bool("run", false, "run the proof through the queue first")
 	asJSON := fs.Bool("json", false, "machine-readable output")
+	remote := fs.String("remote", "", "with --run: where the proof runs: local | auto | <remote name> (default: [proof] remote, else local)")
 	pos, ok := parseItemArgs(fs, args, c.stderr)
 	if !ok || len(pos) != 1 {
 		fmt.Fprint(c.stderr, itemUsage)
@@ -62,8 +63,12 @@ func itemDone(c *itemCtx, args []string) int {
 		return c.refuse(fmt.Sprintf("item %s declares no proof, so heavyq cannot prove it: add `proof: <cmd>` or `proof: gate:<name>` to its line in %s (or tick the box by hand)", id, it.Source), "")
 	}
 	ev := newEvidenceCache(c.itemSet, ledgerOrNone(c.stderr)).of(it, c.root)
+	if *remote != "" && !*runIt {
+		fmt.Fprintln(c.stderr, "heavyq: --remote only applies with --run")
+		return ExitUsage
+	}
 	if !ev.Proven && *runIt {
-		if rc := c.runProof(it); rc != 0 && stoppedFromOutside(rc) {
+		if rc, started := c.runProof(it, *remote); !started || (rc != 0 && stoppedFromOutside(rc)) {
 			return rc
 		}
 		c.subjects = map[string]proof.Subject{} // the tree may have changed while the proof ran
@@ -139,14 +144,19 @@ func (c *itemCtx) finishDone(it anchor.Item, ev itemstatus.Evidence, asJSON bool
 
 // runProof runs the item's proof through the queue, tagged with the item, from
 // the work tree root (what proof matching requires). It returns the exit code
-// of the run: for a gate, 0 only when the whole gate is proven.
-func (c *itemCtx) runProof(it anchor.Item) int {
+// of the run: for a gate, 0 only when the whole gate is proven. started is
+// false when nothing ran (a usage error, or a refusal such as a named remote
+// asked to prove uncommitted code); rc is then the exit code to return.
+//
+// Where it runs: remoteFlag (--remote), else the gate's own remote, else
+// [proof] remote of heavyq.toml, else of the user config, else local.
+func (c *itemCtx) runProof(it anchor.Item, remoteFlag string) (rc int, started bool) {
 	if wd, err := os.Getwd(); err == nil {
 		defer func() { _ = os.Chdir(wd) }()
 	}
 	if err := os.Chdir(c.root); err != nil {
 		fmt.Fprintln(c.stderr, "heavyq:", err)
-		return ExitUsage
+		return ExitUsage, false
 	}
 	if tag := strings.ReplaceAll(it.ID, "/", ":"); history.ValidTag(tag) { // ids of plan-file items are longer or have "/"
 		prev, had := os.LookupEnv("HEAVYQ_ITEM")
@@ -160,8 +170,23 @@ func (c *itemCtx) runProof(it anchor.Item) int {
 		}()
 	}
 	if it.Proof.Kind == anchor.ProofGate {
-		return gateRunCommand(c.cfg, []string{it.Proof.Value}, c.stdout, c.stderr)
+		args := []string{it.Proof.Value} // the gate run resolves [proof] remote itself
+		if remoteFlag != "" {
+			args = append([]string{"--remote", remoteFlag}, args...)
+		}
+		rc = gateRunCommand(c.cfg, args, c.stdout, c.stderr)
+		return rc, rc != ExitUsage
 	}
-	args := []string{fmt.Sprint(repoconfig.DefaultPrio), "--cache", "--remote", repoconfig.DefaultRemote, "--"}
-	return runCommand(c.cfg, append(args, proof.Argv(it.Proof.Value)...), c.stderr)
+	pl, err := resolveProofRemote(c.cfg, c.repo, nil, remoteFlag)
+	if err != nil {
+		fmt.Fprintln(c.stderr, "heavyq:", err)
+		return ExitUsage, false
+	}
+	pl, why := fitProofToTree(c.root, pl, c.stderr)
+	if why != "" {
+		return c.refuse(why, "heavyq item done "+it.ID+" --run --remote local"), false
+	}
+	args := []string{fmt.Sprint(repoconfig.DefaultPrio), "--cache", "--remote", pl.Remote, "--"}
+	// The proof command's own exit code comes back, so 2 is not "usage" here.
+	return runCommand(c.cfg, append(args, proof.Argv(it.Proof.Value)...), c.stderr), true
 }

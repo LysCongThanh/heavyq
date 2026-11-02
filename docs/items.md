@@ -32,7 +32,7 @@ All of them run from any work tree of the repository and read that work tree's `
 | `item ls [--all] [--json]` | every item with its status. Without `--all`, items that are done and still proven are left out |
 | `item claim <id>` / `item claim --next [--force] [--json]` | lease the item to your lane (30 min, renewed by activity), if the size gate (below) lets it through. `--next` takes the first open or stale item that passes it, in anchor order, under the lease lock |
 | `item release <id> [--force]` | give it back. `--force` frees an item another lane holds |
-| `item done <id> [--run] [--json]` | finish it, on proof only (below) |
+| `item done <id> [--run [--remote WHERE]] [--json]` | finish it, on proof only (below). `--remote` says where `--run` runs the proof |
 | `item block <id> "needs: ..."` | record what a human must provide, and free the item |
 
 Exit codes: 0 done; **1** refused (held by another lane, not proven, nothing to claim, no proof declared, too big to claim);
@@ -74,7 +74,7 @@ handed out again by `claim`.
 named like the lane, else the one its latest ledger run was in): its proof counts where the agent works. Every
 other item is judged on the work tree you ran the command in.
 
-**What proves.** `proof: gate:<name>` needs the whole gate proven (`gate status`, same rules: run_id, flaky,
+**What proves.** `proof: gate:<name>` (the form to prefer, see [gates](gates.md#gates-as-the-proof-of-an-item)) needs the whole gate proven (`gate status`, same rules: run_id, flaky,
 under load). `proof: <cmd>` is the command `sh -c <cmd>` run from the work tree root, with the same run
 identity as a gate command, so `item done --run` and `gate run` share the cache and the ledger. A proof that
 failed on this code is red, not stale. `stale` needs a passing run of the same command (by `cmd_hash`) on
@@ -84,6 +84,33 @@ another tree; runs from before heavyq 0.4 have none and never make an item stale
 a claim by name answers the block, `--next` never picks a blocked item, and a `needs:` in the file blocks
 until the file changes. Blocks and done marks live in the events log tail (the last 4 MiB are read).
 
+## Where the proof runs
+
+`item done --run` and `gate run` run proofs on the machine `[proof] remote` names, so heavy proofs go where
+the rest of the heavy work goes instead of always landing on the machine you are typing on.
+
+```toml
+# ~/.config/heavyq/config.toml (all repositories), or heavyq.toml (this repository, wins)
+[proof]
+remote = "auto"    # "local" (default) | "auto" | "<name of a [[remote]]>"
+```
+
+- `local`: this machine, as before. It is the default, so nothing changes until you set the key.
+- `auto`: the scheduler chooses among this machine and the configured remotes, the same placement as
+  `--remote auto` ([remote.md](remote.md)): a machine with a free heavy slot that passes the RAM and load
+  gate, the best score (free RAM less load) first.
+- `<name>`: that remote only. The proof waits for it, however busy it is.
+
+The first one that is set wins: `--remote` on the command, the gate's own `remote` key (gate proofs), `[proof]
+remote` in the repository's `heavyq.toml`, `[proof]` in the user config, `local`. A gate with `needs` runs
+locally whatever `[proof]` says.
+
+A remote runs the **committed** code. Its run is recorded on that commit's tree, and counts as proof
+exactly when that tree is the one in your work tree: the run identity (`run_id`) has no machine in it, so a
+run on `linuxi` and the same command here are the same run. With uncommitted changes there is no such
+tree on the remote, so: `auto` falls back to this machine and says so, and a named remote is refused
+(exit 1, `--remote local` is the way out, or commit first). A bookkeeping edit alone (ticking the anchor
+box) does not count as a change.
 ## The size gate: `claim` refuses what an agent cannot finish and prove
 
 Agent success falls with task length (METR: ten items at 80 % each give about 11 % for a whole night), and an
@@ -130,8 +157,8 @@ max_proof_share = 1.0   # share of the 30 min lease the expected proof time may 
    its line, or tick the box by hand).
 2. Judges the proof on the work tree you are in. Not proven: exit 1 with `next: heavyq gate run <name>` for
    a gate, `next: heavyq item done <id> --run` for a command. With `--run` the proof runs first through the
-   queue (a gate as `heavyq gate run <name>`, a command as `heavyq 3 --cache --remote local -- sh -c <cmd>`),
-   tagged `item=<id>` in the ledger (`/` in a plan-file id becomes `:`).
+   queue (a gate as `heavyq gate run <name>`, a command as `heavyq 3 --cache --remote <where> -- sh -c <cmd>`),
+   tagged `item=<id>` in the ledger (`/` in a plan-file id becomes `:`). `<where>` is [below](#where-the-proof-runs).
 3. Proven: under the lease store's lock, `anchor.SetItemChecked` ticks the box, a `done` event with the
    commit is appended and the lease is released. Exactly one byte of anchor.md changes (CRLF, tabs and
    trailing spaces survive). If any step fails nothing is released; run it again.

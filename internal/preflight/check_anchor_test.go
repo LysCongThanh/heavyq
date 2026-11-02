@@ -44,6 +44,16 @@ func TestCheckAnchor(t *testing.T) {
 		{"blocked items are the dependency check's business", func(in *AnchorInput) {
 			in.Items[1] = item("b", func(i *ItemFact) { i.State, i.Proof = "blocked", "" })
 		}, nil},
+		{"proof with a pipe needs sh -c", func(in *AnchorInput) {
+			in.Items[1] = item("b", func(i *ItemFact) { i.Proof = "go test -v ./x | grep -q PASS" })
+		}, []string{"warn:the proof of b needs `sh -c`"}},
+		{"quotes need sh -c", func(in *AnchorInput) {
+			in.Items[0] = item("a", func(i *ItemFact) { i.Proof = "go test -run '^TestX$' ./x" })
+		}, []string{"warn:the proof of a needs `sh -c`"}},
+		{"a plain command and a gate do not", func(in *AnchorInput) {
+			in.Items[0] = item("a", func(i *ItemFact) { i.Proof = "go test ./..." })
+			in.Items[1] = item("b", func(i *ItemFact) { i.Proof = "gate:web" })
+		}, nil},
 		{"unknown duration", func(in *AnchorInput) {
 			in.Items[0] = item("a", func(i *ItemFact) { i.Est = Estimate{} })
 		}, []string{"warn:no known duration for the proof of a"}},

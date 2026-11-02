@@ -11,7 +11,7 @@ items, and each item can say how it is proven. The default file is `.heavyq/anch
 ```markdown
 # Goal: ship login v2
 
-- [ ] login-api: POST /login returns a token  `proof: go test ./auth/...`
+- [ ] login-api: POST /login returns a token  `proof: gate:login-api`
 - [ ] ui: login form  `proof: gate:web`  `needs: design sign-off`
 - [x] docs: write the guide
   - [ ] docs-api: document the endpoints
@@ -28,9 +28,13 @@ items, and each item can say how it is proven. The default file is `.heavyq/anch
   non-ASCII letters gets a short digest suffix) and the parser warns. Give items explicit ids if other
   tools refer to them.
 - **Duplicate ids**: the first keeps its id; later ones get `-2`, `-3`, ... and a warning.
-- **`proof:`**: an inline code span, anywhere on the line. `` `proof: go test ./...` `` is a command (run
-  with `sh -c`, pipes are fine); `` `proof: gate:web` `` names a gate in `heavyq.toml`. Without a proof the
-  item cannot be proven, only ticked by hand. The first `proof:` span wins.
+- **`proof:`**: an inline code span, anywhere on the line. **`` `proof: gate:web` `` is the recommended form**: it
+  names a gate in `heavyq.toml`, whose commands an agent (and any harness that vets commands) can read, and
+  `heavyq item done <id> --run --remote <r>` or `heavyq gate run <name> --remote <r>` runs it with nothing to
+  quote. `` `proof: go test ./...` `` is a command (run with `sh -c`, pipes are fine) for a quick one-off;
+  `heavyq preflight` warns when such a proof needs a shell (a pipe, quotes), because a harness that vets
+  commands refuses `heavyq ... -- sh -c '...'` typed by an agent, and suggests moving it to a gate (#123).
+  Without a proof the item cannot be proven, only ticked by hand. The first `proof:` span wins.
 - **`needs:`**: an inline code span, `` `needs: design sign-off` ``. It marks what a human must provide.
 - Everything else (prose, headings, other code spans) is kept as it is and ignored. Checkboxes inside code
   fences never count.

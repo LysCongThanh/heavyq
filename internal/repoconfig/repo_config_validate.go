@@ -46,6 +46,12 @@ func (r *Repo) fill(raw rawFile) error {
 		}
 		r.Anchor = a
 	}
+	if raw.Proof != nil && raw.Proof.Remote != "" {
+		if err := validRemote(raw.Proof.Remote); err != nil {
+			return fmt.Errorf("[proof]: %w", err)
+		}
+		r.Proof.Remote = raw.Proof.Remote
+	}
 	it, err := raw.Items.validate()
 	if err != nil {
 		return fmt.Errorf("[items]: %w", err)
@@ -90,7 +96,7 @@ func (rg rawGate) validate() (Gate, error) {
 		if err := validRemote(rg.Remote); err != nil {
 			return Gate{}, err
 		}
-		g.Remote = rg.Remote
+		g.Remote, g.RemoteSet = rg.Remote, true
 	}
 	if len(rg.Needs) > 0 {
 		if _, err := pools.ParseNeedList(rg.Needs); err != nil {
