@@ -24,6 +24,7 @@ heavyq 3 --remote buildbox -- npm test        # always there
 heavyq 3 --remote auto -- npm test            # best score; you vouch the command is self-contained
 heavyq 3 -- npm test                          # best score only if the repo is clean and paths stay inside it
 heavyq 3 --remote local -- npm test           # never leave this machine
+heavyq item done login-api --run --remote auto   # a proof placed like any other run; or set [proof] remote once
 heavyq 3 --needs-ram -- npm run e2e           # place by free RAM only
 heavyq 3 --remote buildbox --base-ref origin/main -- npm run lint:changed   # recreate origin/main there
 heavyq 3 --remote buildbox --with ../shared-lib@v2.1.0 -- npm test          # sibling repo pinned to a commit

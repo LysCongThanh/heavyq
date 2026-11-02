@@ -58,6 +58,11 @@ func patchRepoFile(root *jsonschema.Schema) {
 	needs.Description = `Pool values every command holds while it runs, for example ["pg", "port:2"]. A gate with needs runs on this machine.`
 	needs.Items.Pattern = `^[a-z][a-z0-9_]{0,31}(:[0-9]+)?$`
 
+	proof := def(root, "rawProof")
+	proof.Description = "Where `heavyq item done --run` and `heavyq gate run` run proofs for this repository; the user config has the same table."
+	prop(proof, "remote").Description = `"local" (the default), "auto" (the scheduler picks among local and the configured remotes, free slots first) or the name of a [[remote]]. A gate with its own remote key keeps it; --remote wins over both.`
+	prop(proof, "remote").Default = repoconfig.DefaultRemote
+
 	anchor := def(root, "rawAnchor")
 	anchor.Description = "The anchor checklist: the work items of `heavyq item`."
 	prop(anchor, "file").Description = "Checklist file, relative to the repository root (default .heavyq/anchor.md)."
@@ -75,6 +80,10 @@ func patchUserConfig(root *jsonschema.Schema) {
 	prio := prop(rule, "priority")
 	prio.Minimum = json.Number("1")
 	prio.Maximum = json.Number("9")
+	proof := def(root, "ProofConfig")
+	proof.Description = "Where `heavyq item done --run` and `heavyq gate run` run proofs. The same table in a repository's heavyq.toml overrides it there."
+	prop(proof, "remote").Description = `"local" (the default), "auto" (the scheduler picks among local and the configured remotes, free slots first) or the name of a [[remote]]. A gate with its own remote key keeps it; --remote wins over both.`
+	prop(proof, "remote").Default = config.LocalName
 	machine := def(root, "MachineConfig")
 	prop(machine, "name").Pattern = config.SafeName.String()
 	patchPoolSpec(root)

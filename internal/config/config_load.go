@@ -128,7 +128,7 @@ func (c *Config) normalize() error {
 			return fmt.Errorf("remote %q: %w", r.Name, err)
 		}
 	}
-	return nil
+	return c.Proof.normalize(c)
 }
 
 func (m *MachineConfig) normalizeCommon() error {

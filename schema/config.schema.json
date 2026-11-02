@@ -196,6 +196,18 @@
       "type": "object",
       "description": "MentorConfig is the [mentor] section: the experiment behind `heavyq hook claude-posttooluse` (docs/mentor.md)."
     },
+    "ProofConfig": {
+      "properties": {
+        "remote": {
+          "type": "string",
+          "description": "\"local\" (the default), \"auto\" (the scheduler picks among local and the configured remotes, free slots first) or the name of a [[remote]]. A gate with its own remote key keeps it; --remote wins over both.",
+          "default": "local"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "description": "Where `heavyq item done --run` and `heavyq gate run` run proofs. The same table in a repository's heavyq.toml overrides it there."
+    },
     "QueueConfig": {
       "properties": {
         "poll": {
@@ -348,6 +360,9 @@
     },
     "mentor": {
       "$ref": "#/definitions/MentorConfig"
+    },
+    "proof": {
+      "$ref": "#/definitions/ProofConfig"
     },
     "pool": {
       "items": {

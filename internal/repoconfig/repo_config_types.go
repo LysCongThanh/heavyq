@@ -31,6 +31,9 @@ type Repo struct {
 	Path   string // Root/heavyq.toml; "" for a detected gate
 	Gates  []Gate // file order
 	Anchor Anchor
+	// Proof says where proofs run by default; its Remote is "" when the
+	// file has no [proof] remote (the user's config, then local, decide).
+	Proof Proof
 	// Pools are the [[pool]] tables of the file; they replace pools of the
 	// same name in the user's config.
 	Pools []pools.Pool
@@ -43,6 +46,9 @@ type Gate struct {
 	Prio   int      // 1 runs first; DefaultPrio when unset
 	Light  bool     // may use the light slots
 	Remote string   // "local" | "auto" | <remote name>; DefaultRemote when unset
+	// RemoteSet is true when the gate has its own remote key. A gate without
+	// one follows [proof] remote (see cli.resolveProofRemote).
+	RemoteSet bool
 	// Needs are pool values every command of the gate holds while it runs
 	// ("pg", "port:2"). A gate with needs runs on this machine.
 	Needs []string
@@ -58,6 +64,12 @@ type Gate struct {
 type Anchor struct {
 	File  string   // checklist file, relative to Root
 	Extra []string // extra globs, relative to Root
+}
+
+// Proof is the [proof] section of heavyq.toml: where `heavyq item done --run`
+// and `heavyq gate run` run proofs for this repository.
+type Proof struct {
+	Remote string // "local" | "auto" | <remote name>; "" when not set
 }
 
 // Gate returns the gate called name.
@@ -85,6 +97,11 @@ type rawFile struct {
 	Gate   []rawGate    `toml:"gate"`
 	Pool   []pools.Spec `toml:"pool"`
 	Anchor *rawAnchor   `toml:"anchor"`
+	Proof  *rawProof    `toml:"proof"`
+}
+
+type rawProof struct {
+	Remote string `toml:"remote"`
 }
 
 type rawGate struct {

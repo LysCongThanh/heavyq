@@ -19,7 +19,7 @@ const defaultGate = "ready"
 
 const gateUsage = `usage:
   heavyq [--config FILE] gate status [name] [--json]
-  heavyq [--config FILE] gate run [name] [--parallel] [--keep-going] [--lane NAME]
+  heavyq [--config FILE] gate run [name] [--parallel] [--keep-going] [--lane NAME] [--remote WHERE]
 
 name defaults to "ready", else to the only gate in heavyq.toml. Without a heavyq.toml, the gate "ready"
 is detected from go.mod, package.json, pytest config or Cargo.toml ("ready (detected)"); heavyq init writes it down.

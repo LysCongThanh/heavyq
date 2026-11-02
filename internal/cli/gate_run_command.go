@@ -30,6 +30,7 @@ func gateRunCommand(cfg *config.Config, args []string, stdout, stderr io.Writer)
 	parallel := fs.Bool("parallel", false, "start every unproven command at once (the queue still limits how many run); implies --keep-going")
 	keepGoing := fs.Bool("keep-going", false, "run the remaining commands after one fails")
 	lane := fs.String("lane", "", "lane name (default: $HEAVYQ_LANE or the repository directory name)")
+	remote := fs.String("remote", "", "where the commands run: local | auto | <remote name> (default: the gate's remote, else [proof] remote, else local)")
 	name, ok := parseGateArgs(fs, args, stderr)
 	if !ok {
 		return ExitUsage
@@ -71,6 +72,12 @@ func gateRunCommand(cfg *config.Config, args []string, stdout, stderr io.Writer)
 			fresh[i] = c.Class == proof.ClassFlaky
 		}
 	}
+	if len(todo) > 0 {
+		var rc int
+		if g, rc = placeGate(cfg, t, *remote, stderr); rc != 0 {
+			return rc
+		}
+	}
 	rcs := runGateCommands(cfg, cfgPath, g, *lane, todo, fresh, *parallel, *keepGoing, stdout, stderr)
 	for _, i := range todo {
 		if rc, ran := rcs[i]; ran && stoppedFromOutside(rc) {
@@ -97,6 +104,33 @@ func gateRunCommand(cfg *config.Config, args []string, stdout, stderr io.Writer)
 		fmt.Fprintln(stderr, "heavyq: every command exited 0, but the ledger does not prove the gate on this tree (see above)")
 	}
 	return 1
+}
+
+// placeGate returns t's gate with Remote set to where its commands run now:
+// resolveProofRemote's answer, tempered by fitProofToTree. rc is non-zero
+// (the exit code, after a message) when the gate must not start.
+func placeGate(cfg *config.Config, t *gateTarget, remoteFlag string, stderr io.Writer) (repoconfig.Gate, int) {
+	g := t.gate
+	pl, err := resolveProofRemote(cfg, t.repo, &g, remoteFlag)
+	if err != nil {
+		fmt.Fprintln(stderr, "heavyq:", err)
+		return g, ExitUsage
+	}
+	if len(g.Needs) > 0 && remoteFlag == "" && pl.Remote != config.LocalName && pl.Remote != config.RemoteAuto {
+		// Pool values are resources of this machine; [proof] remote is a default, not a demand.
+		fmt.Fprintf(stderr, "heavyq: gate %s needs pool values of this machine: running locally, not on %s (%s)\n", g.Name, pl.Remote, pl.From)
+		pl = proofPlace{config.LocalName, pl.From}
+	}
+	pl, why := fitProofToTree(t.repo.Root, pl, stderr)
+	if why != "" {
+		fmt.Fprintln(stderr, "heavyq:", why)
+		if outputMode(stderr).Terse() {
+			fmt.Fprintln(stderr, "next: heavyq gate run "+g.Name+" --remote local")
+		}
+		return g, 1
+	}
+	g.Remote = pl.Remote
+	return g, 0
 }
 
 // stoppedFromOutside reports whether rc says the run was ended by an operator
