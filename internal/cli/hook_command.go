@@ -17,7 +17,7 @@ import (
 
 const hookUsage = `usage:
   heavyq hook claude-pretooluse                 (called by Claude Code; reads hook JSON on stdin)
-  heavyq hook install claude [--scope local|project|user] [--print]
+  heavyq hook install claude [--scope local|project|user] [--print] [--force]   (--force: even with the plugin enabled)
   heavyq hook uninstall claude [--scope local|project|user] [--print]
 `
 

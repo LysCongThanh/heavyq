@@ -23,6 +23,15 @@ versions follow [Semantic Versioning](https://semver.org/).
 - **`internal/deadline`: `RunWithin(d, fn)`**, the fail-open time budget for the hooks to come (SessionStart,
   Stop, PostToolUse): a handler that misses its deadline or panics yields an error and the hook says nothing.
   A test holds the hook path through the index under 20 ms on a 100,000-record ledger.
+- **Claude Code plugin marketplace.** The repository is its own marketplace (`.claude-plugin/marketplace.json`,
+  name `heavyq`) with a `plugins/heavyq` plugin: `/plugin marketplace add LysCongThanh/heavyq`, then
+  `/plugin install heavyq@heavyq`. It carries the `PreToolUse` Bash hook, wrapped as
+  `sh -c 'command -v heavyq >/dev/null 2>&1 && exec heavyq hook claude-pretooluse || exit 0'` so a missing
+  binary is silent, and a `heavyq` skill (gate status/run, why, `help agents`, exit codes 75/78, never bypass).
+  The binary is not bundled. Go tests check the plugin files (structure, required fields, hook command).
+- `heavyq hook install claude` refuses (exit 2, with a `next:` line) when the user, project or local settings
+  enable `heavyq@heavyq`, because the plugin already runs the same hook and two rewriting hooks have no defined
+  winner. `--force` installs anyway; `--print` and `uninstall` are never refused.
 
 ## [0.4.0] - 2026-11-02
 
