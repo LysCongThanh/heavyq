@@ -18,14 +18,16 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  # Events that never run the suite (opened: the labeled event follows; another label added) get their own
+  # group, so they cannot cancel a real run and leave a stale cancelled check on the pull request.
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ (github.event.action == 'opened' || (github.event.action == 'labeled' && github.event.label.name != 'ci:full')) && github.run_id || 'suite' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   # The whole suite under the race detector, through heavyq itself: the gate "ready" in heavyq.toml (gofmt, vet,
   # go test -race, which includes every end-to-end run with real processes and an sh -c "remote").
   race:
-    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ci:full') }}
+    if: ${{ github.event_name != 'pull_request' || (contains(github.event.pull_request.labels.*.name, 'ci:full') && github.event.action != 'opened' && (github.event.action != 'labeled' || github.event.label.name == 'ci:full')) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -42,7 +44,7 @@ jobs:
   # that need neither Linux-only features (subreaper, util-linux, /proc fixtures) nor the full e2e suite: the
   # metrics and ps parsers, process breakdown/descendants against real processes, and the status/cancel runs.
   macos:
-    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ci:full') }}
+    if: ${{ github.event_name != 'pull_request' || (contains(github.event.pull_request.labels.*.name, 'ci:full') && github.event.action != 'opened' && (github.event.action != 'labeled' || github.event.label.name == 'ci:full')) }}
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -60,7 +62,7 @@ jobs:
   # install.sh (attached to every release) on both platforms it supports: against a local fake release
   # (checksum match, mismatch, tampering, --verify plumbing) and against the real v0.3.0 and latest releases.
   install-script:
-    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ci:full') }}
+    if: ${{ github.event_name != 'pull_request' || (contains(github.event.pull_request.labels.*.name, 'ci:full') && github.event.action != 'opened' && (github.event.action != 'labeled' || github.event.label.name == 'ci:full')) }}
     strategy:
       fail-fast: false
       matrix:
@@ -80,7 +82,7 @@ jobs:
 
   # Same goreleaser config as the tag build, minus publishing: cross-builds, archives, SBOMs.
   release-snapshot:
-    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ci:full') }}
+    if: ${{ github.event_name != 'pull_request' || (contains(github.event.pull_request.labels.*.name, 'ci:full') && github.event.action != 'opened' && (github.event.action != 'labeled' || github.event.label.name == 'ci:full')) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -104,7 +106,7 @@ jobs:
           grep -q ' install.sh$' dist/checksums.txt || { echo "::error::install.sh is not in checksums.txt"; exit 1; }
 
   govulncheck:
-    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ci:full') }}
+    if: ${{ github.event_name != 'pull_request' || (contains(github.event.pull_request.labels.*.name, 'ci:full') && github.event.action != 'opened' && (github.event.action != 'labeled' || github.event.label.name == 'ci:full')) }}
     runs-on: ubuntu-latest
     steps:
       - uses: golang/govulncheck-action@032d45514ae346b1db93c04b0c90b841c370344f # v1.1.0
@@ -113,7 +115,7 @@ jobs:
 
   # Intra-repo Markdown links (files and #anchors) must resolve: the README is an index into docs/.
   doc-links:
-    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ci:full') }}
+    if: ${{ github.event_name != 'pull_request' || (contains(github.event.pull_request.labels.*.name, 'ci:full') && github.event.action != 'opened' && (github.event.action != 'labeled' || github.event.label.name == 'ci:full')) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -125,7 +127,7 @@ jobs:
   # the packages it touched, for 20 s, in ci.yml). A crasher fails the job and is uploaded: commit it under
   # testdata/fuzz as the regression test.
   fuzz-plan:
-    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ci:full') }}
+    if: ${{ github.event_name != 'pull_request' || (contains(github.event.pull_request.labels.*.name, 'ci:full') && github.event.action != 'opened' && (github.event.action != 'labeled' || github.event.label.name == 'ci:full')) }}
     runs-on: ubuntu-latest
     outputs:
       fuzz: ${{ steps.plan.outputs.fuzz }}
