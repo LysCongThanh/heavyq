@@ -3,25 +3,33 @@ package cli
 import (
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/LysCongThanh/heavyq/internal/anchor"
 	"github.com/LysCongThanh/heavyq/internal/history"
 	"github.com/LysCongThanh/heavyq/internal/itemstatus"
+	"github.com/LysCongThanh/heavyq/internal/ledgerindex"
 	"github.com/LysCongThanh/heavyq/internal/proof"
 	"github.com/LysCongThanh/heavyq/internal/repoconfig"
 )
 
-// evidenceCache evaluates the proofs of items against one ledger. Many items
-// share a gate and many are judged on the same tree, so each (tree, proof) is
-// evaluated once.
+// itemStaleWindow is how far back a passing run on an older tree still makes
+// an item "stale" rather than "open".
+const itemStaleWindow = 7 * 24 * time.Hour
+
+// evidenceCache evaluates the proofs of items. The records that decide a proof
+// on a tree come from the tree's index (proofRecords); recent, the runs of
+// the last itemStaleWindow, only tell whether the proof passed on an older
+// tree. Many items share a gate and many are judged on the same tree, so each
+// (tree, proof) is evaluated once.
 type evidenceCache struct {
-	set  *itemSet
-	recs []history.Record
-	done map[string]itemstatus.Evidence
+	set    *itemSet
+	recent []history.Record
+	done   map[string]itemstatus.Evidence
 }
 
-func newEvidenceCache(s *itemSet, recs []history.Record) *evidenceCache {
-	return &evidenceCache{set: s, recs: recs, done: map[string]itemstatus.Evidence{}}
+func newEvidenceCache(s *itemSet, recent []history.Record) *evidenceCache {
+	return &evidenceCache{set: s, recent: recent, done: map[string]itemstatus.Evidence{}}
 }
 
 // of is the proof state of it on the code in work tree root.
@@ -54,7 +62,11 @@ func (c *evidenceCache) evaluate(p anchor.Proof, root string) itemstatus.Evidenc
 		return itemstatus.Unprovable("unknown proof kind " + p.Kind)
 	}
 	subj := c.set.subject(root)
-	return itemstatus.EvidenceFor(proof.Evaluate(name, commands, subj, c.recs), subj, c.recs)
+	recs, err := proofRecords(subj)
+	if err != nil { // fail closed: an unreadable ledger proves nothing
+		recs = nil
+	}
+	return itemstatus.EvidenceFor(proof.Evaluate(name, commands, subj, recs), subj, c.recent)
 }
 
 // proofGate is the gate called name in the repository's heavyq.toml (or the
@@ -66,10 +78,11 @@ func proofGate(s *itemSet, name string) (repoconfig.Gate, bool) {
 	return s.repo.Gate(name)
 }
 
-// ledgerOrNone reads the proof ledger; an unreadable one proves nothing, and
-// the caller hears why on stderr.
+// ledgerOrNone reads the recent runs (lane index, else the ledger tail) used
+// to find a lane's work tree and older passing runs. An unreadable ledger
+// proves nothing; the caller hears why on stderr.
 func ledgerOrNone(stderr io.Writer) []history.Record {
-	recs, err := readProofLedger()
+	recs, _, err := ledgerindex.Recent(history.DefaultPath(), time.Now().Add(-itemStaleWindow))
 	if err != nil {
 		fmt.Fprintln(stderr, "heavyq: ledger unreadable, so nothing can be proven:", err)
 		return nil

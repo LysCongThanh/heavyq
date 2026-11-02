@@ -65,12 +65,6 @@ func loadItemSet(cfg *config.Config, dir string) (*itemSet, error) {
 		subjects: map[string]proof.Subject{}}, nil
 }
 
-// readProofLedger reads the records proofs are matched against. An unreadable
-// ledger proves nothing (fail closed): the caller says why and uses none.
-func readProofLedger() ([]history.Record, error) {
-	return history.ReadLast(history.DefaultPath(), ledgerWindow)
-}
-
 // subject is the identity of the code in work tree root, cached.
 func (s *itemSet) subject(root string) proof.Subject {
 	if sub, ok := s.subjects[root]; ok {
