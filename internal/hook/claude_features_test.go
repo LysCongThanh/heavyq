@@ -144,7 +144,7 @@ func TestInstallIsDeclarativeAndKeepsForeignHooks(t *testing.T) {
 func TestInstallMovedBinaryReplacesEveryEntry(t *testing.T) {
 	b, _, _ := MergeEntries(nil, EntriesFor("/old/heavyq", allFeatures()))
 	b2, changed, err := MergeEntries(b, EntriesFor("/new/heavyq", allFeatures()))
-	if err != nil || !changed || strings.Contains(string(b2), "/old/heavyq") || strings.Count(string(b2), "/new/heavyq") != 6 {
+	if err != nil || !changed || strings.Contains(string(b2), "/old/heavyq") || strings.Count(string(b2), "/new/heavyq") != 7 {
 		t.Fatalf("%v %v\n%s", changed, err, b2)
 	}
 }
