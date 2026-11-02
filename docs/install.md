@@ -54,10 +54,10 @@ The signatures and the attestation are made by this repository's release workflo
 signing key exists to leak), so they say "this file was built by `release.yml` at tag `vX.Y.Z` of
 `LysCongThanh/heavyq`".
 
-**cosign** 3 or later (one `.sigstore.json` bundle in the Sigstore bundle format holds the signature, the certificate and the transparency-log entry):
+**cosign** 3 or later; cosign 2 fails on these bundles with "bundle does not contain cert for verification" (one `.sigstore.json` bundle in the Sigstore bundle format holds the signature, the certificate and the transparency-log entry):
 
 ```bash
-V=0.4.0
+V=0.5.0
 cosign verify-blob \
   --bundle heavyq_${V}_linux_amd64.tar.gz.sigstore.json \
   --certificate-identity "https://github.com/LysCongThanh/heavyq/.github/workflows/release.yml@refs/tags/v${V}" \
