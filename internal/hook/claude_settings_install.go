@@ -126,6 +126,9 @@ func decodeRoot(b []byte) (map[string]any, error) {
 		if err := dec.Decode(&root); err != nil {
 			return nil, fmt.Errorf("settings are not a JSON object: %w", err)
 		}
+		if root == nil { // the JSON value null decodes to a nil map
+			return nil, errors.New("settings are not a JSON object: null")
+		}
 	}
 	return root, nil
 }

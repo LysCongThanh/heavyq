@@ -27,7 +27,7 @@ func TestMergeEnvSetsKeepsAndIsIdempotent(t *testing.T) {
 }
 
 func TestMergeEnvRefusesWrongShapes(t *testing.T) {
-	for _, bad := range []string{`[]`, `{"env":[]}`, `{"env":"x"}`, `{not json`} {
+	for _, bad := range []string{`null`, `[]`, `{"env":[]}`, `{"env":"x"}`, `{not json`} {
 		if _, _, err := MergeEnv([]byte(bad), "K", "0"); err == nil {
 			t.Errorf("accepted %s", bad)
 		}
