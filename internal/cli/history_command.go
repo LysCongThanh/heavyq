@@ -19,7 +19,7 @@ func historyCommand(args []string, w, stderr io.Writer) int {
 		return ExitUsage
 	}
 	path := history.DefaultPath()
-	recs, err := history.ReadLast(path, *n)
+	recs, err := history.ReadTail(path, history.TailLimit{Max: *n})
 	if err != nil {
 		fmt.Fprintln(stderr, "heavyq:", err)
 		return 1

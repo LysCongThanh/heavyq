@@ -83,8 +83,7 @@ func readFile(path string, n int) ([]Record, error) {
 	defer f.Close()
 	var out []Record
 	err = eachLine(f, func(line []byte) {
-		var r Record
-		if json.Unmarshal(line, &r) == nil {
+		if r, err := decodeRecord(line); err == nil {
 			out = append(out, r)
 			if n > 0 && len(out) >= 2*n { // bound memory on a long file
 				out = append(out[:0], out[len(out)-n:]...)

@@ -13,6 +13,7 @@ import (
 
 	"github.com/LysCongThanh/heavyq/internal/config"
 	"github.com/LysCongThanh/heavyq/internal/history"
+	"github.com/LysCongThanh/heavyq/internal/ledgerindex"
 	"github.com/LysCongThanh/heavyq/internal/remote"
 )
 
@@ -49,7 +50,7 @@ func (r *run) execute(c *claim) int {
 	if r.cache != nil {
 		rec.Cache, rec.CacheNote = r.cache.status, r.cache.note
 	}
-	if err := history.Append(history.DefaultPath(), rec); err != nil {
+	if err := ledgerindex.Append(history.DefaultPath(), rec); err != nil {
 		fmt.Fprintln(r.stderr, "heavyq: warning: history not written:", err)
 	}
 	r.digestRan(rc, c.machine, co, time.Since(runStart), waited)

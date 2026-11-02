@@ -9,6 +9,7 @@ import (
 	"github.com/LysCongThanh/heavyq/internal/agentmode"
 	"github.com/LysCongThanh/heavyq/internal/config"
 	"github.com/LysCongThanh/heavyq/internal/history"
+	"github.com/LysCongThanh/heavyq/internal/ledgerindex"
 	"github.com/LysCongThanh/heavyq/internal/queue"
 	"github.com/LysCongThanh/heavyq/internal/snapshot"
 )
@@ -38,17 +39,24 @@ func whyCommand(cfg *config.Config, args []string, w, stderr io.Writer) int {
 		return ExitUsage
 	}
 	// History only adds colour. A broken log must not hide the live answer,
-	// but it is reported, not swallowed.
-	recs, err := history.ReadLast(history.DefaultPath(), 0)
-	if err != nil {
-		fmt.Fprintln(stderr, "heavyq: history unreadable, showing live state only:", err)
+	// but it is reported, not swallowed. Nothing here scans the ledger: the
+	// last run of a lane and the proof come from the index, the one-hour
+	// insights from the tail of the ledger.
+	histWarn := func(err error) {
+		if err != nil {
+			fmt.Fprintln(stderr, "heavyq: history unreadable, showing live state only:", err)
+		}
 	}
 	now := time.Now()
 	var lines []string
 	if fs.NArg() == 1 {
 		lane := queue.SanitizeLane(fs.Arg(0)) // the name runs were filed under
-		lines = snapshot.LaneLines(s, lane, lastRunOfLane(recs, lane), now)
+		last, _, err := ledgerindex.LastOfLane(history.DefaultPath(), lane)
+		histWarn(err)
+		lines = snapshot.LaneLines(s, lane, last, now)
 	} else {
+		recs, err := history.ReadTail(history.DefaultPath(), history.TailLimit{Since: now.Add(-whyInsightsWindow)})
+		histWarn(err)
 		ins := snapshot.ComputeInsights(recs, now.Add(-whyInsightsWindow), now, 1)
 		for _, sent := range snapshot.Story(s, &ins, now) {
 			lines = append(lines, sent.Text)
@@ -56,7 +64,7 @@ func whyCommand(cfg *config.Config, args []string, w, stderr io.Writer) int {
 		for _, e := range s.Exceptions {
 			lines = append(lines, "Needs you: "+e.Text)
 		}
-		if l := gateWhyLine(cfg, recs, stderr); l != "" {
+		if l := gateWhyLine(cfg, stderr); l != "" {
 			lines = append(lines, l)
 		}
 	}
@@ -67,15 +75,4 @@ func whyCommand(cfg *config.Config, args []string, w, stderr io.Writer) int {
 		fmt.Fprintln(w, l)
 	}
 	return 0
-}
-
-// lastRunOfLane returns the newest record of lane (records are oldest
-// first), or nil.
-func lastRunOfLane(recs []history.Record, lane string) *history.Record {
-	for i := len(recs) - 1; i >= 0; i-- {
-		if recs[i].Lane == lane {
-			return &recs[i]
-		}
-	}
-	return nil
 }

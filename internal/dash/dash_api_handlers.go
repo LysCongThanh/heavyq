@@ -83,12 +83,18 @@ func (s *Server) insights(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "window must be 1h, 6h, 24h or 7d")
 		return
 	}
-	recs, err := s.opts.History(0)
+	to := s.opts.Now()
+	var recs []history.Record
+	var err error
+	if s.opts.HistorySince != nil {
+		recs, err = s.opts.HistorySince(to.Add(-d))
+	} else {
+		recs, err = s.opts.History(0)
+	}
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	to := s.opts.Now()
 	writeJSON(w, http.StatusOK, snapshot.ComputeInsights(recs, to.Add(-d), to, insightBuckets))
 }
 
