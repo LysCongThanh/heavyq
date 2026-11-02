@@ -5,6 +5,18 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-11-02
+
+### Added
+
+- **`--with REPO[@REF]`, now complete.** A command that reads `../shared-schema` or `../core-lib` declares those sibling repositories; each is pinned to a commit at enqueue (a missing directory, a non-repository, an unknown ref, an unsafe or main-repo name or a repeat exits 2 before anything is queued), pushed and checked out next to the remote worktree, and removed with it. A local run is eligible only when every sibling sits at `../<name>` on its pinned commit with a clean tree (checked again when the ticket gets a slot); otherwise `--remote local` exits 2 naming the sibling, and `auto` uses the remotes only. Siblings are part of the run id, so `--cache` works with them and a sibling at another commit is never a cache hit or a proof; `status`, `status --json`, `history -v` and the ledger show `with: name@sha12`. `../<name>` in the command no longer keeps default placement local. See [docs/remote.md](docs/remote.md).
+- **`--need-gh`.** For a command that calls the GitHub CLI with your login, which only this machine has: the run stays local, and `--remote <name>` with it is a usage error. `[run] need_gh_repos = ["app"]` in the user config makes it implicit for those repositories (one stderr line says why).
+- **Gates carry both.** A `[[gate]]` may set `with = ["shared-schema@v2.1.0"]` and `need_gh = true`; `heavyq gate run` passes them to every command, and `gate status` looks for runs on the same sibling commits. The JSON schemas are updated.
+
+### Fixed
+
+- **`install.sh --verify` names the cosign it needs.** Release bundles need cosign 3 or later; cosign 2 failed with a bare "signature is not valid". The installer now says which cosign it found and that verifying needs cosign 3, and docs/install.md shows it with a current version (#142).
+
 ## [0.5.0] - 2026-11-02
 
 ### Added
@@ -508,7 +520,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 - Priority tickets, heavy and light slots, RAM and load gate with anti-starvation, `status` with per-lane
   CPU attribution, remote runs by exact commit over SSH with score-based placement, and JSONL history.
 
-[Unreleased]: https://github.com/LysCongThanh/heavyq/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/LysCongThanh/heavyq/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/LysCongThanh/heavyq/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/LysCongThanh/heavyq/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/LysCongThanh/heavyq/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/LysCongThanh/heavyq/compare/v0.2.0...v0.3.0

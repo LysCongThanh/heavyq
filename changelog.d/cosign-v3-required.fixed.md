@@ -1,1 +1,0 @@
-**`install.sh --verify` names the cosign it needs.** Release bundles need cosign 3 or later; cosign 2 failed with a bare "signature is not valid". The installer now says which cosign it found and that verifying needs cosign 3, and docs/install.md shows it with a current version (#142).
