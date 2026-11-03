@@ -5,6 +5,13 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-11-03
+
+### Fixed
+
+- **A remote job's own inputs no longer leak into its command.** A heavyq run inside a remote job (a test of heavyq, a nested queue) could read the outer job's base ref and fail with "cannot create base ref"; every input is now set explicitly and unset before the command runs.
+- **`PASS?`: an exit 0 that says a command was not found no longer passes quietly.** A run that exits 0 while its output has a shell not-found line (`sh: 1: tsc: not found`, `bash: line 1: tsc: command not found`) usually hides a missing tool behind a pipeline (`npx tsc | tail`). It now ends `PASS?` with a warning quoting the line, is recorded as `suspect` (never as proof, never cached) and still exits 0; `--strict`, gates and item proofs make it exit 127. A `sh -c` string with a pipe draws a one-time warning about the last-stage exit status, and gate commands run under `bash -o pipefail` where bash exists (gate runs recorded before this change are proven again). See [docs/exit-codes.md](docs/exit-codes.md).
+
 ## [0.5.1] - 2026-11-02
 
 ### Added
@@ -520,7 +527,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 - Priority tickets, heavy and light slots, RAM and load gate with anti-starvation, `status` with per-lane
   CPU attribution, remote runs by exact commit over SSH with score-based placement, and JSONL history.
 
-[Unreleased]: https://github.com/LysCongThanh/heavyq/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/LysCongThanh/heavyq/compare/v0.5.2...HEAD
+[0.5.2]: https://github.com/LysCongThanh/heavyq/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/LysCongThanh/heavyq/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/LysCongThanh/heavyq/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/LysCongThanh/heavyq/compare/v0.3.0...v0.4.0
