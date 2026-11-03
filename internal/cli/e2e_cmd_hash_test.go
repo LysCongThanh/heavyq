@@ -28,11 +28,11 @@ func TestE2EGateLongCommandIsProvable(t *testing.T) {
 	gitIn(t, h, repo, "commit", "-q", "-m", "gate")
 
 	// Only the first command runs, directly: it is proven, the second is not.
-	if rc, out := h.run("3", "--", "sh", "-c", long); rc != 0 {
+	if rc, out := h.run(append([]string{"3", "--"}, proof.Argv(long)...)...); rc != 0 {
 		t.Fatalf("rc=%d\n%s", rc, out)
 	}
 	r := h.runOfGateCommand(long)
-	if len(r.Cmd) != 200 || !strings.HasSuffix(r.Cmd, "...") || r.CmdHash != history.CmdHash([]string{"sh", "-c", long}) {
+	if len(r.Cmd) != 200 || !strings.HasSuffix(r.Cmd, "...") || r.CmdHash != history.CmdHash(proof.Argv(long)) {
 		t.Fatalf("the display form is cut (%d bytes) but the hash covers the whole command: %+v", len(r.Cmd), r)
 	}
 	rc, g := h.gateJSON()

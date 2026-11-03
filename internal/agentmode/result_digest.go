@@ -13,6 +13,7 @@ const MaxDigestBytes = 4096
 // Verdicts of a digest.
 const (
 	Pass        = "PASS"
+	Suspect     = "PASS?" // exit 0, but the output says a command was not found: proves nothing
 	Fail        = "FAIL"
 	Reused      = "REUSED"      // the result of an identical run on this exact tree was replayed
 	NotRun      = "NOT RUN"     // heavyq gave up before the command ran (max-wait, remote down)
@@ -63,7 +64,7 @@ func (r Result) text() string {
 	if r.Tree != "" {
 		b.WriteString(" · tree " + r.Tree)
 	}
-	if r.Dur > 0 || r.Verdict == Pass || r.Verdict == Fail {
+	if r.Dur > 0 || r.Verdict == Pass || r.Verdict == Suspect || r.Verdict == Fail {
 		b.WriteString(" · " + FormatDur(r.Dur))
 	}
 	if r.Waited >= 2*time.Second {

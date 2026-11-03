@@ -186,7 +186,7 @@ func (c *itemCtx) runProof(it anchor.Item, remoteFlag string) (rc int, started b
 	if why != "" {
 		return c.refuse(why, "heavyq item done "+it.ID+" --run --remote local"), false
 	}
-	args := []string{fmt.Sprint(repoconfig.DefaultPrio), "--cache", "--remote", pl.Remote, "--"}
+	args := []string{fmt.Sprint(repoconfig.DefaultPrio), "--cache", "--strict", "--remote", pl.Remote, "--"}
 	// The proof command's own exit code comes back, so 2 is not "usage" here.
 	return runCommand(c.cfg, append(args, proof.Argv(it.Proof.Value)...), c.stderr), true
 }

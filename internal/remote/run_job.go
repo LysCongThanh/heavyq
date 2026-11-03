@@ -62,15 +62,14 @@ func StartJob(s JobSpec) (*Started, error) {
 		"HEAVYQ_WITH=" + strings.Join(s.Siblings, ","),
 		"HEAVYQ_WATCH_STDIN=1",
 	}
-	if s.BaseRef != "" {
-		env = append(env, "HEAVYQ_BASE_REF="+s.BaseRef, "HEAVYQ_BASE_SHA="+s.BaseSHA)
-	}
-	if s.Machine.EnvPath != "" {
-		env = append(env, "HEAVYQ_ENV_PATH="+s.Machine.EnvPath)
-	}
+	// Every input is set, empty when unused, so a value inherited from the caller's environment (a heavyq
+	// run inside another heavyq job, or a local transport) never stands in for this job's own.
+	env = append(env, "HEAVYQ_BASE_REF="+s.BaseRef, "HEAVYQ_BASE_SHA="+s.BaseSHA, "HEAVYQ_ENV_PATH="+s.Machine.EnvPath)
+	hook := ""
 	if s.Machine.CacheHook != "" {
-		env = append(env, "HEAVYQ_HOOK_B64="+b64(s.Machine.CacheHook))
+		hook = b64(s.Machine.CacheHook)
 	}
+	env = append(env, "HEAVYQ_HOOK_B64="+hook)
 	cmd, err := Transport(s.Machine.Transport).Command(context.Background(), env, jobScript, s.Machine.WorkDir, s.Repo, s.SHA, s.Lane, s.Slot)
 	if err != nil {
 		return nil, err

@@ -22,6 +22,7 @@ func (r *run) execute(c *claim) int {
 	waited := time.Since(r.t0)
 	co := r.checkoutFor(c.machine) // the code the command is about to see
 	r.announceAdmitted(c, waited, co)
+	warnShellPipe(r.stderr, r.opts.Argv)
 	runStart := time.Now()
 	var rc int
 	if c.machine == config.LocalName {
@@ -31,8 +32,9 @@ func (r *run) execute(c *claim) int {
 		rc = r.runRemote(c)
 	}
 	runSecs := time.Since(runStart).Seconds()
+	rc = r.judgeSuspect(rc)
 	ran := !r.interrupted && !r.cancelled && rc != 126 && rc != 127 &&
-		(c.machine == config.LocalName || (rc != ExitRemoteSetup && rc != ExitConnLost))
+		(c.machine == config.LocalName || (rc != ExitRemoteSetup && rc != ExitConnLost)) && r.suspect == ""
 	r.cacheFinish(c.machine, rc, ran, runSecs)
 	rec := history.Record{End: time.Now(), Machine: c.machine, Lane: r.me.Lane, Prio: r.me.Prio, Light: r.me.Light,
 		WaitSecs: waited.Seconds(), RunSecs: runSecs, Exit: rc, Cmd: r.me.Cmd, Forced: c.forced,
@@ -44,6 +46,8 @@ func (r *run) execute(c *claim) int {
 		rec.Result = history.OutcomeCancelled
 	case r.interrupted:
 		rec.Result = history.OutcomeInterrupted
+	case r.suspect != "":
+		rec.Result = history.OutcomeSuspect // exit 0 (127 under --strict), but the shell lost a command: no proof
 	case rc == ExitRemoteSetup || rc == 126 || rc == 127:
 		rec.Result = history.OutcomeGaveUp // the command never started
 	}

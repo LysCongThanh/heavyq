@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/LysCongThanh/heavyq/internal/gitutil"
+	"github.com/LysCongThanh/heavyq/internal/proof"
 	"github.com/LysCongThanh/heavyq/internal/repoconfig"
 	"github.com/LysCongThanh/heavyq/internal/schedule"
 )
@@ -42,7 +43,8 @@ func TestArgvWithoutSiblingPathsHidesOnlyDeclaredSiblings(t *testing.T) {
 func TestGateRunArgsCarryWithAndNeedGH(t *testing.T) {
 	g := repoconfig.Gate{Name: "ready", Prio: 3, Remote: "auto", With: []string{"core-lib@v1", "schema"}, NeedGH: true}
 	got := gateRunArgs(g, "make test", "", false)
-	want := []string{"3", "--gate", "ready", "--remote", "auto", "--cache", "--with", "core-lib@v1", "--with", "schema", "--need-gh", "--", "sh", "-c", "make test"}
+	want := []string{"3", "--gate", "ready", "--remote", "auto", "--strict", "--cache", "--with", "core-lib@v1", "--with", "schema", "--need-gh", "--"}
+	want = append(want, proof.Argv("make test")...)
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("args = %q\nwant   %q", got, want)
 	}

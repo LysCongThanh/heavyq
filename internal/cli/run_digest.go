@@ -72,6 +72,13 @@ func (r *run) digestRan(rc int, machine string, co gitutil.Checkout, ran, waited
 	case rc == ExitRemoteSetup:
 		res.Verdict, res.Why = agentmode.NotRun, "remote setup on "+machine+" failed; the command did not run"
 		res.Next = nextRemoteDown
+	case r.suspect != "":
+		res.Why, res.Next = r.suspectWhy(rc != 0), nextSuspect
+		if rc != 0 { // strict: it is a proof, so a failure
+			res.Verdict = agentmode.Fail
+		} else {
+			res.Verdict = agentmode.Suspect
+		}
 	case rc != 0:
 		res.Verdict, res.Next = agentmode.Fail, r.failNext(rc, machine)
 	}
@@ -80,6 +87,7 @@ func (r *run) digestRan(rc int, machine string, co gitutil.Checkout, ran, waited
 
 const (
 	nextCancelled  = "cancelled by operator; ask before re-running"
+	nextSuspect    = "install the missing tool where it ran (or make the pipe fail: bash -o pipefail -c), then re-run"
 	nextRemoteDown = "the remote is unreachable; retry later, or add --remote local; don't bypass heavyq"
 )
 

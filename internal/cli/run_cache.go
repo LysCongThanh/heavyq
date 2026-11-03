@@ -164,6 +164,9 @@ func (r *run) cacheFinish(machine string, rc int, ran bool, runSecs float64) {
 	key, why := cache.Key(cache.KeyInput{Dir: r.localDir(), Argv: r.opts.Argv, EnvNames: r.cfg.Cache.Env,
 		Version: version(), BaseRef: r.opts.BaseRef, Siblings: siblingIDs(r.pl.siblings), Getenv: os.LookupEnv})
 	switch {
+	case r.suspect != "":
+		rec.Abort()
+		cs.note = "the output has a shell not-found line (" + r.suspect + "); nothing stored"
 	case !ran:
 		rec.Abort()
 		cs.note = "the command did not run to completion; nothing stored"
@@ -203,9 +206,9 @@ func (r *run) cacheRelease() {
 // cmdStreams are the stdout/stderr given to the command.
 func (r *run) cmdStreams() (io.Writer, io.Writer) {
 	if r.cache != nil && r.cache.rec != nil {
-		return r.cache.rec.Stdout(), r.cache.rec.Stderr()
+		return r.scan.wrap(r.cache.rec.Stdout()), r.scan.wrap(r.cache.rec.Stderr())
 	}
-	return r.out.stdout, r.out.stderr
+	return r.scan.wrap(r.out.stdout), r.scan.wrap(r.out.stderr)
 }
 
 func (r *run) verbosef(format string, a ...any) {

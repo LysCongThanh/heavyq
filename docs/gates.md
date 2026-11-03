@@ -78,7 +78,11 @@ are. Because of that:
 - Gates run only on an explicit `heavyq gate run`. Hooks never execute gates.
 - The file is parsed strictly. Unknown keys, wrong types and out-of-range values are errors, never
   ignored. A typo must not silently weaken a gate.
-- Commands are run through `sh -c`, so quoting, pipes and `&&` work as in a shell.
+- Commands are run through `sh -c`, so quoting, pipes and `&&` work as in a shell. Where `bash` exists the
+  command runs under `bash -o pipefail`, so `false | tail` fails the command (without pipefail the exit status
+  would be `tail`'s, and a missing tool in the first stage would pass). Without bash the plain `sh` runs it.
+  A gate run is also strict about a missing command: exit 0 with a shell "command not found" line in the
+  output fails with 127 and proves nothing (see [exit-codes.md](exit-codes.md)).
 
 ## Format
 
@@ -150,7 +154,7 @@ is a run of the command when all of these hold:
   bookkeeping files (see **What the tree id ignores**). Any other edit changes the id and undoing it restores
   the old one, so a revert is proven again at once;
 - it is a run of the same command in the same environment, see **Run identity** below: the exact
-  `sh -c '<command>'` from the repository root, with the same values of the `cache.env` variables and the
+  `sh -c '<command>'` (under pipefail, see above) from the repository root, with the same values of the `cache.env` variables and the
   same base ref;
 - it ran to its end: runs that gave up, were cancelled or were interrupted are inconclusive and neither prove
   nor fail anything. Exit 0 passes; any other exit code is a failure. A `--cache` hit or a run that reused an
@@ -326,7 +330,7 @@ object (additive changes only):
 For each command that `gate status` would not call proven, in file order, heavyq runs the equivalent of
 
 ```
-heavyq <prio> --cache --gate <name> --remote <remote> [--light] [--lane NAME] -- sh -c '<command>'   # no --cache for a flaky command
+heavyq <prio> --cache --gate <name> --remote <remote> [--light] [--lane NAME] --strict -- sh -c '<command>'   # no --cache for a flaky command
 ```
 
 from the repository root, with the gate's `prio`, `light` and `remote`. The machine is, first set wins:

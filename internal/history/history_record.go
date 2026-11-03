@@ -40,7 +40,7 @@ type Record struct {
 	CacheNote string `json:"cache_note,omitempty"`
 	// Result is "" for a command that ran to its end, else OutcomeGaveUp
 	// (left the queue without running), OutcomeCancelled (stopped on request)
-	// or OutcomeInterrupted (a signal stopped heavyq). Older lines have none.
+	// OutcomeInterrupted (a signal stopped heavyq) or OutcomeSuspect (see there). Older lines have none.
 	Result string `json:"result,omitempty"`
 	// Forced: admitted by the anti-starvation bypass of the resource gate.
 	Forced bool `json:"forced,omitempty"`
@@ -104,6 +104,9 @@ const (
 	OutcomeGaveUp      = "gave_up"
 	OutcomeCancelled   = "cancelled"
 	OutcomeInterrupted = "interrupted"
+	// OutcomeSuspect: exited 0 (127 under --strict) but its output has a shell
+	// "command not found" line, so it proves nothing (see docs/exit-codes.md).
+	OutcomeSuspect = "suspect"
 )
 
 // Outcome classifies r: ran, gave_up, cancelled or interrupted (signal).

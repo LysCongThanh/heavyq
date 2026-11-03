@@ -69,7 +69,7 @@ func TestE2EGateSameTreePassThenFailIsFlaky(t *testing.T) {
 		t.Fatalf("proven before the failure: rc=%d %+v", rc, g)
 	}
 	h.touch("fail-flag")
-	if rc, out := h.run("3", "--", "sh", "-c", cmd); rc != 1 {
+	if rc, out := h.run(append([]string{"3", "--"}, proof.Argv(cmd)...)...); rc != 1 {
 		t.Fatalf("the direct run must fail: rc=%d\n%s", rc, out)
 	}
 
@@ -136,7 +136,7 @@ job_mb = 100000000
 	h.running(1) // an idle machine always admits the first job
 	// The resource gate refuses the second job (a job needs more RAM than
 	// exists) until it is head of the line for force_after, then forces it in.
-	rc, out := h.run("3", "--lane", "web", "--", "sh", "-c", cmd)
+	rc, out := h.run(append([]string{"3", "--lane", "web", "--"}, proof.Argv(cmd)...)...)
 	if rc != 1 || !strings.Contains(out, "our turn") {
 		t.Fatalf("rc=%d\n%s", rc, out)
 	}
@@ -200,7 +200,7 @@ func TestE2EGatePlainFailureIsFailed(t *testing.T) {
 		t.Fatalf("rc=%d\n%s", rc, out)
 	}
 	r := h.runOfGateCommand(cmd)
-	if r.CmdHash != history.CmdHash([]string{"sh", "-c", cmd}) || r.Forced {
+	if r.CmdHash != history.CmdHash(proof.Argv(cmd)) || r.Forced {
 		t.Fatalf("%+v", r)
 	}
 	if runtime.GOOS == "linux" && (r.Cores < 1 || r.JobMB != 1 || r.MaxLoad < 64) {

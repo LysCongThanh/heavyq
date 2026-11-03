@@ -27,6 +27,7 @@ func init() {
 			{Long: "session", Value: "ID", Help: "who ran it, recorded in history (default: $HEAVYQ_SESSION)"},
 			{Long: "item", Value: "ID", Help: "work item it belongs to (default: $HEAVYQ_ITEM)"},
 			{Long: "gate", Value: "NAME", Help: "gate it is part of (ids: 1-80 characters from A-Za-z0-9._:-)"},
+			{Long: "strict", Help: "exit 127 (FAIL) when an exit 0 run printed a shell \"command not found\" line (always so for gates)"},
 			{Long: "digest", Help: "end with a result digest (always on for agents)"},
 			{Long: "verbose", Short: "v", Help: "explain cache decisions"},
 		},

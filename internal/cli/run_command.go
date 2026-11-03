@@ -43,6 +43,10 @@ type run struct {
 	out runOutput
 	// poolSet is the pools the run's needs refer to (nil without --needs).
 	poolSet *pools.Set
+	// scan watches the command's output for a shell not-found line; suspect is
+	// that line when the command nevertheless exited 0 (see run_suspect_judge.go).
+	scan    *suspectScan
+	suspect string
 }
 
 func runCommand(cfg *config.Config, args []string, stderr io.Writer) int {
@@ -74,7 +78,7 @@ func runCommand(cfg *config.Config, args []string, stderr io.Writer) int {
 	}
 	r := &run{cfg: cfg, opts: o, pl: pl, q: q, stderr: stderr, t0: time.Now(), start: start,
 		probes: newProbeCache(cfg.Queue.ProbeTimeout.Duration),
-		sigs:   make(chan os.Signal, 4)}
+		sigs:   make(chan os.Signal, 4), scan: &suspectScan{}}
 	r.out = newRunOutput(mode, o.Digest, stderr, r.t0, o.Lane)
 	defer r.out.discardLog()
 	signal.Notify(r.sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)

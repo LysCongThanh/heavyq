@@ -39,7 +39,7 @@ heavyq 3 --lane api -- npm test
 - **Agents don't need to know.** A Claude Code `PreToolUse` hook rewrites `npm test`, `go test ./...` and
   friends into a queued heavyq run before they execute. `heavyq hook install claude` sets it up.
 - **Agent mode: few tokens, a clear verdict.** When the caller is a coding agent (`CLAUDECODE=1` and friends),
-  heavyq prints at most a queued line, a running line and a digest: `PASS`/`FAIL`/`REUSED`, up to 12
+  heavyq prints at most a queued line, a running line and a digest: `PASS`/`PASS?`/`FAIL`/`REUSED`, up to 12
   failure lines, the path of the full log, and one `next:` line saying what to do. See
   [Agent mode](agent-mode.md).
 - **The same gate runs once per commit.** With `--cache`, identical commands on the same clean tree share

@@ -36,6 +36,8 @@ type runOptions struct {
 	Session string
 	Item    string
 	Gate    string
+	// Strict: an exit 0 whose output has a shell not-found line is a failure (exit 127), not PASS?.
+	Strict bool
 	// Digest prints the result digest for a person too (agent mode always does).
 	Digest  bool
 	Verbose bool
@@ -73,7 +75,7 @@ func parseRunArgs(args []string, cfg *config.Config) (runOptions, error) {
 		}
 		var v string
 		switch name {
-		case "--light", "--needs-ram", "--cache", "--digest", "-v", "--verbose", "--need-gh":
+		case "--light", "--needs-ram", "--cache", "--digest", "-v", "--verbose", "--need-gh", "--strict":
 			if hasVal {
 				return o, fmt.Errorf("%s takes no value", name)
 			}
@@ -87,6 +89,8 @@ func parseRunArgs(args []string, cfg *config.Config) (runOptions, error) {
 				o.NeedGH = true
 			case "--cache":
 				o.Cache = true
+			case "--strict":
+				o.Strict = true
 			case "--digest":
 				o.Digest = true
 			default:
