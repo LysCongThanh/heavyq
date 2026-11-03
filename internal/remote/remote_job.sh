@@ -129,6 +129,9 @@ if [[ -n "${HEAVYQ_HOOK_B64:-}" ]]; then
 fi
 CMD="$(printf '%s' "${HEAVYQ_CMD_B64:-}" | base64 "$B64D")" || fail "cannot decode command"
 [[ -n "$CMD" ]] || fail "empty command"
+# The job's own inputs are not the command's: a heavyq (or a test of heavyq's job script) run by the
+# command would otherwise read this job's base ref, siblings or command as its own.
+unset HEAVYQ_CMD_B64 HEAVYQ_SUBDIR HEAVYQ_WITH HEAVYQ_BASE_REF HEAVYQ_BASE_SHA HEAVYQ_HOOK_B64 HEAVYQ_WATCH_STDIN HEAVYQ_ENV_PATH
 # 9>&-: the command never inherits the slot lock, so daemons it leaves behind cannot pin the slot.
 # Own session and process group: setsid(1) on Linux; macOS has none, so Perl calls setsid(2) and execs bash
 # (same pid, so $! is still the group id that kill_group signals).
