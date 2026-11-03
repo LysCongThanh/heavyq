@@ -92,7 +92,7 @@ func TestE2EDetectedGateRunProvesAndWhyReportsIt(t *testing.T) {
 		t.Fatalf("after gate run: rc=%d %+v", rc, g)
 	}
 	// The runs went through the queue like any gate command.
-	if r := h.lastRecord(); r.Gate != "ready" || r.Cmd != "sh -c go test ./..." || r.Cache != "miss" {
+	if r := h.lastRecord(); r.Gate != "ready" || !strings.HasSuffix(r.Cmd, " "+proof.GateMarker+" go test ./...") || r.Cache != "miss" {
 		t.Fatalf("ledger record: %+v", r)
 	}
 	if rc, out := h.run("why"); rc != 0 || !strings.Contains(out, "The ready (detected) gate is proven on this tree") {

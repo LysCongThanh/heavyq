@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/LysCongThanh/heavyq/internal/history"
+	"github.com/LysCongThanh/heavyq/internal/queue"
 )
 
 const (
@@ -19,7 +20,7 @@ var base = time.Date(2026, 11, 2, 10, 0, 0, 0, time.UTC)
 // rec is a finished run of the gate command cmd on treeA in repoA.
 func rec(cmd string, mod func(*history.Record)) history.Record {
 	r := history.Record{V: 2, End: base, Lane: "lane", Machine: "local", RunSecs: 2, Exit: 0,
-		Cmd: "sh -c " + cmd, Repo: repoA, Tree: treeA, Commit: "c0"}
+		Cmd: queue.TruncateCmd(Argv(cmd)), Repo: repoA, Tree: treeA, Commit: "c0"}
 	if mod != nil {
 		mod(&r)
 	}
@@ -172,7 +173,11 @@ func TestSecretsInACommandStillMatch(t *testing.T) {
 // The ledger spells a run with the same function Argv feeds; this pins the
 // spelling gate run relies on.
 func TestArgvIsAShell(t *testing.T) {
-	if got := strings.Join(Argv("a && b"), "|"); got != "sh|-c|a && b" {
-		t.Fatal(got)
+	a := Argv("a && b")
+	if len(a) != 5 || a[0] != "sh" || a[1] != "-c" || a[3] != GateMarker || a[4] != "a && b" {
+		t.Fatal(a)
+	}
+	if !strings.Contains(a[2], "pipefail") || strings.Count(a[2], `"$1"`) != 2 {
+		t.Fatalf("the script must run $1 under pipefail: %s", a[2])
 	}
 }

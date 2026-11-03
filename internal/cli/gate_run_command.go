@@ -235,7 +235,7 @@ func absConfigPath(cfg *config.Config) string {
 // what the ledger is later matched against. fresh leaves out --cache, for the
 // re-run that confirms a flaky command.
 func gateRunArgs(g repoconfig.Gate, cmd, lane string, fresh bool) []string {
-	args := []string{strconv.Itoa(g.Prio), "--gate", g.Name, "--remote", g.Remote}
+	args := []string{strconv.Itoa(g.Prio), "--gate", g.Name, "--remote", g.Remote, "--strict"}
 	if !fresh {
 		args = append(args, "--cache")
 	}

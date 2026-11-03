@@ -149,6 +149,9 @@ func outsideRAM(s Snapshot) (Exception, bool) {
 
 // quote puts a command in backticks, shortened to one line.
 func quote(cmd string) string {
+	if i := strings.Index(cmd, " heavyq-gate "); i >= 0 { // a gate command runs through a wrapper script
+		cmd = cmd[i+len(" heavyq-gate "):]
+	}
 	cmd = strings.TrimPrefix(cmd, "sh -c ")
 	if r := []rune(cmd); len(r) > 60 {
 		cmd = string(r[:59]) + "…"

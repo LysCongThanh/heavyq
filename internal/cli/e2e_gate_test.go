@@ -89,7 +89,7 @@ func TestE2EGateProveEditRunRevert(t *testing.T) {
 		t.Fatalf("status text rc=%d\n%s", rc, out)
 	}
 	// Every run of the gate went through the queue with the gate's tags.
-	if r := h.lastRecord(); r.Gate != "ready" || r.Prio != 3 || r.Cache != "miss" || r.Cmd != "sh -c "+g.Commands[2].Cmd {
+	if r := h.lastRecord(); r.Gate != "ready" || r.Prio != 3 || r.Cache != "miss" || !strings.Contains(r.Cmd, " "+proof.GateMarker+" ") {
 		t.Fatalf("ledger record of a gate command: %+v", r)
 	}
 

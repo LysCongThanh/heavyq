@@ -4,10 +4,21 @@ import (
 	"github.com/LysCongThanh/heavyq/internal/history"
 )
 
+// GateMarker is the argument before the gate command in Argv ($0 of the shell
+// script); what follows it in a ledger line's cmd is the command itself.
+const GateMarker = "heavyq-gate"
+
+// gateShell runs the gate command ($1) under `bash -o pipefail` when bash
+// exists, so a failing stage of a pipeline fails the command instead of the
+// last stage's exit status deciding. Without bash, plain sh runs it: a shell
+// that is not bash and has no pipefail cannot be asked for it.
+const gateShell = `command -v bash >/dev/null 2>&1 && exec bash -o pipefail -c "$1"; eval "$1"`
+
 // Argv is the argv heavyq runs for the gate command cmd: a shell, so quoting,
-// pipes and && work as in a shell. `heavyq gate run` and the matching below
-// both derive the run from this one function.
-func Argv(cmd string) []string { return []string{"sh", "-c", cmd} }
+// pipes and && work as in a shell, with pipefail where bash is available.
+// `heavyq gate run` and the matching below both derive the run from this one
+// function, so ledgers written before pipefail do not prove anything now.
+func Argv(cmd string) []string { return []string{"sh", "-c", gateShell, GateMarker, cmd} }
 
 // Evaluate reports, for each command of a gate, whether recs (the ledger,
 // oldest first) prove it on subject. It is pure: no I/O, no clock.

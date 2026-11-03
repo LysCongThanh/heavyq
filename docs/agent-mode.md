@@ -76,6 +76,7 @@ next: fix the failure above, then re-run this command
 | Verdict | Meaning | `next:` |
 |---|---|---|
 | `PASS` | the command exited 0 | none |
+| `PASS?` | it exited 0, but its output has a shell "command not found" line (`sh: 1: tsc: not found`, `bash: line 1: tsc: command not found`, `zsh: command not found: tsc`): usually a pipeline (`a \| tail`) whose last stage succeeded. The second line quotes the offending line. The run is recorded as `suspect` (never as proof) and not cached. `--strict`, gates and item proofs make it `FAIL` with exit 127 | install the missing tool where it ran, or make the pipe fail (`bash -o pipefail -c`), then re-run |
 | `FAIL` | it exited non-zero (header shows `exit N`) | fix, then re-run (`... then run: heavyq gate run <name>` under `--gate`); 127 and 126 say what is wrong; 255 from a remote says the connection was lost |
 | `REUSED` | the result of an identical run on this exact tree was replayed | none when it passed: the second line says `already passed on this exact tree at <time> (lane X); do not re-run`. A replayed failure says `already failed (exit N) ...` and ends with `next: change the code, then re-run this command` |
 | `NOT RUN` | heavyq gave up before the command ran: `--max-wait` (75), remotes down (76), remote setup failed (77), the work tree changed while waiting or the queue itself failed (2) | 75: `retry later; don't bypass heavyq`. 76 and 77: retry later or add `--remote local`. 2: ``run it again; if that repeats, `heavyq why` explains the queue`` |
