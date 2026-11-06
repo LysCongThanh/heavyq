@@ -26,7 +26,7 @@ func init() {
 				{Long: "force", Help: "release it even if another lane holds it"}}},
 			{Name: "done", Args: "<id>", Summary: "tick an item once its proof passes on this exact code", Flags: []flagSpec{
 				{Long: "run", Help: "run the proof through the queue first"},
-				{Long: "remote", Value: "WHERE", Choices: []string{"local", "auto"}, Help: "with --run: local | auto | <remote name> (default: [proof] remote, else local)"},
+				{Long: "remote", Value: "WHERE", Choices: []string{"local", "auto"}, Help: "with --run: local | auto | <remote name> | a,b (first that fits) (default: [proof] remote, else local)"},
 				jsonFlag("machine-readable output")}},
 			{Name: "block", Args: "<id> \"needs: ...\"", Summary: "record what is missing and free the item"},
 		},

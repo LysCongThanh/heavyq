@@ -110,7 +110,7 @@ type Ticket struct {
 	Lane       string    `json:"lane"`
 	Prio       int       `json:"prio"` // 1 runs first
 	Light      bool      `json:"light"`
-	Target     string    `json:"target"` // local | auto | <remote>
+	Target     string    `json:"target"` // local | auto | <remote> | an ordered list "a,b"
 	Candidates []string  `json:"candidates"`
 	Cmd        string    `json:"cmd"`   // secrets redacted
 	Since      time.Time `json:"since"` // enqueued

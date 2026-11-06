@@ -156,7 +156,11 @@ func parseRunArgs(args []string, cfg *config.Config) (runOptions, error) {
 	if o.BaseRef != "" && !config.ValidBaseRef(o.BaseRef) {
 		return o, fmt.Errorf("--base-ref %q must look like remote/branch (e.g. origin/main) or none", o.BaseRef)
 	}
-	if o.Remote != "" && o.Remote != "local" && o.Remote != "auto" {
+	if config.IsMachineList(o.Remote) {
+		if err := cfg.CheckRemoteTarget(o.Remote); err != nil {
+			return o, fmt.Errorf("--remote: %w (config %s)", err, cfgName(cfg))
+		}
+	} else if o.Remote != "" && o.Remote != "local" && o.Remote != "auto" {
 		if _, ok := cfg.Machine(o.Remote); !ok {
 			return o, fmt.Errorf("--remote %q: not local, auto, or a [[remote]] in %s", o.Remote, cfgName(cfg))
 		}

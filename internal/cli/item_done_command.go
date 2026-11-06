@@ -39,7 +39,7 @@ func itemDone(c *itemCtx, args []string) int {
 	fs := flag.NewFlagSet("item done", flag.ContinueOnError)
 	runIt := fs.Bool("run", false, "run the proof through the queue first")
 	asJSON := fs.Bool("json", false, "machine-readable output")
-	remote := fs.String("remote", "", "with --run: where the proof runs: local | auto | <remote name> (default: [proof] remote, else local)")
+	remote := fs.String("remote", "", "with --run: where the proof runs: local | auto | <remote name> | a,b (first that fits) (default: [proof] remote, else local)")
 	pos, ok := parseItemArgs(fs, args, c.stderr)
 	if !ok || len(pos) != 1 {
 		fmt.Fprint(c.stderr, itemUsage)

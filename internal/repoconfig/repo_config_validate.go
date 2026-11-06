@@ -102,13 +102,13 @@ func (rg rawGate) validate() (Gate, error) {
 		if _, err := pools.ParseNeedList(rg.Needs); err != nil {
 			return Gate{}, fmt.Errorf("needs: %w", err)
 		}
-		if g.Remote != config.LocalName && g.Remote != remoteAuto {
+		if !config.TargetMayRunLocally(g.Remote) {
 			return Gate{}, fmt.Errorf("needs pool values of this machine, so remote %q is not possible (use %q)", g.Remote, config.LocalName)
 		}
 		g.Needs = rg.Needs
 	}
 	if rg.NeedGH {
-		if g.RemoteSet && g.Remote != config.LocalName && g.Remote != remoteAuto {
+		if g.RemoteSet && !config.TargetMayRunLocally(g.Remote) {
 			return Gate{}, fmt.Errorf("need_gh uses the GitHub login of this machine, so remote %q is not possible (use %q)", g.Remote, config.LocalName)
 		}
 		g.NeedGH = true
@@ -128,14 +128,19 @@ func (rg rawGate) validate() (Gate, error) {
 	return g, nil
 }
 
-// validRemote accepts local, auto, or a name shaped like a configured remote.
-// Whether that remote exists is checked when the gate runs, against the
-// user's own config: this file cannot know it.
+// validRemote accepts local, auto, a name shaped like a configured remote, or
+// an ordered list of local and such names ("mac,local,linuxi"). Whether a
+// remote exists is checked when the gate runs, against the user's own config:
+// this file cannot know it.
 func validRemote(v string) error {
+	if config.IsMachineList(v) {
+		_, err := config.CheckMachineList(v)
+		return err
+	}
 	if v == config.LocalName || v == remoteAuto || config.SafeName.MatchString(v) {
 		return nil
 	}
-	return fmt.Errorf("remote %q must be %q, %q or a remote name (letters, digits, . _ -)", v, config.LocalName, remoteAuto)
+	return fmt.Errorf("remote %q must be %q, %q, a remote name (letters, digits, . _ -) or a list of names (a,b)", v, config.LocalName, remoteAuto)
 }
 
 func (ra rawAnchor) validate() (Anchor, error) {

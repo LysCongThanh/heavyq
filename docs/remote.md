@@ -24,6 +24,7 @@ heavyq 3 --remote buildbox -- npm test        # always there
 heavyq 3 --remote auto -- npm test            # best score; you vouch the command is self-contained
 heavyq 3 -- npm test                          # best score only if the repo is clean and paths stay inside it
 heavyq 3 --remote local -- npm test           # never leave this machine
+heavyq 3 --remote fast,local,buildbox -- npm test   # the first of these with room, in this order
 heavyq item done login-api --run --remote auto   # a proof placed like any other run; or set [proof] remote once
 heavyq 3 --needs-ram -- npm run e2e           # place by free RAM only
 heavyq 3 --remote buildbox --base-ref origin/main -- npm run lint:changed   # recreate origin/main there
@@ -41,6 +42,29 @@ What a remote run sees, and what it doesn't:
 - **Clean teardown.** The remote side holds a lifeline on stdin. If heavyq dies, even by SIGKILL, or the
   connection drops, the remote stops the command's process group and removes the worktree. Exit 255 means
   the connection was lost.
+
+## An ordered list of machines
+
+`--remote a,b,c` (also `HEAVYQ_REMOTE`, `[proof] remote`, and a gate's `remote`) names the machines a run may
+use, in the order you prefer them. The run goes to the **first** machine of the list that has a free slot and
+passes its RAM/load gate; a machine short of RAM, over its load limit or with every slot taken is passed over
+(`status` says why, and "later in the --remote order" for a machine that had room but came later). Unlike
+`auto`, the order is yours, not the placement score.
+
+```toml
+[proof]
+remote = "mac,local,linuxi"   # the fast spare first, this machine while it has room, then the other spare
+```
+
+- Each entry is `local` or a configured `[[remote]]`, at least two, none twice. `auto`, empty entries and
+  spaces are refused (exit 2 for `--remote`; a config error for the files).
+- A list that names `local` acts like `auto` where this machine matters: with uncommitted changes a proof
+  runs here, and `--needs`, `need_gh` and `--need-gh` narrow it to this machine. When a `--with` sibling or
+  `--ref` makes this machine ineligible, the rest of the list is used.
+- A list of remotes only acts like a named remote: the run never happens here, a proof of uncommitted code
+  is refused, and the run exits 76 after `remote_down_max` if every remote in it is down.
+- The anti-starvation bypass (`force_after`) applies only to a ticket with one candidate machine, so a list
+  never pushes a run onto a machine over its load limit: it waits for whichever has room.
 
 ## Sibling repositories: `--with`
 

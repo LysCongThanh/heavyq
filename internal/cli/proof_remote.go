@@ -20,7 +20,7 @@ const (
 
 // proofPlace is the machine set a proof runs on and why.
 type proofPlace struct {
-	Remote string // local | auto | <remote name>
+	Remote string // local | auto | <remote name> | an ordered list "a,b"
 	From   string // one of the proofFrom* constants
 }
 
@@ -57,10 +57,12 @@ func resolveProofRemote(cfg *config.Config, repo *repoconfig.Repo, gate *repocon
 // in root. A remote runs the committed code only, so its result proves the
 // work tree only when the tree is exactly HEAD's. With uncommitted changes:
 //
-//   - auto falls back to local, the only machine the edits exist on (the same
-//     rule as default placement: dirty repo, stays local);
-//   - a named remote is refused: the owner asked to keep this off the main
-//     machine, and a run there would be proof of code nobody is holding.
+//   - auto, or a list that names local, falls back to local, the only machine
+//     the edits exist on (the same rule as default placement: dirty repo,
+//     stays local);
+//   - a named remote, or a list of remotes only, is refused: the owner asked
+//     to keep this off the main machine, and a run there would be proof of
+//     code nobody is holding.
 //
 // A gate's own remote key is left alone (it predates [proof]). refusal is a
 // message for the caller to print ("" when the placement stands).
@@ -69,8 +71,8 @@ func fitProofToTree(root string, pl proofPlace, stderr io.Writer) (proofPlace, s
 	if pl.Remote == config.LocalName || pl.From == proofFromGate || committedTreeIsWorkTree(root) {
 		return pl, ""
 	}
-	if pl.Remote == config.RemoteAuto {
-		fmt.Fprintf(stderr, "heavyq: uncommitted changes: the proof runs locally (%s=auto only places committed code; commit to use a remote)\n", pl.From)
+	if config.TargetMayRunLocally(pl.Remote) {
+		fmt.Fprintf(stderr, "heavyq: uncommitted changes: the proof runs locally (%s=%s only places committed code; commit to use a remote)\n", pl.From, pl.Remote)
 		return proofPlace{config.LocalName, pl.From}, ""
 	}
 	return pl, fmt.Sprintf("the proof is set to run on remote %s (%s), which runs committed code only, and this work tree has uncommitted changes: commit them, or add --remote local", pl.Remote, pl.From)
