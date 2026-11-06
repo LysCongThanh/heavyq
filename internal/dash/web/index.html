@@ -354,7 +354,7 @@ function storyFallback(s,e){const W=s.waiting.length,R=s.running.length,parts=[]
  if(c&&c.available&&lm&&lm.total_mb){const ot=c.outside_total,top=c.outside[0];
   if(ot.rss_mb/lm.total_mb>.3&&top)parts.push(`Outside the queue, <em>${top.procs} ${esc(top.name)} process${top.procs===1?"":"es"}</em> hold <em class="k">${mb(top.rss_mb)}</em>${c.outside.length>1?`, everything else <em class="k">${mb(ot.rss_mb-top.rss_mb)}</em>`:""}.`)}
  if(head&&head.bypass_in_s>=0&&s.config.resource_gate&&Object.values(head.reasons).every(r=>r!==""))
-  {const left=head.bypass_in_s-e;parts.push(left>0?`${laneN(head.lane)} skips the RAM and load checks in <em class="k">${dur(left)}</em>.`:`${laneN(head.lane)} now skips the RAM and load checks.`)}
+  {const left=head.bypass_in_s-e;parts.push(left>0?`${laneN(head.lane)} skips the load check in <em class="k">${dur(left)}</em>.`:`${laneN(head.lane)} now skips the load check.`)}
  const forced=s.running.filter(t=>t.forced);if(forced.length)parts.push(`${forced.map(t=>laneN(t.lane)).join(", ")} got in through that bypass.`);
  const down=s.machines.filter(m=>!m.reachable);if(down.length)parts.push(`<span class="hot">${down.map(m=>esc(m.name)).join(", ")} ${down.length>1?"are":"is"} unreachable.</span>`);
  return parts}

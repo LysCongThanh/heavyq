@@ -34,7 +34,7 @@ func TestLaneLines(t *testing.T) {
 		"  waiting #2 for 55s (p3, pid 21): env API_TOKEN=*** go vet",
 		"    box: all heavy slots busy",
 		"    local: RAM 1200 MB < 3000 MB needed (job 2500 + reserve 500)",
-		"    api skips the RAM and load checks in 2m.",
+		"    api skips the load check in 2m.",
 		"last run passed in 41s on local, 3m 15s ago: go test ./... --token ***",
 	}
 	if !reflect.DeepEqual(got, want) {

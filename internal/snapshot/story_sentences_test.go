@@ -84,11 +84,11 @@ func TestStorySentences(t *testing.T) {
 		{"bypass countdown", Snapshot{
 			Config:  Config{ResourceGate: true},
 			Waiting: []Waiting{head("web", 130, map[string]string{"local": "all heavy slots busy"})},
-		}, []string{"1 agent waits because every heavy slot on local is taken.", "web skips the RAM and load checks in 2m 10s."}},
+		}, []string{"1 agent waits because every heavy slot on local is taken.", "web skips the load check in 2m 10s."}},
 		{"bypass applies now", Snapshot{
 			Config:  Config{ResourceGate: true},
 			Waiting: []Waiting{head("web", 0, map[string]string{"local": ramReason})},
-		}, []string{"1 agent waits because local is 1.8 GB short on RAM.", "web now skips the RAM and load checks."}},
+		}, []string{"1 agent waits because local is 1.8 GB short on RAM.", "web now skips the load check."}},
 		{"no bypass sentence when the gate is off", Snapshot{
 			Waiting: []Waiting{head("web", 130, map[string]string{"local": "all heavy slots busy"})},
 		}, []string{"1 agent waits because every heavy slot on local is taken."}},
@@ -154,7 +154,7 @@ func TestStorySpansCarryEmphasis(t *testing.T) {
 	want := [][]Span{
 		{{Text: "1 agent waits", Em: true}, {Text: " because "}, {Text: "local", Em: true}, {Text: " is "},
 			{Text: "1.8 GB", Em: true, Num: true}, {Text: " short on RAM"}, {Text: "."}},
-		{{Text: "web", Lane: "web"}, {Text: " skips the RAM and load checks in "}, {Text: "1m 30s", Em: true, Num: true}, {Text: "."}},
+		{{Text: "web", Lane: "web"}, {Text: " skips the load check in "}, {Text: "1m 30s", Em: true, Num: true}, {Text: "."}},
 		{{Text: "api", Lane: "api"}, {Text: " got in through that bypass."}},
 		{{Text: "box is unreachable.", Hot: true}},
 	}
@@ -175,11 +175,11 @@ func TestStoryBypassCountdownFollowsNow(t *testing.T) {
 		after time.Duration
 		want  string
 	}{
-		{0, "web skips the RAM and load checks in 1m 30s."},
-		{30 * time.Second, "web skips the RAM and load checks in 1m."},
-		{89 * time.Second, "web skips the RAM and load checks in 1s."},
-		{91 * time.Second, "web now skips the RAM and load checks."},
-		{-time.Minute, "web skips the RAM and load checks in 1m 30s."}, // clock went backwards
+		{0, "web skips the load check in 1m 30s."},
+		{30 * time.Second, "web skips the load check in 1m."},
+		{89 * time.Second, "web skips the load check in 1s."},
+		{91 * time.Second, "web now skips the load check."},
+		{-time.Minute, "web skips the load check in 1m 30s."}, // clock went backwards
 	} {
 		got := Story(s, nil, storyAt.Add(c.after))
 		if len(got) != 2 || got[1].Text != c.want {
@@ -187,7 +187,7 @@ func TestStoryBypassCountdownFollowsNow(t *testing.T) {
 		}
 	}
 	s.GeneratedAt = time.Time{} // no timestamp: nothing elapsed
-	if got := Story(s, nil, storyAt); got[1].Text != "web skips the RAM and load checks in 1m 30s." {
+	if got := Story(s, nil, storyAt); got[1].Text != "web skips the load check in 1m 30s." {
 		t.Errorf("zero GeneratedAt: %q", texts(got))
 	}
 }
