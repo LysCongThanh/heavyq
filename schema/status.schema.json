@@ -474,7 +474,7 @@
         },
         "target": {
           "type": "string",
-          "description": "local | auto | \u003cremote\u003e"
+          "description": "local | auto | \u003cremote\u003e | an ordered list \"a,b\""
         },
         "candidates": {
           "items": {
@@ -692,7 +692,7 @@
         },
         "target": {
           "type": "string",
-          "description": "local | auto | \u003cremote\u003e"
+          "description": "local | auto | \u003cremote\u003e | an ordered list \"a,b\""
         },
         "candidates": {
           "items": {

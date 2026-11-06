@@ -117,12 +117,12 @@ max_proof_share = 1.0                  # share of the 30 min lease the expected 
 | `gate.run` | list of strings | required | non-empty list; each string non-blank, at most 2000 bytes, no NUL |
 | `gate.prio` | integer | `3` | 1-9; 1 runs first |
 | `gate.light` | bool | `false` | |
-| `gate.remote` | string | `"local"` | `local`, `auto`, or a remote name (`[A-Za-z0-9][A-Za-z0-9._-]{0,63}`). Whether the remote exists is checked against your own config when the gate runs. |
-| `gate.needs` | list of strings | none | `pool` or `pool:N` entries, each pool once; every command of the gate holds them while it runs, see [pools](pools.md). With `needs`, `remote` must be `local` or `auto` (the run stays local). |
+| `gate.remote` | string | `"local"` | `local`, `auto`, a remote name (`[A-Za-z0-9][A-Za-z0-9._-]{0,63}`), or an ordered list `"a,b,c"` of `local` and remote names (the first with room, see [remote](remote.md#an-ordered-list-of-machines)). Whether a remote exists is checked against your own config when the gate runs. |
+| `gate.needs` | list of strings | none | `pool` or `pool:N` entries, each pool once; every command of the gate holds them while it runs, see [pools](pools.md). With `needs`, `remote` must be `local`, `auto` or a list that names `local` (the run stays local). |
 | `gate.with` | list of strings | none | sibling repositories each command needs next to this one: `"name"` or `"name@ref"` (a directory next to the repository, or a path containing `/`). Passed to every command as `--with`: pinned at the start of the run, shipped with remote runs, and part of the proof, so a sibling at another commit is another run, and a sibling that cannot be resolved proves nothing. See [remote](remote.md#sibling-repositories---with). |
 | `gate.need_gh` | bool | `false` | the commands call the GitHub CLI with this machine's login, so the gate runs here only (passes `--need-gh`). Not with a named `remote`; it overrides a `[proof] remote` default, and `--remote <name>` on the command line is exit 2. |
 | `pool` | tables | none | `[[pool]]` tables, as in the user config; a pool here replaces the user's pool of the same name. See [pools](pools.md). |
-| `proof.remote` | string | unset | `[proof]`: where `item done --run` and `gate run` run proofs for gates without their own `remote` key; `local`, `auto` or a remote name. Overrides `[proof]` of the user config. See [items](items.md#where-the-proof-runs). |
+| `proof.remote` | string | unset | `[proof]`: where `item done --run` and `gate run` run proofs for gates without their own `remote` key; `local`, `auto`, a remote name or an ordered list `"a,b,c"`. Overrides `[proof]` of the user config. See [items](items.md#where-the-proof-runs). |
 | `anchor.file` | string | none | relative path inside the repository |
 | `anchor.extra` | list of strings | none | relative globs inside the repository |
 | `items.iterations` | integer | `3` | 1-20; proof runs an item is expected to need; `item claim` refuses an item whose proof p50 times this is over the lease budget |

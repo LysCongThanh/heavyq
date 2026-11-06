@@ -17,13 +17,14 @@ import (
 // that commit and its tree, never dirty, whatever the local work tree holds.
 // A local run executes the files in place and records the work tree as it is
 // now (clean or dirty). An empty machine (the run never started) counts as
-// remote only when one specific remote was asked for.
+// remote only when the target never runs here (one remote, or a list of
+// remotes only).
 //
 // A directory outside git, or a git failure, gives an empty Checkout: the
 // ledger line is still written, just without code identity.
 func (r *run) checkoutFor(machine string) gitutil.Checkout {
-	if machine == "" && r.pl.target != "local" && r.pl.target != "auto" {
-		machine = r.pl.target
+	if machine == "" && !config.TargetMayRunLocally(r.pl.target) {
+		machine = r.pl.target // not local: the shipped commit is what would have run
 	}
 	var (
 		co  gitutil.Checkout

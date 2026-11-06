@@ -17,7 +17,7 @@ var subdirRe = regexp.MustCompile(`^[A-Za-z0-9._/-]*$`)
 
 // placement is where a ticket may run and what it ships when remote.
 type placement struct {
-	target      string // local | auto | <remote>
+	target      string // local | auto | <remote> | an ordered list "a,b"
 	defaultMode bool   // auto chosen implicitly: re-verify safety before going remote
 	wd          string
 	repo        string // absolute repo root (remote/auto only)
@@ -37,7 +37,7 @@ func preparePlacement(cfg *config.Config, o *runOptions, stderr io.Writer) (*pla
 		return nil, err
 	}
 	if len(o.Needs) > 0 { // pool values are resources of this machine
-		if o.Remote != "" && o.Remote != config.LocalName && o.Remote != "auto" {
+		if o.Remote != "" && !config.TargetMayRunLocally(o.Remote) {
 			return nil, fmt.Errorf("--needs asks for pool values of this machine, so --remote %s is not possible (use local)", o.Remote)
 		}
 		o.Remote = config.LocalName
@@ -82,7 +82,7 @@ func preparePlacement(cfg *config.Config, o *runOptions, stderr io.Writer) (*pla
 		return nil, fmt.Errorf("cannot run locally: %s (commit/checkout, or run remotely with --remote)", p.localWhy)
 	}
 	p.candidates = p.machines(cfg)
-	if p.target == "auto" && p.localWhy != "" {
+	if p.target != config.LocalName && config.TargetMayRunLocally(p.target) && p.localWhy != "" {
 		fmt.Fprintf(stderr, "heavyq: %s => remote machines only\n", p.localWhy)
 	}
 	return p, nil
@@ -142,7 +142,19 @@ func (p *placement) refreshLocal() {
 	p.localWhy = strings.Join(why, "; ")
 }
 
+// machines lists the candidate machines of the target, in the order the
+// scheduler tries them: for a list, the list's own order (the first that fits
+// wins, see evaluate). Local is left out while it is not eligible (localWhy).
 func (p *placement) machines(cfg *config.Config) []string {
+	if ms := config.MachineList(p.target); ms != nil {
+		out := make([]string, 0, len(ms))
+		for _, m := range ms {
+			if m != config.LocalName || p.localWhy == "" {
+				out = append(out, m)
+			}
+		}
+		return out
+	}
 	switch p.target {
 	case "local":
 		return []string{config.LocalName}

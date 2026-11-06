@@ -7,9 +7,10 @@ import "fmt"
 // repository's heavyq.toml overrides it for that repository.
 type ProofConfig struct {
 	// Remote is "local" (the default), "auto" (the scheduler picks among
-	// local and the configured remotes by free slots, then load) or the name
-	// of a [[remote]]. A gate with its own remote key keeps it; --remote wins
-	// over everything.
+	// local and the configured remotes by free slots, then load), the name
+	// of a [[remote]], or an ordered list "a,b,c" (the first machine with a
+	// free slot that passes the resource gate). A gate with its own remote
+	// key keeps it; --remote wins over everything.
 	Remote string `toml:"remote"`
 }
 
@@ -27,10 +28,23 @@ func (p *ProofConfig) normalize(c *Config) error {
 	return nil
 }
 
-// CheckRemoteTarget accepts "local", "auto" or the name of a configured
-// [[remote]]; anything else is an error naming what is configured.
+// CheckRemoteTarget accepts "local", "auto", the name of a configured
+// [[remote]], or a list of those names and "local" (CheckMachineList);
+// anything else is an error naming what is configured.
 func (c *Config) CheckRemoteTarget(v string) error {
 	if v == LocalName || v == RemoteAuto {
+		return nil
+	}
+	if IsMachineList(v) {
+		ms, err := CheckMachineList(v)
+		if err != nil {
+			return err
+		}
+		for _, m := range ms {
+			if err := c.CheckRemoteTarget(m); err != nil {
+				return fmt.Errorf("in the list %q: %w", v, err)
+			}
+		}
 		return nil
 	}
 	if _, ok := c.Machine(v); ok {

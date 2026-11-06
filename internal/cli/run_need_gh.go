@@ -12,7 +12,8 @@ import (
 // with the login only this machine has, so the run is placed locally. The
 // flag is also implied for the repositories listed in [run] need_gh_repos
 // (one stderr line says so). Asking for a named remote as well is a usage
-// error, never a guess; "auto" simply narrows to local.
+// error, never a guess; "auto", or a list that names local, simply narrows
+// to local.
 func (o *runOptions) pinToThisMachineForGH(cfg *config.Config, mainRepo string, stderr io.Writer) error {
 	repoDir := filepath.Base(mainRepo)
 	implied := false
@@ -22,7 +23,7 @@ func (o *runOptions) pinToThisMachineForGH(cfg *config.Config, mainRepo string, 
 	if !o.NeedGH {
 		return nil
 	}
-	if o.Remote != "" && o.Remote != config.LocalName && o.Remote != config.RemoteAuto {
+	if o.Remote != "" && !config.TargetMayRunLocally(o.Remote) {
 		if implied {
 			return fmt.Errorf("%s is in [run] need_gh_repos, so its runs need this machine's GitHub login and --remote %s is not possible (drop --remote, or remove the repo from need_gh_repos)", repoDir, o.Remote)
 		}

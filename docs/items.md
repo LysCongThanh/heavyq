@@ -92,7 +92,7 @@ the rest of the heavy work goes instead of always landing on the machine you are
 ```toml
 # ~/.config/heavyq/config.toml (all repositories), or heavyq.toml (this repository, wins)
 [proof]
-remote = "auto"    # "local" (default) | "auto" | "<name of a [[remote]]>"
+remote = "auto"    # "local" (default) | "auto" | "<name of a [[remote]]>" | "a,b,c" (first with room)
 ```
 
 - `local`: this machine, as before. It is the default, so nothing changes until you set the key.
@@ -100,6 +100,9 @@ remote = "auto"    # "local" (default) | "auto" | "<name of a [[remote]]>"
   `--remote auto` ([remote.md](remote.md)): a machine with a free heavy slot that passes the RAM and load
   gate, the best score (free RAM less load) first.
 - `<name>`: that remote only. The proof waits for it, however busy it is.
+- `a,b,c`: the first machine of the list with a free slot that passes its RAM and load gate, in your order
+  ([remote.md](remote.md#an-ordered-list-of-machines)). A list that names `local` acts like `auto` below; a list
+  of remotes only acts like a named remote.
 
 The first one that is set wins: `--remote` on the command, the gate's own `remote` key (gate proofs), `[proof]
 remote` in the repository's `heavyq.toml`, `[proof]` in the user config, `local`. A gate with `needs` runs

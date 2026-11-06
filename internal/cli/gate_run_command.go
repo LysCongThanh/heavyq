@@ -30,7 +30,7 @@ func gateRunCommand(cfg *config.Config, args []string, stdout, stderr io.Writer)
 	parallel := fs.Bool("parallel", false, "start every unproven command at once (the queue still limits how many run); implies --keep-going")
 	keepGoing := fs.Bool("keep-going", false, "run the remaining commands after one fails")
 	lane := fs.String("lane", "", "lane name (default: $HEAVYQ_LANE or the repository directory name)")
-	remote := fs.String("remote", "", "where the commands run: local | auto | <remote name> (default: the gate's remote, else [proof] remote, else local)")
+	remote := fs.String("remote", "", "where the commands run: local | auto | <remote name> | a,b (first that fits) (default: the gate's remote, else [proof] remote, else local)")
 	name, ok := parseGateArgs(fs, args, stderr)
 	if !ok {
 		return ExitUsage
@@ -116,12 +116,12 @@ func placeGate(cfg *config.Config, t *gateTarget, remoteFlag string, stderr io.W
 		fmt.Fprintln(stderr, "heavyq:", err)
 		return g, ExitUsage
 	}
-	if len(g.Needs) > 0 && remoteFlag == "" && pl.Remote != config.LocalName && pl.Remote != config.RemoteAuto {
+	if len(g.Needs) > 0 && remoteFlag == "" && !config.TargetMayRunLocally(pl.Remote) {
 		// Pool values are resources of this machine; [proof] remote is a default, not a demand.
 		fmt.Fprintf(stderr, "heavyq: gate %s needs pool values of this machine: running locally, not on %s (%s)\n", g.Name, pl.Remote, pl.From)
 		pl = proofPlace{config.LocalName, pl.From}
 	}
-	if g.NeedGH && pl.Remote != config.LocalName && pl.Remote != config.RemoteAuto {
+	if g.NeedGH && !config.TargetMayRunLocally(pl.Remote) {
 		if remoteFlag != "" {
 			fmt.Fprintf(stderr, "heavyq: gate %s needs this machine's GitHub login (need_gh), so --remote %s is not possible\n", g.Name, pl.Remote)
 			return g, ExitUsage

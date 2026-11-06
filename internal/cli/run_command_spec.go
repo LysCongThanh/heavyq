@@ -15,7 +15,7 @@ func init() {
 			{Long: "lane", Value: "NAME", Help: "label shown in status (default: $HEAVYQ_LANE or the directory name)"},
 			{Long: "light", Help: "light job: may use light slots and jump ahead into them"},
 			{Long: "max-wait", Value: "DUR", Help: "give up after DUR in the queue (exit 75); \"90\", \"90s\", \"5m\""},
-			{Long: "remote", Value: "WHERE", Choices: []string{"local", "auto"}, Help: "local | auto | <remote name> (default: auto when safe)"},
+			{Long: "remote", Value: "WHERE", Choices: []string{"local", "auto"}, Help: "local | auto | <remote name> | a,b (first that fits) (default: auto when safe)"},
 			{Long: "needs-ram", Help: "place by free RAM only (ignore load)"},
 			{Long: "repo", Value: "DIR", Path: "dir", Help: "repository to ship for remote runs (default: git root of cwd)"},
 			{Long: "ref", Value: "REF", Help: "commit to run remotely (default: HEAD)"},

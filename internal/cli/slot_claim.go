@@ -52,9 +52,17 @@ type evalInput struct {
 
 // evaluate gates every opportunity, obtains a slot where possible and
 // returns the best-scoring claim (ties go to the earlier candidate, i.e.
-// local first). Every machine not chosen gets a reason.
+// local first). A ticket whose target is a list of machines takes the first
+// claim in the list's order instead: the operator stated a preference, and
+// the gate of each machine already refused those without room. Every machine
+// not chosen gets a reason.
 func evaluate(in evalInput) (*claim, map[string]string) {
 	reasons := map[string]string{}
+	ordered := config.IsMachineList(in.ticket.Target)
+	passedOver := "lower placement score"
+	if ordered {
+		passedOver = "later in the --remote order"
+	}
 	var best *claim
 	for _, op := range in.opps {
 		if controlBox().Paused(op.Machine) {
@@ -88,15 +96,15 @@ func evaluate(in evalInput) (*claim, map[string]string) {
 			c.forced = schedule.Gate(v.state, gate) != ""
 		}
 		c.score = metrics.Score(v.state.Metrics, in.cfg.Queue.LoadWeightMB, in.needsRAM)
-		if best == nil || c.score > best.score {
+		if best == nil || (!ordered && c.score > best.score) {
 			if best != nil {
 				best.releaseAll()
-				reasons[best.machine] = "lower placement score"
+				reasons[best.machine] = passedOver
 			}
 			best = c
 		} else {
 			c.releaseAll()
-			reasons[op.Machine] = "lower placement score"
+			reasons[op.Machine] = passedOver
 		}
 	}
 	return best, reasons

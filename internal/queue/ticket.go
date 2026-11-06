@@ -23,7 +23,7 @@ type Ticket struct {
 	Lane       string    `json:"lane"`
 	Prio       int       `json:"prio"`
 	Light      bool      `json:"light,omitempty"`
-	Target     string    `json:"target"`     // local | auto | <remote name>
+	Target     string    `json:"target"`     // local | auto | <remote name> | an ordered list "a,b"
 	Candidates []string  `json:"candidates"` // machines this ticket may run on
 	Since      time.Time `json:"since"`
 	Cmd        string    `json:"cmd"`

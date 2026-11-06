@@ -88,7 +88,7 @@ func printStatusText(w io.Writer, cfg *config.Config, q *queue.Dir, probes *prob
 	for i, t := range snap.Waiting {
 		kind := t.Target
 		if t.Light {
-			kind += ",light"
+			kind += " light" // not ",light": a target may itself be a list "a,b"
 		}
 		fmt.Fprintf(w, "  %d. %-10s p%d  %-13s %8s  pid %-7d %s\n", i+1, t.Lane, t.Prio, kind,
 			fmtDur(now.Sub(t.Since)), t.Pid, t.Cmd)
