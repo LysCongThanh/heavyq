@@ -27,7 +27,9 @@ heavyq 3 --lane api -- npm test
 - **Resource gate.** A job starts only if available RAM covers its budget plus a reserve, and the 1-minute
   load is below `ratio x cores`. RAM for jobs that started in the last minute is held back (a new job
   hasn't grown yet). An idle machine always takes a job. A head ticket that has waited past
-  `force_after` bypasses the gate, so nothing starves.
+  `force_after` skips the load check, so nothing starves behind load it did not cause; it still waits for
+  RAM (a job without the RAM for it can take down the jobs already running there). Only a ticket with one
+  candidate machine gets this: one that may run on several waits for whichever has room.
 - **`heavyq status`.** Shows running and waiting tickets in order, per-machine resources, who holds each
   slot, why the head ticket waits, and *who holds the load*: CPU% per lane. It gets this by walking each
   process's ancestry in `/proc` to a ticket, and lists everything else as "outside the queue".

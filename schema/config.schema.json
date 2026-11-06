@@ -222,7 +222,7 @@
         "force_after": {
           "type": "string",
           "pattern": "^([0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h))+$",
-          "description": "ForceAfter: a head-of-line ticket waiting longer than this bypasses the\nresource gate (anti-starvation). It still needs a free slot.",
+          "description": "ForceAfter: a head-of-line ticket with one candidate machine waiting\nlonger than this skips the load check (anti-starvation). It still needs\na free slot and the RAM for its job.",
           "examples": [
             "2s",
             "15m"

@@ -76,7 +76,7 @@ the cache and proof treat runs on different databases as the same run.
   (`name`, `capacity`, `held`, `holders[]` with `value`, `lane`, `ticket`) and each ticket carries `needs` and, once
   running, `pools`. Status shows the pools of the user config plus those of the repository in the current directory.
 - `heavyq why`: `waiting for pg: 3/3 held by a, b, c`, or `waiting for port (needs 2): 3/4 held by a (1 in use outside
-  the queue)`. The anti-starvation bypass skips RAM and load, never a pool, so it is not promised for such a wait.
+  the queue)`. The anti-starvation bypass skips the load check only, never RAM or a pool, so it is not promised for such a wait.
 - The Tower's `starved` card names the pool a long-waiting head waits for. The dashboard's Machines section shows
   one chip per pool (`pg 2/3`, holders in the tooltip).
 - The ledger (`heavyq history`, [ledger](ledger.md)) records `needs` (`port:2,pg`) and `pools` (`port=4100,4101

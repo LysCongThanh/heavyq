@@ -129,7 +129,7 @@ func waitingSnapshots(cfg *config.Config, qs queue.Snapshot, probes *probeCache,
 				w.Reasons[c.machine] = ""
 			}
 		}
-		if head && cfg.GateEnabled() && !poolReasonIn(w.Reasons) { // the bypass never skips a pool
+		if head && cfg.GateEnabled() && bypassCanHelp(t, w.Reasons) { // the bypass skips the load check only
 			w.BypassInS = max(0, (cfg.Queue.ForceAfter.Duration - waited).Seconds())
 		}
 		out = append(out, w)

@@ -51,8 +51,9 @@ type Config struct {
 type QueueConfig struct {
 	// Poll is the delay between two scheduling attempts of a waiting ticket.
 	Poll Duration `toml:"poll"`
-	// ForceAfter: a head-of-line ticket waiting longer than this bypasses the
-	// resource gate (anti-starvation). It still needs a free slot.
+	// ForceAfter: a head-of-line ticket with one candidate machine waiting
+	// longer than this skips the load check (anti-starvation). It still needs
+	// a free slot and the RAM for its job.
 	ForceAfter Duration `toml:"force_after"`
 	// ResourceGate disables RAM/load checks when false (slots only).
 	ResourceGate *bool `toml:"resource_gate"`
