@@ -102,17 +102,17 @@ func outsideSentence(s Snapshot) *Sentence {
 	return b.text(".").build()
 }
 
-// bypassSentence tells when the head ticket skips the RAM and load checks
-// (anti-starvation), or that it already does.
+// bypassSentence tells when the head ticket skips the load check
+// (anti-starvation; RAM is always checked), or that it already does.
 func bypassSentence(s Snapshot, head *Waiting, elapsed float64) *Sentence {
 	if head == nil || head.BypassInS < 0 || !s.Config.ResourceGate || !allBlocked(head.Reasons) {
 		return nil
 	}
 	b := &sentenceBuilder{}
 	if left := head.BypassInS - elapsed; left > 0 {
-		b.lane(head.Lane).text(" skips the RAM and load checks in ").num(dur(left)).text(".")
+		b.lane(head.Lane).text(" skips the load check in ").num(dur(left)).text(".")
 	} else {
-		b.lane(head.Lane).text(" now skips the RAM and load checks.")
+		b.lane(head.Lane).text(" now skips the load check.")
 	}
 	return b.build()
 }

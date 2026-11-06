@@ -6,7 +6,7 @@ Every key is optional; keys this heavyq does not know are ignored with a warning
 | Key | Default | Meaning |
 |---|---|---|
 | `queue.poll` | `"2s"` | how often a waiting ticket retries |
-| `queue.force_after` | `"15m"` | head ticket waiting this long bypasses the RAM/load gate |
+| `queue.force_after` | `"15m"` | head ticket waiting this long skips the load check (RAM must still fit); only for a ticket with one candidate machine |
 | `queue.resource_gate` | `true` | `false` = slots only |
 | `queue.auto` | `true` | score-based placement for tickets without `--remote` |
 | `queue.load_weight_mb` | `500` | `k` in `score = free_mb - k x load1` |

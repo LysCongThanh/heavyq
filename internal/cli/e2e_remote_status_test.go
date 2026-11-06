@@ -117,15 +117,19 @@ force_after = "2s"
 [local]
 heavy_slots = 2
 light_slots = 0
-job_mb = 100000000
+job_mb = 1
+light_mb = 1
+max_load_ratio = 0.5
 `)
+	h.fakeMetrics(busyReading) // load 9 on 8 cores: over the limit of 4.00, RAM to spare
 	hold := h.start("5", "--lane", "api", "--", "sh", "-c", h.gateFile("go"))
 	h.running(1) // an idle machine always admits the first job
 	start := time.Now()
 	starved := h.start("2", "--lane", "web", "--", "echo", "got-in")
 	h.waiting(1)
 	rc, out := h.run("status")
-	for _, want := range []string{"RUNNING", "api", "WAITING", "web", "HEAD TICKET web", "RAM", "load by lane", "heavy-1 api"} {
+	for _, want := range []string{"RUNNING", "api", "WAITING", "web", "HEAD TICKET web", "load 9.00", "load check is skipped in",
+		"load by lane", "heavy-1 api"} {
 		if rc != 0 || !strings.Contains(out, want) {
 			t.Fatalf("status missing %q (rc=%d):\n%s", want, rc, out)
 		}
@@ -137,6 +141,39 @@ job_mb = 100000000
 	hold.wait(t, 20*time.Second)
 	if rc, out := h.run("history"); rc != 0 || !strings.Contains(out, "web") {
 		t.Fatalf("history rc=%d\n%s", rc, out)
+	}
+}
+
+// The anti-starvation bypass skips the load check, never RAM: a head ticket
+// whose job does not fit waits past force_after (status promises no bypass)
+// until the job holding the RAM ends and the machine is idle again.
+func TestAntiStarvationNeverSkipsRAM(t *testing.T) {
+	h := newRig(t, `[queue]
+poll = "50ms"
+force_after = "200ms"
+[local]
+heavy_slots = 2
+light_slots = 0
+job_mb = 100000000
+`)
+	hold := h.start("5", "--lane", "api", "--", "sh", "-c", h.gateFile("go"))
+	h.running(1) // an idle machine always admits the first job
+	starved := h.start("2", "--lane", "web", "--", "echo", "got-in")
+	h.waiting(1)
+	time.Sleep(time.Second) // five times force_after
+	rc, out := h.run("status")
+	if rc != 0 || !strings.Contains(out, "HEAD TICKET web") || !strings.Contains(out, "RAM") ||
+		strings.Contains(out, "anti-starvation") {
+		t.Fatalf("a ticket short of RAM is not forced in (rc=%d):\n%s", rc, out)
+	}
+	h.waiting(1)
+	h.touch("go")
+	hold.wait(t, 20*time.Second)
+	if rc := starved.wait(t, 20*time.Second); rc != 0 {
+		t.Fatalf("an idle machine admits the starved ticket: rc=%d", rc)
+	}
+	if r := h.lastRecord(); r.Lane != "web" || r.Forced {
+		t.Fatalf("admitted as an idle machine, not by the bypass: %+v", r)
 	}
 }
 

@@ -240,8 +240,8 @@ Each command is classified by those runs. The first row that applies wins:
   for real (without `--cache`), because a replayed pass is the same run again. The counts (`passes`, `fails`)
   stay visible when it is proven. They count runs: a cache hit or coalesced result repeats a run that already
   has its own line, so it is neither counted nor taken as a repetition.
-- **Under load.** A failure is "under load" when its ledger record says the run was admitted past the resource
-  gate by the anti-starvation bypass (`forced`), or that at admission the 1-minute load was at or above the
+- **Under load.** A failure is "under load" when its ledger record says the run was admitted past the load
+  check by the anti-starvation bypass (`forced`), or that at admission the 1-minute load was at or above the
   machine's limit (`max_load_ratio` x cores), or less RAM was free than the job's budget (`job_mb`, or
   `light_mb` for `--light`). The reading is the one the scheduler judged: the local machine, or for a remote
   the probe placement used. A failure under load is still a failure, so the command is not proven while it is

@@ -753,7 +753,7 @@
         },
         "bypass_in_s": {
           "type": "number",
-          "description": "BypassInS: seconds until the anti-starvation bypass applies to this\nticket (head of line only; -1 when not applicable)."
+          "description": "BypassInS: seconds until the anti-starvation bypass (which skips the\nload check, never RAM or a pool) applies to this ticket. Head of line\nonly; -1 when it would not help: several candidate machines, or the\nticket waits for RAM or a pool."
         }
       },
       "type": "object",

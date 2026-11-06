@@ -145,8 +145,10 @@ type Waiting struct {
 	// Reasons maps each candidate machine to why the ticket cannot start
 	// there now ("" = nothing blocks it; it starts on its next poll).
 	Reasons map[string]string `json:"reasons"`
-	// BypassInS: seconds until the anti-starvation bypass applies to this
-	// ticket (head of line only; -1 when not applicable).
+	// BypassInS: seconds until the anti-starvation bypass (which skips the
+	// load check, never RAM or a pool) applies to this ticket. Head of line
+	// only; -1 when it would not help: several candidate machines, or the
+	// ticket waits for RAM or a pool.
 	BypassInS float64 `json:"bypass_in_s"`
 }
 

@@ -119,7 +119,7 @@ func TestE2EGateSameTreePassThenFailIsFlaky(t *testing.T) {
 	}
 }
 
-// A failure whose run was let in past the resource gate by the anti-starvation
+// A failure whose run was let in past the load check by the anti-starvation
 // bypass is under_load, and a clean rerun proves the tree.
 func TestE2EGateForcedAdmissionFailureIsUnderLoad(t *testing.T) {
 	h := newRig(t, `[queue]
@@ -128,14 +128,17 @@ force_after = "300ms"
 [local]
 heavy_slots = 2
 light_slots = 0
-job_mb = 100000000
+job_mb = 1
+light_mb = 1
+max_load_ratio = 0.5
 `)
+	h.fakeMetrics(busyReading) // load 9 on 8 cores: over the limit of 4.00, RAM to spare
 	_, cmd := flagGateRepo(t, h)
 	h.touch("fail-flag")
 	hold := h.start("5", "--lane", "api", "--", "sh", "-c", h.gateFile("go"))
 	h.running(1) // an idle machine always admits the first job
-	// The resource gate refuses the second job (a job needs more RAM than
-	// exists) until it is head of the line for force_after, then forces it in.
+	// The resource gate refuses the second job (the load is over the limit)
+	// until it is head of the line for force_after, then forces it in.
 	rc, out := h.run(append([]string{"3", "--lane", "web", "--"}, proof.Argv(cmd)...)...)
 	if rc != 1 || !strings.Contains(out, "our turn") {
 		t.Fatalf("rc=%d\n%s", rc, out)

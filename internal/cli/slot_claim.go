@@ -23,7 +23,7 @@ type claim struct {
 	lock    *slots.Lock  // local slots only; nil in dry mode
 	lease   *pools.Lease // pool values held with the slot; nil without needs and in dry mode
 	score   int
-	forced  bool // the resource gate would have refused without the bypass
+	forced  bool // the load check would have refused without the bypass
 	// reading is the machine as it was when this claim was made (ledger).
 	reading admissionReading
 }
@@ -62,7 +62,7 @@ func evaluate(in evalInput) (*claim, map[string]string) {
 			continue
 		}
 		v := buildView(in.cfg, op.Machine, in.snap, in.probes, in.cfg.Queue.HoldFor.Duration)
-		forced := op.Head && in.headWait >= in.cfg.Queue.ForceAfter.Duration
+		forced := op.Head && schedule.BypassApplies(in.ticket) && in.headWait >= in.cfg.Queue.ForceAfter.Duration
 		gate := schedule.GateInput{Enabled: in.cfg.GateEnabled(), Forced: forced, Light: in.ticket.Light}
 		why := schedule.Gate(v.state, gate)
 		if why != "" {

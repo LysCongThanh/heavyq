@@ -70,7 +70,22 @@ func printHeadReasons(w io.Writer, cfg *config.Config, snap queue.Snapshot, prob
 	for _, m := range names {
 		fmt.Fprintf(w, "  %-10s %s\n", m+":", reasons[m])
 	}
-	if left := cfg.Queue.ForceAfter.Duration - waited; left > 0 && cfg.GateEnabled() {
-		fmt.Fprintf(w, "  (resource gate is bypassed in %s: anti-starvation)\n", fmtDur(left))
+	if left := cfg.Queue.ForceAfter.Duration - waited; left > 0 && cfg.GateEnabled() && c == nil && bypassCanHelp(head, reasons) {
+		fmt.Fprintf(w, "  (the load check is skipped in %s: anti-starvation)\n", fmtDur(left))
 	}
+}
+
+// bypassCanHelp reports whether the anti-starvation bypass would let ticket t
+// in once it applies: t has a single candidate machine, and nothing it waits
+// for is RAM or a pool (the bypass skips the load check only).
+func bypassCanHelp(t *queue.Ticket, reasons map[string]string) bool {
+	if !schedule.BypassApplies(t) || poolReasonIn(reasons) {
+		return false
+	}
+	for _, r := range reasons {
+		if schedule.IsRAMReason(r) {
+			return false
+		}
+	}
+	return true
 }

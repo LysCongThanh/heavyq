@@ -108,9 +108,11 @@ func starved(s Snapshot, recs []history.Record, now time.Time) []Exception {
 		var clauses []string
 		if head != nil && head.Lane == lane {
 			if why := poolReason(head.Reasons); why != "" {
-				// The RAM and load bypass does not skip a pool: say what holds it.
+				// The bypass does not skip a pool: say what holds it.
 				clauses = append(clauses, fmt.Sprintf("has waited %s at the head of the queue, %s", dur(head.WaitS), why))
 				e.Evidence.Detail = why
+			} else if head.BypassInS < 0 { // several machines, or waiting for RAM: the bypass will not help
+				clauses = append(clauses, fmt.Sprintf("has waited %s at the head of the queue", dur(head.WaitS)))
 			} else {
 				clauses = append(clauses, fmt.Sprintf("has waited %s at the head of the queue (the bypass applies at %s)",
 					dur(head.WaitS), dur(s.Config.ForceAfterS)))

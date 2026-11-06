@@ -4,7 +4,7 @@
 
 [queue]
 poll = "2s"              # how often a waiting ticket retries
-force_after = "15m"      # anti-starvation: the head ticket bypasses the RAM/load gate after this
+force_after = "15m"      # anti-starvation: a head ticket with one candidate machine skips the load check (never RAM) after this
 resource_gate = true     # false = only slots limit concurrency
 auto = true              # tickets without --remote are placed by score when it is safe
 load_weight_mb = 500     # score = free_mb - load_weight_mb * load1

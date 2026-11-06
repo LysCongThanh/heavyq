@@ -89,8 +89,20 @@ func TestGate(t *testing.T) {
 	if r := Gate(st, on); !strings.Contains(r, "held") {
 		t.Fatalf("reservations must count, got %q", r)
 	}
-	if r := Gate(busy(10, 99), GateInput{Enabled: true, Forced: true}); r != "" {
-		t.Fatal("anti-starvation must bypass the gate")
+	forced := GateInput{Enabled: true, Forced: true}
+	if r := Gate(busy(10000, 99), forced); r != "" {
+		t.Fatalf("anti-starvation must skip the load check, got %q", r)
+	}
+	if r := Gate(busy(10, 99), forced); !IsRAMReason(r) {
+		t.Fatalf("anti-starvation must never skip the RAM check, got %q", r)
+	}
+	held := busy(10000, 99)
+	held.ReservedMB = 6000
+	if r := Gate(held, forced); !IsRAMReason(r) || !strings.Contains(r, "held") {
+		t.Fatalf("anti-starvation must count RAM held for just-started jobs, got %q", r)
+	}
+	if IsRAMReason("load 9.00 >= 6.0 (0.75 x 8 cores)") || IsRAMReason("unreachable") {
+		t.Fatal("only the RAM check is a RAM reason")
 	}
 	idle := busy(10, 99)
 	idle.Running = 0
@@ -136,6 +148,25 @@ func TestOutsideRepoReference(t *testing.T) {
 	for _, a := range bad {
 		if r := OutsideRepoReference(a, root); r == "" {
 			t.Errorf("%q not flagged", a)
+		}
+	}
+}
+
+// Only a ticket with one candidate machine may be forced in: one that may run
+// on several waits for whichever has room.
+func TestBypassApplies(t *testing.T) {
+	for _, c := range []struct {
+		cands []string
+		want  bool
+	}{
+		{nil, true},
+		{[]string{"local"}, true},
+		{[]string{"linuxi"}, true},
+		{[]string{"local", "linuxi"}, false},
+		{[]string{"mac", "local", "linuxi"}, false},
+	} {
+		if got := BypassApplies(&queue.Ticket{Candidates: c.cands}); got != c.want {
+			t.Errorf("BypassApplies(%v) = %v, want %v", c.cands, got, c.want)
 		}
 	}
 }
