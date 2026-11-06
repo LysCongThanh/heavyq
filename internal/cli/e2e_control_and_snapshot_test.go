@@ -197,8 +197,10 @@ func TestCancelAfterReprio(t *testing.T) {
 }
 
 // H3 regression: the bypass countdown starts when a ticket becomes head.
+// Calm limits: the head waits for the slot only, never for RAM (the bypass
+// does not skip RAM, so a RAM wait shows no countdown on a busy machine).
 func TestBypassCountsFromHeadOfLine(t *testing.T) {
-	h := newRig(t, "[queue]\npoll = \"50ms\"\nforce_after = \"1h\"\n[local]\nheavy_slots = 1\nlight_slots = 0\n")
+	h := newRig(t, "[queue]\npoll = \"50ms\"\nforce_after = \"1h\"\n[local]\nheavy_slots = 1\nlight_slots = 0\n"+calmLimits)
 	hold := h.start("5", "--lane", "holder", "--", "sh", "-c", h.gateFile("go"))
 	h.running(1)
 	h.start("5", "--lane", "head", "--", "true")
