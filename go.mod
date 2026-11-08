@@ -1,10 +1,10 @@
 module github.com/LysCongThanh/heavyq
 
-go 1.24.0
+go 1.26.0
 
 require (
 	github.com/BurntSushi/toml v1.6.0
-	golang.org/x/term v0.35.0
+	golang.org/x/term v0.47.0
 )
 
-require golang.org/x/sys v0.36.0 // indirect
+require golang.org/x/sys v0.49.0 // indirect
