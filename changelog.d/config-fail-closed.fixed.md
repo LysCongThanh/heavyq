@@ -8,3 +8,5 @@
     could never be targeted by its name.
   - a `hook.binary` with arguments, a relative path or a `~` other than a leading `~/`: the hook writes it quoted as
     one word, so every rewritten agent command exited 127. A leading `~/` is now expanded to your home.
+  - a negative duration (`"-5m"`) or `load_weight_mb`, which silently became the default, and a `queue.poll` under
+    `50ms`, which turned every waiting ticket into a busy loop on the queue lock. `0` still means the default.

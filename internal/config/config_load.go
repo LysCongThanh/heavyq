@@ -98,17 +98,8 @@ func parse(path string, data []byte) (*Config, error) {
 
 // normalize fills defaults and rejects unsafe or nonsensical values.
 func (c *Config) normalize() error {
-	q := &c.Queue
-	setDur(&q.Poll, defaultPoll)
-	setDur(&q.ForceAfter, defaultForceAfter)
-	setDur(&q.RemoteDownMax, defaultRemoteDownMax)
-	setDur(&q.HoldFor, defaultHoldFor)
-	setDur(&q.ProbeTimeout, defaultProbeTimeout)
-	if q.LoadWeightMB <= 0 {
-		q.LoadWeightMB = defaultLoadWeightMB
-	}
-	if q.BaseRef != "" && q.BaseRef != BaseRefNone && !validBaseRef(q.BaseRef) {
-		return fmt.Errorf("queue.base_ref %q must look like remote/branch (e.g. origin/main) or %q", q.BaseRef, BaseRefNone)
+	if err := c.Queue.normalize(); err != nil {
+		return err
 	}
 
 	c.Local.Name = LocalName

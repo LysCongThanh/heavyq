@@ -2,10 +2,11 @@
 
 `--config FILE`, else `$HEAVYQ_CONFIG`, else `$XDG_CONFIG_HOME/heavyq/config.toml` (`~/.config/heavyq/config.toml`).
 Every key is optional; keys this heavyq does not know are ignored with a warning. [`examples/config.toml`](../examples/config.toml) has every key with comments.
+A duration, `load_weight_mb`, `max_load_ratio` or `*_mb` budget set to `0` means its default; a negative one is an error that names the key.
 
 | Key | Default | Meaning |
 |---|---|---|
-| `queue.poll` | `"2s"` | how often a waiting ticket retries |
+| `queue.poll` | `"2s"` | how often a waiting ticket retries (at least `"50ms"`) |
 | `queue.force_after` | `"15m"` | head ticket waiting this long skips the load check (RAM must still fit); only for a ticket with one candidate machine |
 | `queue.resource_gate` | `true` | `false` = slots only |
 | `queue.auto` | `true` | score-based placement for tickets without `--remote` |
