@@ -3,8 +3,6 @@ package toolcheck
 import (
 	"reflect"
 	"testing"
-
-	"github.com/LysCongThanh/heavyq/internal/proof"
 )
 
 func TestFromArgvSeesThroughObviousWrappers(t *testing.T) {
@@ -30,9 +28,9 @@ func TestFromArgvSeesThroughObviousWrappers(t *testing.T) {
 		{"a redirect ends the word", []string{"sh", "-c", "psql<schema.sql"}, []string{"sh", "psql"}},
 		{"a script file", []string{"bash", "scripts/e2e.sh"}, []string{"bash"}},
 		{"shell without operands", []string{"sh", "-c"}, []string{"sh"}},
-		{"gate wrapper", proof.Argv("env HEAVYQ_TEST_NORACE=1 go test -skip 'x' ./..."), []string{"sh", "env", "go"}},
-		{"gate pipeline", proof.Argv("gofmt -l . | (! grep .)"), []string{"sh", "gofmt"}},
-		{"gate running a script", proof.Argv("bash scripts/check.sh"), []string{"sh", "bash"}},
+		{"env then a quote", []string{"sh", "-c", "env HEAVYQ_TEST_NORACE=1 go test -skip 'x' ./..."}, []string{"sh", "env", "go"}},
+		{"a pipeline", []string{"sh", "-c", "gofmt -l . | (! grep .)"}, []string{"sh", "gofmt"}},
+		{"a shell running a script", []string{"sh", "-c", "bash scripts/check.sh"}, []string{"sh", "bash"}},
 		{"nice without options", []string{"nice", "make", "-j8"}, []string{"nice", "make"}},
 		{"nice with options stops", []string{"nice", "-n", "5", "make"}, []string{"nice"}},
 		{"duplicates once", []string{"sh", "-c", "sh -x"}, []string{"sh"}},

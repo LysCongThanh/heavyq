@@ -32,6 +32,7 @@ type placement struct {
 	// a config edit is not one of its candidates (run_config_reload.go).
 	remotes    []string
 	candidates []string
+	lacking    map[string][]string // remotes left out: a tool the run needs is not there (placeByTools)
 }
 
 // preparePlacement resolves the target machine set for o.
@@ -150,31 +151,30 @@ func (p *placement) refreshLocal() {
 
 // machines lists the candidate machines of the target, in the order the
 // scheduler tries them: for a list, the list's own order (the first that fits
-// wins, see evaluate). Local is left out while it is not eligible (localWhy).
-// It reads no config: what a waiting ticket recomputes is local's eligibility,
-// never the remotes it was submitted with.
+// wins, see evaluate). Local is left out while it is not eligible (localWhy),
+// and so is a remote that lacks a tool the run needs (lacking). It reads no
+// config: what a waiting ticket recomputes is local's eligibility, never the
+// remotes it was submitted with.
 func (p *placement) machines() []string {
-	if ms := config.MachineList(p.target); ms != nil {
-		out := make([]string, 0, len(ms))
+	out := []string{}
+	switch ms := config.MachineList(p.target); {
+	case ms != nil:
 		for _, m := range ms {
 			if m != config.LocalName || p.localWhy == "" {
 				out = append(out, m)
 			}
 		}
-		return out
-	}
-	switch p.target {
-	case "local":
-		return []string{config.LocalName}
-	case "auto":
-		var out []string
+	case p.target == "local":
+		out = append(out, config.LocalName)
+	case p.target == "auto":
 		if p.localWhy == "" {
 			out = append(out, config.LocalName)
 		}
-		return append(out, p.remotes...)
+		out = append(out, p.remotes...)
 	default:
-		return []string{p.target}
+		out = append(out, p.target)
 	}
+	return p.withoutLacking(out)
 }
 
 // remoteNames lists the [[remote]] names of cfg: the remotes of the auto

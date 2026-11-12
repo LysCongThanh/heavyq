@@ -66,9 +66,14 @@ func (t Transport) Command(ctx context.Context, env []string, script string, arg
 
 // Output runs script remotely with a timeout and returns stdout.
 func (t Transport) Output(timeout time.Duration, script string, args ...string) (string, error) {
+	return t.outputEnv(timeout, nil, script, args...)
+}
+
+// outputEnv is Output with env (K=V) set for the script on the remote side.
+func (t Transport) outputEnv(timeout time.Duration, env []string, script string, args ...string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	cmd, err := t.Command(ctx, nil, script, args...)
+	cmd, err := t.Command(ctx, env, script, args...)
 	if err != nil {
 		return "", err
 	}

@@ -6,6 +6,7 @@ steer FuzzClaimsDone
 redact FuzzCommand
 anchor FuzzParse FuzzSetChecked
 repoconfig FuzzParse
+toolcheck FuzzFromArgv
 config FuzzParse
 history FuzzReadLast FuzzDecodeRecord
 tui/input FuzzParserNeverPanicsAndAlwaysDrains

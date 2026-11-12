@@ -23,6 +23,7 @@ func init() {
 			{Long: "with", Value: "REPO[@REF]", Path: "dir", Help: "sibling repo next to the main one, pinned to REF (default HEAD); remote runs get ../REPO (repeatable)"},
 			{Long: "need-gh", Help: "the command uses the GitHub CLI login of this machine: run here only"},
 			{Long: "needs", Value: "POOL[:N],..", Help: "hold N values of named pools while it runs (local only)"},
+			{Long: "tools", Value: "TOOL,..", Help: "commands it needs where it runs, besides its own: remotes without them are skipped (repeatable)"},
 			{Long: "cache", Help: "reuse the result of an identical run on the same clean commit"},
 			{Long: "session", Value: "ID", Help: "who ran it, recorded in history (default: $HEAVYQ_SESSION)"},
 			{Long: "item", Value: "ID", Help: "work item it belongs to (default: $HEAVYQ_ITEM)"},

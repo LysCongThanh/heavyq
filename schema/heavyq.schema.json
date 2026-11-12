@@ -135,6 +135,14 @@
         "need_gh": {
           "type": "boolean",
           "description": "The commands use the GitHub CLI with this machine's login, so the gate runs here only (--need-gh). Not combinable with a named remote."
+        },
+        "tools": {
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_][A-Za-z0-9._+-]{0,63}$"
+          },
+          "type": "array",
+          "description": "Commands every command of the gate needs on the machine it runs on, besides the one it starts, for example [\"envsubst\", \"initdb\"]. Passed to the run as --tools: a remote without one on the PATH its jobs get is skipped."
         }
       },
       "additionalProperties": false,

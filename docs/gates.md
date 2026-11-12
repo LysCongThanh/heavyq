@@ -98,6 +98,7 @@ remote = "local"                       # optional: local (default) | auto | <rem
 needs  = ["pg", "port:2"]              # optional: pool values each command holds while it runs (see pools.md)
 with   = ["shared-schema@v2.1.0"]      # optional: sibling repos next to this one, pinned (see remote.md)
 need_gh = false                        # optional: the commands use this machine's GitHub CLI login: run here only
+tools  = ["envsubst", "initdb"]        # optional: commands they need where they run; remotes without them are skipped
 
 [proof]                                # optional: where proofs run (gates without a remote key, item done --run)
 remote = "auto"                        # local (default) | auto | <remote name>
@@ -121,6 +122,7 @@ max_proof_share = 1.0                  # share of the 30 min lease the expected 
 | `gate.needs` | list of strings | none | `pool` or `pool:N` entries, each pool once; every command of the gate holds them while it runs, see [pools](pools.md). With `needs`, `remote` must be `local`, `auto` or a list that names `local` (the run stays local). |
 | `gate.with` | list of strings | none | sibling repositories each command needs next to this one: `"name"` or `"name@ref"` (a directory next to the repository, or a path containing `/`). Passed to every command as `--with`: pinned at the start of the run, shipped with remote runs, and part of the proof, so a sibling at another commit is another run, and a sibling that cannot be resolved proves nothing. See [remote](remote.md#sibling-repositories---with). |
 | `gate.need_gh` | bool | `false` | the commands call the GitHub CLI with this machine's login, so the gate runs here only (passes `--need-gh`). Not with a named `remote`; it overrides a `[proof] remote` default, and `--remote <name>` on the command line is exit 2. |
+| `gate.tools` | list of strings | none | commands every command of the gate needs on the machine it runs on, besides the one it starts (a script's `envsubst`, `initdb`, GNU `sed`): plain command names (`[A-Za-z0-9_][A-Za-z0-9._+-]{0,63}`, at most 32). Passed to every command as `--tools`: a remote where one does not resolve on the PATH its jobs get is skipped, and a named remote without one is refused before anything is shipped, so an environment gap never shows up as a red gate. Not part of the proof. See [remote](remote.md#placed-where-its-tools-are---tools). |
 | `pool` | tables | none | `[[pool]]` tables, as in the user config; a pool here replaces the user's pool of the same name. See [pools](pools.md). |
 | `proof.remote` | string | unset | `[proof]`: where `item done --run` and `gate run` run proofs for gates without their own `remote` key; `local`, `auto`, a remote name or an ordered list `"a,b,c"`. Overrides `[proof]` of the user config. See [items](items.md#where-the-proof-runs). |
 | `anchor.file` | string | none | relative path inside the repository |

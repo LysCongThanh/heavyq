@@ -87,7 +87,7 @@ machines. It listens on loopback only. See [docs/dashboard.md](docs/dashboard.md
 | Receipts: a shareable, privacy-rounded summary (`heavyq receipts --share`) | [docs/receipts.md](docs/receipts.md) |
 | Ledger tail reader, indexes, `heavyq doctor --reindex` | [docs/ledger.md](docs/ledger.md) |
 | Cache and coalescing: never run the same gate twice | [docs/cache-and-coalescing.md](docs/cache-and-coalescing.md) |
-| Spare machines over SSH, by exact commit | [docs/remote.md](docs/remote.md) |
+| Spare machines over SSH, by exact commit, only where the run's tools resolve (`--tools`) | [docs/remote.md](docs/remote.md) |
 | Pools: ports, databases, browsers handed out to parallel agents | [docs/pools.md](docs/pools.md) |
 | Mentor: break repeat failures, measured with a holdout (`heavyq mentor`) | [docs/mentor.md](docs/mentor.md) |
 | Dashboard, JSON snapshot, control API | [docs/dashboard.md](docs/dashboard.md) |

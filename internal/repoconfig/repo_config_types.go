@@ -60,6 +60,9 @@ type Gate struct {
 	// NeedGH: the commands use the GitHub CLI login of this machine, so the
 	// gate runs here (--need-gh).
 	NeedGH bool
+	// Tools are commands every command of the gate needs on the machine it
+	// runs on; a remote without one is skipped (--tools, docs/remote.md).
+	Tools []string
 	// Detected marks the default gate Detect made up from files at the git
 	// root because the repository has no heavyq.toml; Sources names those
 	// files. Both are zero for a gate read from a file.
@@ -159,6 +162,7 @@ type rawGate struct {
 	Needs  []string `toml:"needs"`
 	With   []string `toml:"with"`
 	NeedGH bool     `toml:"need_gh"`
+	Tools  []string `toml:"tools"`
 }
 
 type rawAnchor struct {

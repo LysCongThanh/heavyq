@@ -68,8 +68,9 @@ ledger index: fresh
 
 Exit 0 when the index is fresh (or there is no ledger yet), 1 when it is stale or missing (the output says
 how to repair it), 2 on a usage error. `--reindex` rebuilds from the whole ledger under the writers' lock and
-takes a second per 100,000 records. Other checks will join `doctor` later. Deleting the `index/` directory is
-always safe.
+takes a second per 100,000 records. Deleting the `index/` directory is always safe. With remotes configured,
+`doctor` also lists which common tools (and the tools `heavyq.toml` gates declare) resolve on each remote; that
+part never changes the exit code (see [remote](remote.md#placed-where-its-tools-are---tools)).
 
 ## Hook deadline (`internal/deadline`)
 

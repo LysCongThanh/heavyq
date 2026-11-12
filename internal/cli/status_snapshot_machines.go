@@ -112,6 +112,7 @@ func waitingSnapshots(cfg *config.Config, qs queue.Snapshot, probes *probeCache,
 			}
 			w.Reasons[m] = why
 		}
+		addLacksReasons(w.Reasons, t.Lacks)
 		// The bypass clock starts when the ticket became head (its owner
 		// publishes that), not when it was enqueued.
 		var waited time.Duration

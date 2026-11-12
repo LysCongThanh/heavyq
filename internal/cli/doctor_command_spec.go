@@ -8,7 +8,7 @@ func init() {
 		Run: func(inv *invocation) int {
 			return doctorCommand(inv.CfgPath, inv.Explicit, inv.args(), inv.Stdout, inv.Stderr)
 		},
-		Summary:  "check the config and the ledger index, and rebuild the index",
+		Summary:  "check the config, the ledger index and each remote's tools; rebuild the index",
 		Synopsis: []string{"heavyq doctor [--reindex]"},
 		Flags:    []flagSpec{{Long: "reindex", Help: "rebuild the ledger index from the ledger"}},
 		Docs:     "ledger.md",
