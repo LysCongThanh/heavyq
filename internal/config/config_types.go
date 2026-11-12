@@ -71,7 +71,8 @@ type QueueConfig struct {
 	HoldFor Duration `toml:"hold_for"`
 	// ProbeTimeout bounds one remote metrics probe.
 	ProbeTimeout Duration `toml:"probe_timeout"`
-	// BaseRef is the default --base-ref ("" = none).
+	// BaseRef is the default --base-ref: "" = origin's default branch when the repository has one,
+	// "none" = no base ref at all, else remote/branch.
 	BaseRef string `toml:"base_ref"`
 }
 

@@ -13,7 +13,7 @@ Every key is optional; keys this heavyq does not know are ignored with a warning
 | `queue.hold_for` | `"1m"` | how long a fresh job's RAM budget stays reserved |
 | `queue.remote_down_max` | `"10m"` | remote-only ticket exits 76 after its remotes are unreachable this long |
 | `queue.probe_timeout` | `"5s"` | timeout of one remote metrics probe |
-| `queue.base_ref` | `""` | default `--base-ref` |
+| `queue.base_ref` | `""` | default `--base-ref`: `remote/branch` (e.g. `"origin/main"`) is recreated on the remote machine a run goes to and its commit is part of the run id; `""` = origin's default branch (`refs/remotes/origin/HEAD`, else `origin/main`) when the repository has one; `"none"` = no base ref. See [remote](remote.md) |
 | `local.heavy_slots` / `light_slots` | `2` / `1` | slots on this machine |
 | `local.legacy_lock_files` | `[]` | use these files as heavy slots (shared with `flock <file>` users) |
 | `*.max_load_ratio` | `0.75` | admit while `load1 < ratio x cores` |

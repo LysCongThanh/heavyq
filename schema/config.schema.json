@@ -269,7 +269,7 @@
         },
         "base_ref": {
           "type": "string",
-          "description": "BaseRef is the default --base-ref (\"\" = none)."
+          "description": "BaseRef is the default --base-ref: \"\" = origin's default branch when the repository has one,\n\"none\" = no base ref at all, else remote/branch."
         }
       },
       "additionalProperties": false,

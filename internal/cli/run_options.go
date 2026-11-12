@@ -24,8 +24,10 @@ type runOptions struct {
 	NeedsRAM bool
 	Repo     string
 	Ref      string
-	BaseRef  string
-	With     []string
+	// BaseRef is --base-ref / queue.base_ref as given ("" = the default, config.BaseRefNone = none) until
+	// preparePlacement settles it into the ref the run really has ("" = none), see effectiveBaseRef.
+	BaseRef string
+	With    []string
 	// NeedGH: the command uses the GitHub CLI login of this machine, so it runs here (--need-gh).
 	NeedGH bool
 	// Needs are the pool values the run holds while it runs (--needs).
@@ -150,11 +152,10 @@ func parseRunArgs(args []string, cfg *config.Config) (runOptions, error) {
 	if len(o.Argv) == 0 {
 		return o, fmt.Errorf("missing command after '--'")
 	}
-	if o.BaseRef == "none" {
-		o.BaseRef = ""
-	}
-	if o.BaseRef != "" && !config.ValidBaseRef(o.BaseRef) {
-		return o, fmt.Errorf("--base-ref %q must look like remote/branch (e.g. origin/main) or none", o.BaseRef)
+	// BaseRef stays "" (the default: origin's default branch, if any) or config.BaseRefNone until
+	// preparePlacement knows the repository and settles it (effectiveBaseRef).
+	if o.BaseRef != "" && o.BaseRef != config.BaseRefNone && !config.ValidBaseRef(o.BaseRef) {
+		return o, fmt.Errorf("--base-ref %q must look like remote/branch (e.g. origin/main) or %s", o.BaseRef, config.BaseRefNone)
 	}
 	if config.IsMachineList(o.Remote) {
 		if err := cfg.CheckRemoteTarget(o.Remote); err != nil {

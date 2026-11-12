@@ -11,7 +11,7 @@ load_weight_mb = 500     # score = free_mb - load_weight_mb * load1
 hold_for = "1m"          # RAM budget of a just-started job stays reserved this long
 remote_down_max = "10m"  # remote-only tickets exit 76 after their remotes are unreachable this long
 probe_timeout = "5s"     # one remote metrics probe
-base_ref = ""            # default --base-ref, e.g. "origin/main"
+base_ref = ""            # default --base-ref: "" = origin's default branch if the repo has one, "none" = no base ref, or e.g. "origin/main"
 
 [local]
 heavy_slots = 2
