@@ -224,6 +224,8 @@ fixture outside `paths` would stay proven when that file changes. Without `paths
 - Patterns that match no committed file give a gate that no code can be proven on (`gate status` says why, and
   `gate run` refuses): a typo must not make a gate that is proven forever.
 - A nested repository or submodule with changes of its own still makes the tree unknown, whatever `paths` say.
+  A file they name that is flagged assume-unchanged or skip-worktree (or left out by a sparse checkout) makes it
+  unknown too, and a submodule among them that is not checked out makes it dirty; flags outside `paths` do not count.
 - The result cache stays keyed by the whole tree (a cache hit is recorded on the scoped id of the code it
   replays). `--remote` ships the committed `HEAD`: a work tree whose edits are all outside `paths` still runs on a
   remote, and the run is recorded on the scoped id of the commit it ran.

@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"io"
+	"slices"
 	"strings"
 )
 
@@ -42,20 +43,30 @@ func dirtyTreeAt(repo, head string, exclude []string) (TreeID, error) {
 	if err != nil {
 		return TreeID{}, err
 	}
-	return dirtyTreeFrom(repo, head, headTree, excludeSpecs(exclude), untrackedSpecs(exclude))
+	whole := excludeSpecs(exclude)
+	return dirtyTreeFrom(repo, head, headTree, whole, whole, untrackedSpecs(exclude))
 }
 
 // dirtyTreeFrom is dirtyTreeAt on a head tree id already found (headTree, what a clean tree is called), with the
 // paths the diff (diffSpecs) and the untracked listing (listSpecs) look at given as pathspecs after "--": a whole
-// tree leaves out only the bookkeeping paths, a gate's scope (see IdentifyScoped) names the files that count.
-// The index is read through diffSpecs too, so only flags and submodules on paths that count matter.
-func dirtyTreeFrom(repo, head, headTree string, diffSpecs, listSpecs []string) (TreeID, error) {
+// tree (wholeSpecs) leaves out only the bookkeeping paths, a gate's scope (see IdentifyScoped) names the files
+// that count. The index is read through diffSpecs too, so flags and missing submodules count on those paths
+// alone, but a submodule with changes of its own makes even a scoped tree unknown, wherever it sits.
+func dirtyTreeFrom(repo, head, headTree string, wholeSpecs, diffSpecs, listSpecs []string) (TreeID, error) {
 	unknown := TreeID{Dirty: true}
 	idx, err := scanIndex(repo, diffSpecs)
 	if err != nil {
 		return TreeID{}, err
 	}
-	if idx.hidden || submoduleChanged(repo, idx.checkedOut) {
+	subs := idx.checkedOut
+	if !slices.Equal(wholeSpecs, diffSpecs) {
+		all, err := scanOneIndex(repo, wholeSpecs)
+		if err != nil {
+			return TreeID{}, err
+		}
+		subs = all.checkedOut
+	}
+	if idx.hidden || submoduleChanged(repo, subs) {
 		return unknown, nil
 	}
 	diff, diffBytes, err := trackedDiffDigest(repo, head, diffSpecs)

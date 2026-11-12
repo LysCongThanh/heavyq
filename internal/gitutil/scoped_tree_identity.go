@@ -90,7 +90,9 @@ func scopedCommittedID(repo, commit string, paths, exclude []string) (string, er
 }
 
 // scopedWorkTreeAt identifies the files of the work tree at repo that match paths, against head. A work tree
-// whose edits are all outside the scope is clean for it, and has the commit's scoped id.
+// whose edits are all outside the scope is clean for it, and has the commit's scoped id. git status trusts the
+// index, so a scope whose index hides files from it (see indexTrusted) is never taken as clean: dirtyTreeFrom
+// says what it is.
 func scopedWorkTreeAt(repo, head string, paths, exclude []string) (TreeID, error) {
 	id, err := scopedCommittedID(repo, head, paths, exclude)
 	if err != nil {
@@ -98,11 +100,11 @@ func scopedWorkTreeAt(repo, head string, paths, exclude []string) (TreeID, error
 	}
 	specs := scopeSpecs(gatepaths.Canonical(paths), exclude)
 	clean, err := workTreeCleanSpecs(repo, specs)
-	if err == nil && clean {
+	if err == nil && clean && indexTrusted(repo, specs) {
 		if headStill(repo, head) != nil {
 			return TreeID{Dirty: true}, nil
 		}
 		return TreeID{ID: id}, nil
 	}
-	return dirtyTreeFrom(repo, head, id, specs, specs)
+	return dirtyTreeFrom(repo, head, id, excludeSpecs(exclude), specs, specs)
 }

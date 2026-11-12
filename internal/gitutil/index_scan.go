@@ -123,3 +123,11 @@ func submoduleChanged(repo string, checkedOut []string) bool {
 	}
 	return false
 }
+
+// indexTrusted is true when git status can be believed on the paths specs let
+// through: no entry there is flagged and no submodule there is left out, nor
+// inside a checked-out one. An index that cannot be read is not trusted.
+func indexTrusted(repo string, specs []string) bool {
+	idx, err := scanIndex(repo, specs)
+	return err == nil && !idx.hidden && len(idx.absent) == 0
+}
