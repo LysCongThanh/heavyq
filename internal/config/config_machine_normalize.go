@@ -66,7 +66,7 @@ func (m *MachineConfig) normalizeRemote() error {
 		if !sshAliasPattern.MatchString(m.SSH) {
 			return fmt.Errorf("ssh %q must be a plain host alias (put options in ~/.ssh/config)", m.SSH)
 		}
-		m.Transport = []string{"ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", m.SSH}
+		m.Transport = defaultTransport(m.SSH)
 	}
 	if m.GitURL == "" {
 		if m.SSH == "" {
@@ -75,4 +75,16 @@ func (m *MachineConfig) normalizeRemote() error {
 		m.GitURL = m.SSH + ":" + strings.TrimSuffix(m.WorkDir, "/") + "/git"
 	}
 	return nil
+}
+
+// defaultTransport is the argv prefix of a remote that sets only ssh. A job's
+// ssh only reads (heavyq never writes to the lifeline), so without
+// ServerAlive* a silently dropped link (power loss, an expired NAT or VPN
+// mapping) is noticed by TCP keepalive after about two hours, with the ticket
+// and the remote slot held all along. With them ssh exits 255 about a minute
+// after the link dies, and the remote sshd closes the session, which stops
+// the command (its lifeline sees EOF).
+func defaultTransport(alias string) []string {
+	return []string{"ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10",
+		"-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=4", alias}
 }

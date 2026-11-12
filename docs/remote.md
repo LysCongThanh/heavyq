@@ -71,7 +71,11 @@ What a remote run sees, and what it doesn't:
   remote worktree.
 - **Clean teardown.** The remote side holds a lifeline on stdin. If heavyq dies, even by SIGKILL, or the
   connection drops, the remote stops the command's process group and removes the worktree. Exit 255 means
-  the connection was lost.
+  the connection was lost. A link that dies silently (the remote loses power, a VPN or NAT mapping expires)
+  sends no close: the default transport sets `ServerAliveInterval=15` and `ServerAliveCountMax=4`, so ssh
+  gives up about a minute later and the remote sshd closes the session. A custom `transport` that runs ssh
+  needs the same two options, or a dead link holds the run and its remote slot for about two hours (TCP
+  keepalive).
 
 ## Machines heavyq only watches
 
