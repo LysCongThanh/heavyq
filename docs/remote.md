@@ -137,6 +137,7 @@ move is refused. A refused move changes nothing:
 | a ticket queued to run on this machine only, moved to anything but `local`: `--remote local`, or default placement that stayed here (uncommitted changes, a path outside the repository, no git repository), `--need-gh` | it recorded no commit a remote could run. Cancel it (`heavyq cancel`) and queue it again with `--remote WHERE` inside a git repository |
 | a ticket with `--needs`, moved to anything but `local` | pool values belong to this machine |
 | a target whose machines are all paused | a paused machine admits nothing new: `heavyq resume` it first. In a list or `auto`, paused machines are skipped until they resume, as for every ticket |
+| a target whose machines all lack a tool the run needs (its argv[0] or `--tools`, see [placement by tools](#placed-where-its-tools-are---tools)) | the ticket's own process asks the new remotes and refuses it, naming the tools and each remote's `env_path`. In a list or `auto`, a remote that lacks one is skipped and `why` says so |
 | `local` for a ticket this machine cannot run: a `--ref` that is not checked out here, a `--with` sibling off its pin | the ticket's own process refuses it and says why |
 
 The dashboard's control API files the same request: `POST tickets/{id}/target` (see [dashboard.md](dashboard.md)).
@@ -220,6 +221,12 @@ heavyq 3 --tools envsubst,initdb -- bash scripts/e2e.sh   # argv[0] is bash: nam
   builtin or an executable file on that PATH, not when a file of that name is there without the execute bit.
 - **Not known in advance.** A tool the `cache_hook` installs, or one in a relative `env_path` directory (resolved in
   the job's worktree, which a probe does not have: a tool missing there counts as unknown).
+- **While it waits.** A ticket keeps what placement by tools found, except where that changes. A move (`heavyq
+  retarget`) is placed by tools as a run is: a remote of the new target that lacks a tool is skipped (`why` says so),
+  and a move that leaves no machine is refused by the ticket, naming the tools and `env_path`; it keeps its machines.
+  An edit of the config that changes the `env_path` or transport of one of its remotes makes it ask again: a remote
+  that now has the tool is a candidate again, one that lost it is skipped, and a ticket no machine is left for exits
+  2, as it would have been refused when queued.
 - **`heavyq doctor`** asks every remote now and lists which of those common tools, and of the tools the gates of the
   current repository's `heavyq.toml` declare, resolve there (`box: go, node | missing: pnpm`). Its answers refresh
   the cache.

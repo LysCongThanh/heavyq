@@ -80,7 +80,8 @@ func parseRetargetArgs(args []string, stderr io.Writer) (ref, where string, ok b
 func awaitRetarget(cfg *config.Config, t *queue.Ticket, where string, paused []string, stdout, stderr io.Writer) int {
 	box := controlBox()
 	who := fmt.Sprintf("lane %s (pid %d)", t.Lane, t.Pid)
-	deadline := time.Now().Add(2*cfg.Queue.Poll.Duration + cfg.Queue.ProbeTimeout.Duration + time.Second)
+	// The ticket may probe its new remotes (metrics, then tools) before it answers.
+	deadline := time.Now().Add(2*cfg.Queue.Poll.Duration + cfg.Queue.ProbeTimeout.Duration + toolProbeTimeout(cfg) + time.Second)
 	for {
 		left := leftQueue(t)
 		if why, ok := box.TargetAnswer(t.Name); ok {

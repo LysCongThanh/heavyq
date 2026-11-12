@@ -36,26 +36,19 @@ func (o *runOptions) addTools(v string) error {
 // code is shipped, after the remotes whose cached answer refused it were asked
 // again (the tool may have been installed meanwhile).
 func (r *run) placeByTools() error {
-	remotes := remoteCandidates(r.pl.candidates)
-	tools := toolcheck.Union(argvTools(r.opts.Argv), r.opts.Tools)
-	if len(remotes) == 0 || len(tools) == 0 {
-		return nil
-	}
-	reached := func(n string) bool { _, ok := r.probes.get(n); return ok }
-	asked := time.Now()
-	answers, _ := remoteToolAnswers(r.cfg, remotes, tools, reached, false)
-	r.setLacking(missingTools(answers, tools))
-	if len(r.pl.candidates) == 0 && answeredBefore(answers, r.pl.lacking, asked) {
-		answers, _ = remoteToolAnswers(r.cfg, remotes, tools, reached, true)
-		r.setLacking(missingTools(answers, tools))
-	}
-	if len(r.pl.candidates) == 0 {
+	r.setLacking(r.toolsLacking(r.pl))
+	if len(r.pl.candidates) == 0 && len(r.pl.lacking) > 0 {
 		return lacksError(r.cfg, r.pl.lacking)
 	}
-	for _, n := range slices.Sorted(maps.Keys(r.pl.lacking)) {
-		r.note("%s %s: not placing it there", n, toolcheck.Reason(r.pl.lacking[n]))
-	}
+	r.noteLacking(r.pl.lacking)
 	return nil
+}
+
+// noteLacking says, once per remote, that it is skipped for a tool it lacks.
+func (r *run) noteLacking(lacking map[string][]string) {
+	for _, n := range slices.Sorted(maps.Keys(lacking)) {
+		r.note("%s %s: not placing it there", n, toolcheck.Reason(lacking[n]))
+	}
 }
 
 // argvTools are the commands argv starts (toolcheck.FromArgv). The wrapper

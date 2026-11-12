@@ -72,7 +72,9 @@ get, never who goes first.
   its cache key and run identity were made with. Admission settings (`[queue]`, `[local]`, the `[[remote]]`
   entries of its candidates, `[[pool]]`) come from the edited file. A ticket moved by `heavyq retarget` keeps the
   machines it moved to in the same way (`auto` then means the remotes of the config at the move; see
-  [remote.md](remote.md#moving-a-waiting-ticket-heavyq-retarget)).
+  [remote.md](remote.md#moving-a-waiting-ticket-heavyq-retarget)). What placement by tools found (`--tools`) is kept
+  too, until an edit changes the `env_path` or transport of one of its remotes: the ticket then asks those remotes
+  again, and gives up with exit 2 when none of its machines has the tools any more.
 - **A candidate remote removed from the file** is no longer used: status and `why` say `not in this config` for
   it. A ticket that can only run remotely counts it as unreachable from its next poll, so when none of its
   remotes is left (or reachable) it exits 76 after `remote_down_max`, with `<name> (not in the config)

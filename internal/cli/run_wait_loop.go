@@ -30,6 +30,7 @@ func (r *run) waitForTurn() (*claim, int) {
 		if rc := r.reloadConfig(); rc != 0 {
 			return nil, rc
 		}
+		r.applyRetarget() // heavyq retarget, vetted with the config just reloaded: new machines count from this round
 		r.probes.refresh(r.cfg, r.me.Candidates)
 		if len(r.pl.siblings) > 0 || !r.pl.refIsHead {
 			r.pl.refreshLocal()
@@ -83,8 +84,7 @@ func (r *run) round(headSince *time.Time) (*claim, int, int, []*queue.Ticket, er
 			fmt.Fprintf(r.stderr, "heavyq: priority changed to %d by an operator\n", p)
 		}
 	}
-	r.applyRetarget() // heavyq retarget: new machines count from this round
-	if r.moved {
+	if r.moved { // heavyq retarget moved it right before this round (applyRetarget)
 		*headSince = time.Time{} // the anti-starvation clock restarts on the new machines
 	}
 	snap, err := r.q.List()
