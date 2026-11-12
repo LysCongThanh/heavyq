@@ -2,6 +2,7 @@ package cli
 
 import (
 	"path/filepath"
+	"time"
 
 	"github.com/LysCongThanh/heavyq/internal/config"
 )
@@ -32,6 +33,7 @@ func (r *run) applyRetarget() {
 	}
 	why := r.retarget(where)
 	if why == "" {
+		r.moved = true
 		r.note("moved to %s by an operator", where)
 	} else {
 		r.note("move to %s refused: %s", where, why)
@@ -44,7 +46,9 @@ func (r *run) applyRetarget() {
 // retarget re-plans the run for target where, as if it had been queued with
 // --remote WHERE: a remote ships the commit resolved at enqueue, this machine
 // runs the work tree in place, and an implicit placement becomes the operator's
-// explicit one. It returns why it cannot ("" when the ticket moved).
+// explicit one. The ticket keeps its priority and its place (Since), but not
+// its anti-starvation clock: that clock measured a wait for the old machines,
+// so the new ones start it over. It returns why it cannot ("" when the ticket moved).
 func (r *run) retarget(where string) string {
 	if err := checkRetarget(r.cfg, r.me, where); err != nil {
 		return err.Error()
@@ -59,10 +63,10 @@ func (r *run) retarget(where string) string {
 	if r.pl.localWhy != "" && (where == config.LocalName || len(cands) == 0) {
 		return "this machine cannot run it: " + r.pl.localWhy
 	}
-	target, old := r.me.Target, r.me.Candidates
-	r.me.Target, r.me.Candidates = where, cands
+	target, old, head := r.me.Target, r.me.Candidates, r.me.HeadSince
+	r.me.Target, r.me.Candidates, r.me.HeadSince = where, cands, time.Time{}
 	if err := r.q.Rewrite(r.me); err != nil {
-		r.me.Target, r.me.Candidates = target, old
+		r.me.Target, r.me.Candidates, r.me.HeadSince = target, old, head
 		return "ticket not rewritten: " + err.Error()
 	}
 	next.candidates = cands

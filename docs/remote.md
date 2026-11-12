@@ -114,7 +114,10 @@ and its place among equals, and from its next poll waits for the new machines as
   then), the same one it would have shipped to its first machine;
 - this machine runs the work tree in place, as for any target that names `local`;
 - the rules of the new target apply from then on: a ticket moved to remotes only exits 76 if they all stay
-  unreachable for `remote_down_max`, and the anti-starvation bypass needs one candidate machine.
+  unreachable for `remote_down_max`, and the anti-starvation bypass needs one candidate machine;
+- the clocks of the old machines do not follow it: the new machines are probed once before the ticket can give up
+  on them, and both `remote_down_max` and the head-of-line wait of the anti-starvation bypass count from the move. A
+  ticket moved off an unreachable remote just before `remote_down_max` runs out is not dropped for it.
 
 The ticket's own heavyq process re-plans its placement and answers, and `heavyq retarget` prints the answer: exit 0
 once the ticket moved (or, when it has not read the request within two polls, it moves when it does), 2 when the

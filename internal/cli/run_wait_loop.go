@@ -47,6 +47,11 @@ func (r *run) waitForTurn() (*claim, int) {
 		if c != nil {
 			return c, 0
 		}
+		if r.moved { // heavyq retarget: the new machines get their own probe and remote-down clock
+			r.moved = false
+			downSince, lastDownWarn = time.Time{}, time.Time{}
+			r.probes.refresh(r.cfg, r.me.Candidates)
+		}
 		now := time.Now()
 		r.out.nar.observe(now, waitView{pos: pos, total: total, target: r.pl.target, prio: r.me.Prio,
 			lane: r.me.Lane, ahead: ahead})
@@ -79,6 +84,9 @@ func (r *run) round(headSince *time.Time) (*claim, int, int, []*queue.Ticket, er
 		}
 	}
 	r.applyRetarget() // heavyq retarget: new machines count from this round
+	if r.moved {
+		*headSince = time.Time{} // the anti-starvation clock restarts on the new machines
+	}
 	snap, err := r.q.List()
 	if err != nil {
 		return nil, 0, 0, nil, err

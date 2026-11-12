@@ -37,6 +37,9 @@ type run struct {
 	interrupted bool
 	// cancelled: an operator stopped the ticket (heavyq cancel / dashboard).
 	cancelled bool
+	// moved: heavyq retarget moved the ticket to other machines in the last
+	// round; waitForTurn then starts its remote-down clock over (run_retarget.go).
+	moved bool
 	// tree is the local command's process tree (nil for remote runs); an
 	// operator cancel signals all of it, not just the direct child.
 	tree *processTree

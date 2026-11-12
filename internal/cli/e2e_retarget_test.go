@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -29,20 +30,23 @@ func (h *rig) waitingTarget(lane string) string {
 func TestE2ERetargetMovesAWaitingTicketToItsNewMachine(t *testing.T) {
 	h := newRig(t, "")
 	h.setConfig(twoRemotesConfig(h, ""))
-	gitRepo(t, h)
+	repo := gitRepo(t, h)
 	hold := h.start("3", "--remote", "box", "--lane", "hold", "--", "sh", "-c", h.gateFile("go"))
 	h.running(1)
 
-	// Waiting for the busy box, moved to box2 by pid: it ships the commit it was queued with and runs there.
+	// Waiting for the busy box, moved to box2 by pid: it ships the commit it was queued with, not the
+	// uncommitted edit made since, and runs there.
 	away := h.start("3", "--remote", "box", "--lane", "away", "--", "cat", "marker.txt")
 	h.waiting(1)
+	h.edit(repo, "dirty\n")
 	if rc, out := h.run("retarget", pidArg(away), "--remote", "box2"); rc != 0 || !strings.Contains(out, "now waits for box2") {
 		t.Fatalf("retarget to box2: rc=%d\n%s", rc, out)
 	}
 	if rc := away.wait(t, 30*time.Second); rc != 0 || !strings.Contains(away.out.String(), "from-commit") ||
-		!strings.Contains(away.out.String(), "moved to box2 by an operator") {
-		t.Fatalf("moved ticket: rc=%d\n%s", rc, away.out)
+		!strings.Contains(away.out.String(), "moved to box2 by an operator") || strings.Contains(away.out.String(), "dirty") {
+		t.Fatalf("moved ticket: rc=%d, want the recorded commit and not the work tree\n%s", rc, away.out)
 	}
+	h.edit(repo, "from-commit\n") // a clean work tree again for the next ticket
 	if got := h.machineOfLane("away"); got != "box2" {
 		t.Fatalf("the moved ticket ran on %q, want box2", got)
 	}
@@ -96,5 +100,44 @@ func TestE2ERetargetKeepsTheMachinesOfATicketThisMachineCannotRun(t *testing.T) 
 	}
 	if got := h.machineOfLane("pinned"); got != "box" {
 		t.Fatalf("the pinned ticket ran on %q, want box", got)
+	}
+}
+
+// A ticket moved off a machine that is unreachable gets a fresh remote-down
+// clock and a probe of its new machine before the clock is read. The ticket
+// polls slowly here, so the move is read in the very round in which the old
+// clock (1s) has already run out: with the old clock it would give up with
+// exit 76 on a machine that was never probed, instead of running on the new one.
+func TestE2ERetargetStartsTheRemoteDownClockOverOnTheNewMachine(t *testing.T) {
+	h := newRig(t, "")
+	h.setConfig(`[queue]
+poll = "1500ms"
+resource_gate = false
+remote_down_max = "1s"
+[local]
+heavy_slots = 1
+light_slots = 1
+` + calmLimits + `[[remote]]
+name = "gone"
+transport = ["false"]
+git_url = "/nonexistent"
+[[remote]]
+name = "live"
+transport = ["sh", "-c"]
+work_dir = "` + filepath.Join(h.root, "live-work") + `"
+git_url = "` + filepath.Join(h.root, "live-work", "git") + `"
+heavy_slots = 1
+`)
+	gitRepo(t, h)
+	stuck := h.start("3", "--remote", "gone", "--lane", "stuck", "--", "cat", "marker.txt")
+	h.waiting(1)
+	if rc, out := h.run("retarget", pidArg(stuck), "--remote", "live"); rc != 0 || !strings.Contains(out, "now waits for live") {
+		t.Fatalf("retarget off the unreachable remote: rc=%d\n%s", rc, out)
+	}
+	if rc := stuck.wait(t, 30*time.Second); rc != 0 || !strings.Contains(stuck.out.String(), "from-commit") {
+		t.Fatalf("moved ticket: rc=%d, want 0 (not %d, the old remote-down clock)\n%s", rc, ExitRemoteDown, stuck.out)
+	}
+	if got := h.machineOfLane("stuck"); got != "live" {
+		t.Fatalf("the moved ticket ran on %q, want live", got)
 	}
 }

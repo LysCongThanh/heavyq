@@ -23,43 +23,54 @@ const retargetAnswerPoll = 50 * time.Millisecond
 // code: 0 when it moved (or has not read the request within a few polls: it
 // moves when it does), 2 when the move is refused and nothing changed.
 func retargetCommand(cfg *config.Config, args []string, stdout, stderr io.Writer) int {
+	ref, where, ok := parseRetargetArgs(args, stderr)
+	if !ok {
+		return ExitUsage
+	}
+	t, err := findTicket(ref)
+	if err != nil {
+		fmt.Fprintln(stderr, "heavyq:", err)
+		return ExitUsage
+	}
+	paused, err := vetRetarget(cfg, t, where)
+	if err != nil {
+		fmt.Fprintln(stderr, "heavyq:", err)
+		return ExitUsage
+	}
+	if where == t.Target {
+		fmt.Fprintf(stdout, "lane %s (pid %d) already waits for %s\n", t.Lane, t.Pid, where)
+		return 0
+	}
+	if err := controlBox().RequestTarget(t.Name, where); err != nil {
+		fmt.Fprintln(stderr, "heavyq:", err)
+		return 1
+	}
+	return awaitRetarget(cfg, t, where, paused, stdout, stderr)
+}
+
+// parseRetargetArgs reads `<ticket|pid> --remote WHERE`; the flag may come before,
+// after or as --remote=WHERE. It says what is wrong on stderr and returns false
+// unless exactly one ticket and a non-empty target were given.
+func parseRetargetArgs(args []string, stderr io.Writer) (ref, where string, ok bool) {
 	fs := flag.NewFlagSet("retarget", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	fs.Usage = func() { fmt.Fprintln(stderr, retargetUsage) }
-	where := fs.String("remote", "", "local | auto | <remote name> | a,b: the machines the ticket may run on")
+	remoteFlag := fs.String("remote", "", "local | auto | <remote name> | a,b: the machines the ticket may run on")
 	var pos []string
 	for { // the ticket and the flag may come in any order
 		if err := fs.Parse(args); err != nil {
-			return ExitUsage
+			return "", "", false
 		}
 		if fs.NArg() == 0 {
 			break
 		}
 		pos, args = append(pos, fs.Arg(0)), fs.Args()[1:]
 	}
-	if len(pos) != 1 || *where == "" {
+	if len(pos) != 1 || *remoteFlag == "" {
 		fs.Usage()
-		return ExitUsage
+		return "", "", false
 	}
-	t, err := findTicket(pos[0])
-	if err != nil {
-		fmt.Fprintln(stderr, "heavyq:", err)
-		return ExitUsage
-	}
-	paused, err := vetRetarget(cfg, t, *where)
-	if err != nil {
-		fmt.Fprintln(stderr, "heavyq:", err)
-		return ExitUsage
-	}
-	if *where == t.Target {
-		fmt.Fprintf(stdout, "lane %s (pid %d) already waits for %s\n", t.Lane, t.Pid, *where)
-		return 0
-	}
-	if err := controlBox().RequestTarget(t.Name, *where); err != nil {
-		fmt.Fprintln(stderr, "heavyq:", err)
-		return 1
-	}
-	return awaitRetarget(cfg, t, *where, paused, stdout, stderr)
+	return pos[0], *remoteFlag, true
 }
 
 // awaitRetarget waits a few polls for the answer of the ticket's own process to

@@ -79,4 +79,9 @@ func TestE2ERetargetRefusesWhatItCannotMoveSafely(t *testing.T) {
 			t.Fatalf("rc=%d\n%s", rc, p.out)
 		}
 	}
+
+	// A ticket that finished has nothing left to move.
+	if rc, out := h.run("retarget", pidArg(here), "--remote", "local"); rc != ExitUsage || !strings.Contains(out, "no ticket") {
+		t.Fatalf("finished ticket: rc=%d, want %d with \"no ticket\"\n%s", rc, ExitUsage, out)
+	}
 }
