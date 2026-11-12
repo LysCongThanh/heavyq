@@ -82,7 +82,8 @@ func TestE2EWaitingTicketKeepsTheLastGoodConfigOnABadEdit(t *testing.T) {
 	h.waiting(1)
 
 	h.setConfig(reloadConfig([]string{a, b}, "100"))
-	time.Sleep(time.Second) // about 20 polls
+	h.until("the bad edit reported", func() bool { return strings.Contains(waiter.out.String(), "keeping the last good config") })
+	time.Sleep(500 * time.Millisecond) // about 10 more polls of the same bad file
 	if len(h.snapshot().Waiting) != 1 || waiter.finished() {
 		t.Fatalf("a config that does not load must not admit anything:\n%s", waiter.out)
 	}
