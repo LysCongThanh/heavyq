@@ -31,15 +31,30 @@ func (e ToolTimeouts) limits() (def, capMS int64) {
 	return def, max(capMS, def)
 }
 
+// maxTimerMS is the largest timeout Claude Code accepts at all (a JavaScript
+// timer's limit); it clamps every timeout to it.
+const maxTimerMS = 2147483647
+
 // toolTimeout returns the timeout to write for a call whose own timeout is
-// raw, adding wait for the queue. It is never below what Claude Code would
-// use without the hook and never above its cap; capped says the cap left
-// less than wait for the queue, so queue time comes out of the command's own.
-func toolTimeout(raw json.RawMessage, wait time.Duration, e ToolTimeouts) (ms, capMS int64, capped bool) {
+// raw, adding wait for the queue; 0 means leave timeout out. A foreground
+// call's timeout is never below what Claude Code would use without the hook
+// and never above its cap; capped says the cap left less than wait for the
+// queue, so queue time comes out of the command's own. A background call
+// (run_in_background: true) has its own, larger limits that the hook cannot
+// read: without a timeout it is left to Claude Code's background default,
+// with one it gets that timeout plus wait and Claude Code applies its limit.
+func toolTimeout(raw json.RawMessage, background bool, wait time.Duration, e ToolTimeouts) (ms, capMS int64, capped bool) {
+	var t float64
+	explicit := len(raw) > 0 && json.Unmarshal(raw, &t) == nil && t > 0
+	if background {
+		if !explicit {
+			return 0, 0, false
+		}
+		return int64(min(t+float64(wait.Milliseconds()), maxTimerMS)), 0, false
+	}
 	def, capMS := e.limits()
 	base := def // what Claude Code would apply to the original call: min(timeout or default, cap)
-	var t float64
-	if len(raw) > 0 && json.Unmarshal(raw, &t) == nil && t > 0 {
+	if explicit {
 		base = capMS
 		if t < float64(capMS) {
 			base = int64(t)
@@ -50,6 +65,12 @@ func toolTimeout(raw json.RawMessage, wait time.Duration, e ToolTimeouts) (ms, c
 		return capMS, capMS, true
 	}
 	return want, capMS, false
+}
+
+// isTrue says whether a tool_input field is the JSON value true.
+func isTrue(raw json.RawMessage) bool {
+	var b bool
+	return len(raw) > 0 && json.Unmarshal(raw, &b) == nil && b
 }
 
 // jsParseInt reads a decimal integer the way JavaScript's parseInt(s, 10)

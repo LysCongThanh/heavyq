@@ -38,7 +38,7 @@ func TestToolTimeoutFollowsClaudeCodeDefaultAndCap(t *testing.T) {
 		if c.raw != "" {
 			raw = json.RawMessage(c.raw)
 		}
-		ms, capMS, capped := toolTimeout(raw, wait, c.env)
+		ms, capMS, capped := toolTimeout(raw, false, wait, c.env)
 		if ms != c.want || capMS != c.capMS || capped != c.capped {
 			t.Errorf("%s: got %d/%d/%v, want %d/%d/%v", c.explanation, ms, capMS, capped, c.want, c.capMS, c.capped)
 		}

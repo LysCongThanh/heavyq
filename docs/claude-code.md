@@ -126,6 +126,11 @@ What heavyq does with this:
   hook. When the call already asks for close to the maximum, there is no room left: queue time then comes
   out of the command's own time, and `additionalContext` says so. At the timeout Claude Code moves the
   command to the background; the heavyq run keeps going and keeps its slot.
+- A `run_in_background: true` call has other limits: there `timeout` is how long the command may run in the
+  background before it is stopped, with a larger default and maximum of Claude Code's own (in 2.1.322 about
+  30 minutes and 2 hours, never below the foreground maximum) that the hook cannot read. So heavyq writes
+  the call's own `timeout` plus `hook.max_wait` with no foreground cap, and leaves `timeout` out when the
+  call set none, so Claude Code's background default still applies.
 - It adds `additionalContext` (documented as "String added to Claude's context alongside the tool result")
   that tells the agent why the command was queued and what exit 75 means.
 

@@ -50,7 +50,9 @@ go test ./... 2>&1 | tail -30
   timeout. The base is the call's `timeout`, else Claude Code's default (`BASH_DEFAULT_TIMEOUT_MS`, else 2
   minutes). Claude Code caps the timeout (`BASH_MAX_TIMEOUT_MS`, else 10 minutes), and the hook never writes
   more than that: a call that already asks for about the cap has no room left, so its queue time comes out of
-  its own time, and `additionalContext` says so. Exit 75 still means "busy, retry later". The agent is told
+  its own time, and `additionalContext` says so. A `run_in_background` call is not held to those foreground
+  limits: it gets its own `timeout` plus the wait, or keeps Claude Code's background default (about 30
+  minutes) when it set none. Exit 75 still means "busy, retry later". The agent is told
   so through `additionalContext`.
 - **It fails open.** Bad input, a broken config, a panic: the hook prints nothing and exits 0, so Claude
   Code runs the original command. The problem goes to `~/.local/state/heavyq/hook.log`, together with every

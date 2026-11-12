@@ -146,8 +146,11 @@ func Decide(stdin []byte, o Options) ([]byte, string, error) {
 		upd[k] = v
 	}
 	upd["command"], _ = marshal(newCmd)
-	timeout, capMS, capped := toolTimeout(in.ToolInput["timeout"], wait, o.ToolTimeouts)
-	upd["timeout"], _ = marshal(timeout)
+	timeout, capMS, capped := toolTimeout(in.ToolInput["timeout"], isTrue(in.ToolInput["run_in_background"]),
+		wait, o.ToolTimeouts)
+	if timeout > 0 {
+		upd["timeout"], _ = marshal(timeout)
+	}
 
 	note := fmt.Sprintf("heavyq: %q matched hook rule %q, so it ran through the shared heavyq queue "+
 		"(prio %d, lane %s). Exit 75 means the queue stayed busy for %s: retry later, do not bypass heavyq.",
