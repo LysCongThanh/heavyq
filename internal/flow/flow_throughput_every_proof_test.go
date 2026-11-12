@@ -12,7 +12,13 @@ import (
 
 // staleDone is an item whose box is ticked and whose proof passed on code that has changed since.
 func staleDone(id, gate string, cmds ...string) ItemFact {
-	return ItemFact{Status: itemstatus.Status{ID: id, State: itemstatus.Stale, Done: true, Commit: "old1234", At: at(5)}, Gate: gate, ProofCmds: cmds}
+	f := ItemFact{Status: itemstatus.Status{ID: id, State: itemstatus.Stale, Done: true, Commit: "old1234", At: at(5)}, Gate: gate, ProofCmds: cmds}
+	if gate != "" {
+		for _, c := range cmds {
+			f.ProofHashes = append(f.ProofHashes, "h-"+c) // the cmd_hash gateRun gives the run
+		}
+	}
+	return f
 }
 
 // gateRun is one passing command of a gate on a tree: what `heavyq gate run` leaves in the ledger.

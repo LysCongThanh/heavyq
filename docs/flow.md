@@ -42,12 +42,16 @@ later).
   `working / lead time`.
 - **Throughput** is finished items per active hour (the wall-clock union of all spans). An item is finished when
   its proof passed or it was marked done inside the window, **claimed or not**, and **whether or not the code has
-  changed since**: an item that reads `stale` now was finished then. The traces are the item reading `proven`, a `done`
-  event, and its gate passing in the ledger (every command of the gate on one tree; a cache replay is not a pass).
-  An item counts once however often it was proved, `n` is that count, and `last_proof` is the newest pass. The median
-  time from the claim an item's proof followed to the proof (`p50_claim_to_proof_s`) is the lead time: it uses
-  claim-to-proof pairs only and is `0` when no item has one, which never keeps an item out of the count.
-  Without pull requests "proven" is the proof, not the merge.
+  changed since**: an item that reads `stale` now was finished then. The traces are the item reading `proven`, a
+  `done` event, and, for an item that reads `stale`, its gate passing in the ledger (every command the gate has now,
+  on one tree). A claimed, open or blocked item is never finished by a pass of its gate: on a gate several lanes
+  share, another lane's pass on its own tree is not this item's proof. A cache replay or a coalesced run is not a
+  pass either, so a pass whose original run left the lookback, or ran on a remote, is undercounted (the safe
+  direction). An item counts once however often it was proved, `n` is that count, and `last_proof` is the newest
+  finish. The median time from a claim to the finish that followed it (`p50_claim_to_proof_s`) is the lead time: it
+  uses claim-to-finish pairs only (the first finish after the item's last claim, not the first one in the window)
+  and is `0` when no item has one, which never keeps an item out of the count. Without pull requests "proven" is
+  the proof, not the merge.
 - **The constraint** is the state with the largest share of lead time, excluding `working` (that is the work itself;
   its share is the flow efficiency). `significant` is true when the share is at least 0.30 **and** above the state's own
   baseline: an exponentially weighted average (alpha 0.2) of the share that state held in past windows, folded in at most

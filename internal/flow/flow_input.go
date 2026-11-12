@@ -35,6 +35,10 @@ type ItemFact struct {
 	// command of that gate passed on one tree.
 	Gate      string
 	ProofCmds []string
+	// ProofHashes are the history.CmdHash of the argv of each command of Gate, as the ledger records them
+	// (cmd_hash): a gate run only counts toward the item when its command is one the gate has now, so a pass
+	// of a command the gate dropped does not make a tree whole. Empty (an older caller): any command of the gate.
+	ProofHashes []string
 }
 
 // Event kinds written by the hooks (internal/flowstate keeps them).

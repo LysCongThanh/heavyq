@@ -93,13 +93,18 @@ func throughputOf(in Input, holds map[string]*itemHolds, from time.Time, activeS
 	var lat []float64
 	for id, c := range completions(in, from) {
 		tp.N++
-		if tp.LastProof == nil || c.last.After(*tp.LastProof) {
-			t := c.last.UTC()
+		if last := c.last(); tp.LastProof == nil || last.After(*tp.LastProof) {
+			t := last.UTC()
 			tp.LastProof = &t
 		}
+		// The pair is the claim the item's last finish followed and the first finish after that claim, not the
+		// item's first finish in the window: on a gate several lanes share, a pass from before the claim is not
+		// the proof the claim led to.
 		if ih := holds[id]; ih != nil {
-			if cl, ok := ih.lastClaim(c.first); ok {
-				lat = append(lat, c.first.Sub(cl).Seconds())
+			if cl, ok := ih.lastClaim(c.last()); ok {
+				if at, ok := c.firstAfter(cl); ok {
+					lat = append(lat, at.Sub(cl).Seconds())
+				}
 			}
 		}
 	}

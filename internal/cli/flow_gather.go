@@ -13,6 +13,7 @@ import (
 	"github.com/LysCongThanh/heavyq/internal/gitutil"
 	"github.com/LysCongThanh/heavyq/internal/history"
 	"github.com/LysCongThanh/heavyq/internal/lease"
+	"github.com/LysCongThanh/heavyq/internal/proof"
 	"github.com/LysCongThanh/heavyq/internal/redact"
 	"github.com/LysCongThanh/heavyq/internal/repoconfig"
 	"github.com/LysCongThanh/heavyq/internal/sessionmeta"
@@ -116,6 +117,9 @@ func flowItems(cfg *config.Config, root string, recent []history.Record, now tim
 			}
 			for _, c := range cmds {
 				f.ProofCmds = append(f.ProofCmds, redact.Command(c))
+				if f.Gate != "" {
+					f.ProofHashes = append(f.ProofHashes, history.CmdHash(proof.Argv(c)))
+				}
 			}
 		}
 		facts = append(facts, f)
