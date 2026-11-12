@@ -87,7 +87,7 @@ func SanitizeLane(s string) string {
 // TruncateCmd renders argv for display and history: secrets hidden first
 // (so a cut can never leave half a password), then bounded in length.
 func TruncateCmd(argv []string) string {
-	s := redact.Command(strings.Join(argv, " "))
+	s := redact.Argv(argv)
 	if len(s) > maxCmdLen {
 		s = strings.ToValidUTF8(s[:maxCmdLen-3], "") + "..."
 	}
