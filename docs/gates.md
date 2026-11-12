@@ -193,7 +193,9 @@ of the untracked listing.
 its own `.git` (a linked work tree of this repository, a clone, any nested repository) and everything under
 `.claude/worktrees/`, where Claude Code puts the work trees of its agents. Their files are not files of this
 checkout, so an agent editing there never makes the main checkout dirty or unprovable. A submodule recorded in
-the index is not one of these: changes inside it still make the tree unknown. `git status` still lists such
+the index is not one of these: changes inside it still make the tree unknown, and a submodule that is not
+checked out (as in every new `git worktree add`) makes the tree dirty with an id of its own, so a pass there
+never proves the checkout that has the submodule's files. `git status` still lists such
 directories; `heavyq doctor` and `heavyq init` print the line that hides them from it:
 `echo '.claude/worktrees/' >> "$(git rev-parse --git-path info/exclude)"`.
 
@@ -293,7 +295,8 @@ A gate is proven when every command is. Everything else fails closed:
 
 - A command with no matching record is `missing`.
 - If the tree cannot be identified (not a repository, no commit yet, a submodule with
-  changes of its own, more untracked content than heavyq can digest) nothing is provable. `gate status` says
+  changes of its own, a file flagged assume-unchanged or skip-worktree, which includes every path outside a
+  sparse checkout's cone, more untracked content than heavyq can digest) nothing is provable. `gate status` says
   why and exits 1, and `gate run` refuses to start.
 - An older record without `run_id` does not prove a command when `cache.env` is set (see Run identity).
 - A command longer than 200 bytes whose only runs are older records (no `cmd_hash`) is `missing`: the ledger

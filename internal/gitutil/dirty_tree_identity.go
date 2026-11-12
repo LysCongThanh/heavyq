@@ -4,8 +4,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"io"
-	"os"
-	"path/filepath"
 	"strings"
 )
 
@@ -26,11 +24,18 @@ const gitlinkMode = "160000"
 // Edits to the bookkeeping paths (exclude) are not part of it either: the diff
 // and the untracked listing skip them.
 //
-// Three cases are special:
+// A submodule that is not checked out leaves its files out of the work tree,
+// though git reports nothing for it: its path joins the id, so such a tree is
+// dirty and never shares an id with one that has the submodule's files.
+//
+// Four cases are special:
 //   - the edits cancel out (for example staged, then reverted by hand): the
 //     files equal head's, so the clean id is returned;
 //   - a submodule or nested repository has changes of its own: the diff only
 //     says "dirty" for those, whatever they are, so the tree is unknown (ID "");
+//   - an index entry is flagged assume-unchanged or skip-worktree (sparse
+//     checkout flags every path outside its cone): git status and git diff
+//     take it as unchanged, whatever the work tree holds, so unknown too;
 //   - too much untracked content to hash, or HEAD moved: unknown as well.
 func dirtyTreeAt(repo, head string, exclude []string) (TreeID, error) {
 	headTree, err := effectiveTreeOf(repo, head, exclude)
@@ -43,13 +48,14 @@ func dirtyTreeAt(repo, head string, exclude []string) (TreeID, error) {
 // dirtyTreeFrom is dirtyTreeAt on a head tree id already found (headTree, what a clean tree is called), with the
 // paths the diff (diffSpecs) and the untracked listing (listSpecs) look at given as pathspecs after "--": a whole
 // tree leaves out only the bookkeeping paths, a gate's scope (see IdentifyScoped) names the files that count.
+// The index is read through diffSpecs too, so only flags and submodules on paths that count matter.
 func dirtyTreeFrom(repo, head, headTree string, diffSpecs, listSpecs []string) (TreeID, error) {
 	unknown := TreeID{Dirty: true}
-	sub, err := submoduleChanged(repo)
+	idx, err := scanIndex(repo, diffSpecs)
 	if err != nil {
 		return TreeID{}, err
 	}
-	if sub {
+	if idx.hidden || submoduleChanged(repo, idx.checkedOut) {
 		return unknown, nil
 	}
 	diff, diffBytes, err := trackedDiffDigest(repo, head, diffSpecs)
@@ -63,10 +69,14 @@ func dirtyTreeFrom(repo, head, headTree string, diffSpecs, listSpecs []string) (
 	if headStill(repo, head) != nil || ut.unknown {
 		return unknown, nil
 	}
-	if diffBytes == 0 && ut.files == 0 {
+	if diffBytes == 0 && ut.files == 0 && len(idx.absent) == 0 {
 		return TreeID{ID: headTree}, nil
 	}
-	sum := sha256.Sum256([]byte("heavyq-tree-v2\x00" + diff + "\x00" + ut.digest))
+	edits := "heavyq-tree-v2\x00" + diff + "\x00" + ut.digest
+	if len(idx.absent) > 0 { // only then, so every other dirty id stays what it was
+		edits += "\x00absent-submodules\x00" + strings.Join(idx.absent, "\x00")
+	}
+	sum := sha256.Sum256([]byte(edits))
 	return TreeID{ID: headTree + "+" + hex.EncodeToString(sum[:])[:digestLen], Dirty: true}, nil
 }
 
@@ -102,31 +112,4 @@ func (c *countWriter) Write(p []byte) (int, error) {
 	n, err := c.w.Write(p)
 	c.n += int64(n)
 	return n, err
-}
-
-// submoduleChanged reports whether any checked-out submodule (or embedded
-// repository recorded in the index) has uncommitted or untracked files of its
-// own. The superproject's diff shows only "-dirty" for these, the same for
-// every kind of change, so such a tree has no reliable id. A submodule that
-// moved to another commit is not in this set: the diff names the commit.
-func submoduleChanged(repo string) (bool, error) {
-	list, err := gitRaw(repo, "ls-files", "--stage", "-z")
-	if err != nil {
-		return false, err
-	}
-	for _, entry := range strings.Split(list, "\x00") {
-		meta, path, ok := strings.Cut(entry, "\t")
-		if !ok || !strings.HasPrefix(meta, gitlinkMode+" ") {
-			continue
-		}
-		dir := filepath.Join(repo, filepath.FromSlash(path))
-		if _, err := os.Lstat(filepath.Join(dir, ".git")); err != nil {
-			continue // not checked out: nothing in it can be edited
-		}
-		out, err := gitRaw(dir, "status", "--porcelain", "--untracked-files=normal", "--ignore-submodules=none")
-		if err != nil || out != "" {
-			return true, nil // unreadable counts as changed: never claim an id
-		}
-	}
-	return false, nil
 }

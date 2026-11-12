@@ -25,9 +25,13 @@ Each run appends one JSON line. These fields say what it ran on and who asked:
   when: a local command edits the work tree it runs in; the tree changed between computing a cached or
   coalesced result's key and replaying it (a result proves the tree it was computed on); a submodule or an
   untracked nested repository has changes of its own (git only reports "dirty" for those, whatever they
-  are); more than 256 MiB of untracked content would have to be read; or `HEAD` moved while the tree was
+  are); a tracked file is flagged assume-unchanged or skip-worktree, which a sparse checkout does to every
+  path outside its cone (git then reports such a file as unchanged, whatever the work tree holds or lacks);
+  more than 256 MiB of untracked content would have to be read; or `HEAD` moved while the tree was
   being identified. Untracked files over 64 MiB are identified by size, mtime, inode and change time rather
-  than content. A submodule that sits at another commit is fine: the commit is part of the id.
+  than content. A submodule that sits at another commit is fine: the commit is part of the id. A submodule
+  that is not checked out (`git worktree add` never checks them out) makes the tree dirty, with an id of its
+  own: a run there never proves a checkout that has the submodule's files.
 - **Outside a repository**, the identity fields are simply empty.
 - **Where.** `$HEAVYQ_HISTORY` if set (exactly that one file, never rotated). Otherwise one file per month,
   `history-YYYY-MM.jsonl` (UTC) in `$XDG_STATE_HOME/heavyq`. `heavyq history` and the dashboard read across

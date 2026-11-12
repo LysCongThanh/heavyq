@@ -176,7 +176,8 @@ func subjectOfWith(cfg *config.Config, root string, scope, sibs []string) proof.
 	case co.Commit == "":
 		s.Why = "the repository has no commits yet"
 	case co.Dirty:
-		s.Why = "a submodule or nested repository has changes of its own, or there is more untracked content than heavyq can identify"
+		s.Why = "a submodule or nested repository has changes of its own, a file is assume-unchanged or skip-worktree " +
+			"(sparse checkout), or there is more untracked content than heavyq can identify"
 	}
 	return s
 }
