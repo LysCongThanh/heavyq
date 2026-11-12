@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/LysCongThanh/heavyq/internal/history"
+	"github.com/LysCongThanh/heavyq/internal/procinfo"
 )
 
 // silentShipRig is a rig whose remote "box" takes the commit over ssh ("host:path" git URL), with git's ssh
@@ -52,10 +53,12 @@ func stubPid(t *testing.T, h *rig, pidFile string) int {
 	return pid
 }
 
+// assertGone fails unless pid stops running within 5 s. A zombie counts as gone: when these tests run
+// under a heavyq (a subreaper on Linux), the killed ssh is reparented to it and lingers as a zombie.
 func assertGone(t *testing.T, pid int) {
 	t.Helper()
 	for deadline := time.Now().Add(5 * time.Second); time.Now().Before(deadline); time.Sleep(20 * time.Millisecond) {
-		if syscall.Kill(pid, 0) != nil {
+		if !procinfo.Default.Running(pid) {
 			return
 		}
 	}

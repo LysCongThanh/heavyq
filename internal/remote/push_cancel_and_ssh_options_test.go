@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/LysCongThanh/heavyq/internal/config"
+	"github.com/LysCongThanh/heavyq/internal/procinfo"
 )
 
 // sshRemote is fakeRemote whose git URL goes through ssh ("host:path"), so git push starts whatever
@@ -34,10 +35,12 @@ func waitForFile(t *testing.T, path string) string {
 	return ""
 }
 
-// gone waits up to 5 s for pid to stop existing.
+// gone waits up to 5 s for pid to stop running. A zombie counts as gone: under a subreaper (a heavyq
+// running these tests) the killed ssh is reparented there and lingers as a zombie, which kill(pid, 0)
+// still reports as alive.
 func gone(pid int) bool {
 	for deadline := time.Now().Add(5 * time.Second); time.Now().Before(deadline); time.Sleep(20 * time.Millisecond) {
-		if syscall.Kill(pid, 0) != nil {
+		if !procinfo.Default.Running(pid) {
 			return true
 		}
 	}
