@@ -28,7 +28,7 @@ func buildSnapshot(cfg *config.Config, probes *probeCache, cpuInterval time.Dura
 		remotes = append(remotes, r.Name)
 	}
 	probes.refresh(cfg, remotes) // before reading the queue: probes may be slow
-	q.Prune(procinfo.Default.Alive)
+	q.Prune(procinfo.Default)
 	qs, err := q.List()
 	if err != nil {
 		return snapshot.Snapshot{}, err

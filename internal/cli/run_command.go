@@ -5,6 +5,8 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -57,6 +59,10 @@ type run struct {
 	// scope is the `paths` of the gate this run proves, read once (see gatePaths).
 	scope     []string
 	scopeRead bool
+	// inRound is held for a scheduling round, and stopAsked set while a Ctrl-Z
+	// waits for it (run_wait_round_guards.go).
+	inRound   sync.Mutex
+	stopAsked atomic.Bool
 }
 
 func runCommand(cfg *config.Config, args []string, stderr io.Writer) int {
@@ -93,6 +99,7 @@ func runCommand(cfg *config.Config, args []string, stderr io.Writer) int {
 	defer r.out.discardLog()
 	signal.Notify(r.sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 	defer signal.Stop(r.sigs)
+	defer r.catchStops()()
 	defer r.cacheRelease()
 	if rc, done := r.cachePhase(o.Lane); done {
 		return rc

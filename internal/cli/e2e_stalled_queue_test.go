@@ -73,6 +73,9 @@ func TestSuspendedWaiterDoesNotHoldBackTheQueue(t *testing.T) {
 		out, err := exec.Command("ps", "-o", "stat=", "-p", strconv.Itoa(pid)).Output()
 		return err == nil && strings.HasPrefix(strings.TrimSpace(string(out)), "T")
 	})
+	if rc, out := h.run("status"); rc != 0 || !strings.Contains(out, "[stopped") {
+		t.Fatalf("status must say the waiter is stopped: rc=%d\n%s", rc, out)
+	}
 	next := h.start("5", "--lane", "next", "--", "true")
 	h.waiting(2)
 	h.touch("go")

@@ -64,7 +64,7 @@ func statusCommand(cfg *config.Config, args []string, w io.Writer, stderr io.Wri
 
 // printStatusText writes the RUNNING, WAITING and MACHINES sections.
 func printStatusText(w io.Writer, cfg *config.Config, q *queue.Dir, probes *probeCache, stderr io.Writer) int {
-	q.Prune(procinfo.Default.Alive)
+	owners := q.Prune(procinfo.Default)
 	snap, err := q.List()
 	if err != nil {
 		fmt.Fprintln(stderr, "heavyq:", err)
@@ -90,8 +90,12 @@ func printStatusText(w io.Writer, cfg *config.Config, q *queue.Dir, probes *prob
 		if t.Light {
 			kind += " light" // not ",light": a target may itself be a list "a,b"
 		}
-		fmt.Fprintf(w, "  %d. %-10s p%d  %-13s %8s  pid %-7d %s\n", i+1, t.Lane, t.Prio, kind,
-			fmtDur(now.Sub(t.Since)), t.Pid, t.Cmd)
+		stopped := ""
+		if owners.Stopped(t) { // it runs no rounds: the tickets behind it go first until it is resumed
+			stopped = "  [stopped (Ctrl-Z?): skipped until resumed]"
+		}
+		fmt.Fprintf(w, "  %d. %-10s p%d  %-13s %8s  pid %-7d %s%s\n", i+1, t.Lane, t.Prio, kind,
+			fmtDur(now.Sub(t.Since)), t.Pid, t.Cmd, stopped)
 		printWith(w, t.With)
 		printLacks(w, t.Lacks)
 	}
