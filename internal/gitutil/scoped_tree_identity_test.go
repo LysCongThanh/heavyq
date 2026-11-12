@@ -183,3 +183,24 @@ func TestScopePatternsMeanWhatTheDocsSay(t *testing.T) {
 }
 
 func removeFile(path string) error { return os.Remove(path) }
+
+// A repository with the sha256 object format has another empty tree id: the scoped id is built the same way.
+func TestScopedIdentityWithSha256Repository(t *testing.T) {
+	dir := t.TempDir()
+	if out, err := gitOut(dir, "init", "-q", "-b", "main", "--object-format=sha256"); err != nil {
+		t.Skipf("git without sha256 repositories: %v %s", err, out)
+	}
+	write(t, filepath.Join(dir, "main.go"), "package main\n")
+	write(t, filepath.Join(dir, "README.md"), "# readme\n")
+	gitIn(t, dir, "add", ".")
+	gitIn(t, dir, "commit", "-q", "-m", "one")
+	first := scoped(t, dir, goScope[:1])
+	if len(first.Commit) != 64 || !strings.HasPrefix(first.Tree, ScopedIDPrefix) {
+		t.Fatalf("sha256 repo: %+v", first)
+	}
+	write(t, filepath.Join(dir, "README.md"), "# readme, edited\n")
+	gitIn(t, dir, "commit", "-qam", "docs")
+	if after := scoped(t, dir, goScope[:1]); after.Tree != first.Tree {
+		t.Fatalf("a docs-only commit changed the scoped id: %q -> %q", first.Tree, after.Tree)
+	}
+}
