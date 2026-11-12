@@ -90,9 +90,9 @@ What a remote run sees, and what it doesn't:
   connection drops, the remote stops the process group of the command (or of the `cache_hook` running before
   it), frees the slot and removes the checkout. Exit 255 means the connection was lost; a command that exits
   255 (or 97, 98) itself is reported as 96. A job whose remote side dies without its cleanup (a reboot, a
-  SIGKILL there) is reclaimed by the next job on that machine. Shipped commits are kept as refs for 30 days
-  after their commit date, which keeps later pushes small. A link that dies silently (a VPN drops, a NAT
-  mapping expires, the remote loses power) sends no close to either side. The default transport sets
+  SIGKILL there) is reclaimed by the next job on that machine. The bare repo keeps refs to the 100 most
+  recently committed shipped commits, which keeps later pushes small; older ones are dropped. A link that
+  dies silently (a VPN drops, a NAT mapping expires, the remote loses power) sends no close to either side. The default transport sets
   `ServerAliveInterval=15` and `ServerAliveCountMax=4`, so the local ssh gives up about a minute later: heavyq
   exits 255 and frees the ticket. A custom `transport` that runs ssh needs the same two options, or the local
   side waits for TCP keepalive (about two hours). Those options free **only the local side**. If the remote is

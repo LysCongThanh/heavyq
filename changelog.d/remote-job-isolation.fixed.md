@@ -1,8 +1,8 @@
 - **Each remote run has a checkout and a base ref of its own.** Runs of one repository on one remote shared
   `refs/remotes/<base_ref>`: a run started after a `git fetch` moved it under a run already going, and it could be
   left behind for later runs that asked for no base. A run whose remote side died without its cleanup (a reboot, a
-  SIGKILL there) left its checkout under `work_dir` forever; the next job now reclaims it, and refs of shipped commits
-  are dropped 30 days after their commit date.
+  SIGKILL there) left its checkout under `work_dir` forever; the next job now reclaims it, and only the refs of the 100
+  most recently committed shipped commits are kept (they used to pile up forever).
 - **A cancel or a dropped connection stops the `cache_hook` at once.** It used to run to its end (an `npm ci`) while
   the remote slot stayed locked, so the next ticket on that slot failed with 77.
 - **A remote command runs as typed.** Its first word is a command name as it is locally (`time -v make` runs

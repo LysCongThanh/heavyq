@@ -128,18 +128,18 @@ reclaim() {
   git -C "$BARE" worktree prune > /dev/null 2>&1 # worktrees of an earlier heavyq whose directory is gone
   return 0
 }
-# prune_refs <bare> drops the pins of jobs that are gone and the refs of shipped commits committed more than
-# 30 days ago: a later run of such a commit ships it again, recent ones keep the next push small.
+# prune_refs <bare> drops the pins of jobs that are gone and keeps the refs of the 100 most recently committed
+# shipped commits. The kept ones make the next push small (it sends only what they do not reach); a later run
+# of a dropped commit ships it again, which costs little when it is an ancestor of one kept.
 prune_refs() {
-  local b="$1" now t r n
-  now="$(date +%s)"
-  git -C "$b" for-each-ref --format='%(committerdate:unix) %(refname)' refs/heavyq/ 2> /dev/null |
-    while read -r t r; do
+  local b="$1" r n kept=0
+  git -C "$b" for-each-ref --sort=-committerdate --format='%(refname)' refs/heavyq/ 2> /dev/null |
+    while read -r r; do
       case "$r" in
         refs/heavyq/jobs/*)
           n="${r#refs/heavyq/jobs/}"; n="${n%%/*}"
           [[ -e "$W/wt/$n.lock" ]] && ! lock_free "$W/wt/$n.lock" && continue ;;
-        *) [[ "$t" =~ ^[0-9]+$ ]] && ((now - t > 30 * 86400)) || continue ;;
+        *) kept=$((kept + 1)); [[ "$kept" -gt 100 ]] || continue ;;
       esac
       git -C "$b" update-ref -d "$r" > /dev/null 2>&1
     done

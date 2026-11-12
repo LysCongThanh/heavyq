@@ -116,20 +116,36 @@ func TestNextJobReclaimsTheCheckoutOfAKilledJob(t *testing.T) {
 	assertNoWorktrees(t, m)
 }
 
-// refs/heavyq/<sha12> keeps every shipped commit reachable; a job drops those of commits older than a month
-// (a later run of such a commit ships it again) and keeps recent ones, which make the next push small.
-func TestJobsPruneRefsOfOldShippedCommits(t *testing.T) {
+// refs/heavyq/<sha12> used to keep every shipped commit reachable forever. A job keeps the refs of the 100
+// most recently committed ones (they keep the next push small) and drops the rest; its own pins go with it.
+func TestJobsKeepOnlyTheNewestHundredShippedRefs(t *testing.T) {
 	repo, _ := newRepo(t, t.TempDir(), "app", "f", "x")
-	old := commitFile(t, repo, "f", "old", "GIT_COMMITTER_DATE="+time.Now().AddDate(0, 0, -90).Format(time.RFC3339))
-	recent := commitFile(t, repo, "f", "recent")
+	start := time.Now().Add(-200 * time.Hour)
+	var shas []string
+	for i := 0; i < 104; i++ {
+		date := "GIT_COMMITTER_DATE=" + start.Add(time.Duration(i)*time.Hour).Format(time.RFC3339)
+		shas = append(shas, commitFile(t, repo, "f", strconv.Itoa(i), date))
+	}
 	m := fakeRemote(t)
-	mustPush(t, m, repo, "app", old, old[:12])
-	mustPush(t, m, repo, "app", recent, recent[:12])
-	if rc, _, errs := runJob(t, JobSpec{Machine: m, Repo: "app", SHA: recent, Lane: "x", Slot: "h1", Argv: []string{"true"}}); rc != 0 {
+	newest := shas[len(shas)-1]
+	mustPush(t, m, repo, "app", newest, newest[:12])
+	bare := filepath.Join(m.WorkDir, "git", "app.git")
+	push := []string{"push", "-q", "--no-verify", bare}
+	for _, s := range shas {
+		push = append(push, s+":refs/heavyq/"+s[:12])
+	}
+	gitRun(t, repo, push...)
+	if rc, _, errs := runJob(t, JobSpec{Machine: m, Repo: "app", SHA: newest, Lane: "x", Slot: "h1", Argv: []string{"true"}}); rc != 0 {
 		t.Fatalf("rc=%d\n%s", rc, errs)
 	}
-	refs := gitRun(t, filepath.Join(m.WorkDir, "git", "app.git"), "for-each-ref", "--format=%(refname)", "refs/heavyq/")
-	if strings.Contains(refs, old[:12]) || !strings.Contains(refs, recent[:12]) || strings.Contains(refs, "jobs/") {
-		t.Fatalf("refs after the job:\n%s", refs)
+	refs := strings.Fields(gitRun(t, bare, "for-each-ref", "--format=%(refname)", "refs/heavyq/"))
+	all := strings.Join(refs, "\n")
+	if len(refs) != 100 || strings.Contains(all, "jobs/") || !strings.Contains(all, newest[:12]) || !strings.Contains(all, shas[4][:12]) {
+		t.Fatalf("%d refs after the job, want the 100 newest:\n%s", len(refs), all)
+	}
+	for _, s := range shas[:4] {
+		if strings.Contains(all, s[:12]) {
+			t.Fatalf("the ref of an old commit %s survived", s[:12])
+		}
 	}
 }
