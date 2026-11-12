@@ -144,7 +144,7 @@
         "max_wait": {
           "type": "string",
           "pattern": "^([0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h))+$",
-          "description": "MaxWait is passed as --max-wait and added to the Bash tool timeout.",
+          "description": "MaxWait is passed as --max-wait (whole seconds, rounded up; at least 1s)\nand added to the Bash tool timeout, up to Claude Code's cap.",
           "examples": [
             "2s",
             "15m"

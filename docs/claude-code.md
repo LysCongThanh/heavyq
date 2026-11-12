@@ -118,8 +118,19 @@ What heavyq does with this:
 - It copies every field of `tool_input` (`description`, `run_in_background`, ...) and replaces only `command`
   and `timeout`, because the input object is replaced as a whole.
 - It raises `timeout` by `hook.max_wait`, so time spent waiting in the queue doesn't use up the Bash tool's
-  timeout. The reference says of the Bash `timeout`: "Values above the maximum are reduced to the maximum
-  rather than rejected".
+  timeout. The base is the call's own `timeout`, else Claude Code's default: `BASH_DEFAULT_TIMEOUT_MS`, else
+  120000. The reference says of the Bash `timeout`: "Values above the maximum are reduced to the maximum
+  rather than rejected". That maximum is `BASH_MAX_TIMEOUT_MS`, else 600000, never below the default
+  (checked against Claude Code 2.1.322; the hook reads both variables from the environment it inherits). So
+  heavyq never writes more than the maximum and never less than what Claude Code would have used without the
+  hook. When the call already asks for close to the maximum, there is no room left: queue time then comes
+  out of the command's own time, and `additionalContext` says so. At the timeout Claude Code moves the
+  command to the background; the heavyq run keeps going and keeps its slot.
+- A `run_in_background: true` call has other limits: there `timeout` is how long the command may run in the
+  background before it is stopped, with a larger default and maximum of Claude Code's own (in 2.1.322 about
+  30 minutes and 2 hours, never below the foreground maximum) that the hook cannot read. So heavyq writes
+  the call's own `timeout` plus `hook.max_wait` with no foreground cap, and leaves `timeout` out when the
+  call set none, so Claude Code's background default still applies.
 - It adds `additionalContext` (documented as "String added to Claude's context alongside the tool result")
   that tells the agent why the command was queued and what exit 75 means.
 
@@ -146,7 +157,11 @@ So permission rules see `heavyq 4 --lane api --max-wait 300s -- npm test`, not `
 2. Set `hook.permission = "allow"`. heavyq then returns `"allow"` for the commands it rewrites. These are
    only commands that matched a `[[hook.rule]]` or a built-in rule. This auto-approves them, including
    `npm test`, which runs whatever `package.json` says. Turn it on only if you would allow those commands
-   anyway. Deny and ask rules still apply.
+   anyway. Deny and ask rules still apply. It approves no more than the prefix rule you would have written
+   (`Bash(npm test:*)`): a leading assignment Claude Code does not strip for prefix rules (only `NODE_ENV`,
+   `CI`, `GOOS`, `GOARCH`, `CGO_ENABLED`, `RUST_LOG`, `NO_COLOR`, `TZ` and `LANG` are), or a `cd` that may
+   leave the agent's cwd (`..`, `~`, an absolute path outside it, a glob such as `.[.]` that older bash
+   expands to `..`), gets the rewrite without a decision, so Claude Code asks as usual.
 
 The Claude session id reaches the ledger out of band. When the hook wraps a command it writes
 `<queue dir>/sessions/<lane>` (JSON `{"session_id": ..., "at": ...}`, atomic, mode 0600), and `heavyq <prio>`

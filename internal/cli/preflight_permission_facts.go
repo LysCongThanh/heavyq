@@ -67,7 +67,7 @@ func hookRewriter(cfg *config.Config, root string) preflight.Rewriter {
 		bin = "heavyq"
 	}
 	opts := hook.Options{Rules: rules, Permission: cfg.Hook.Permission, MaxWait: cfg.Hook.MaxWait.Duration,
-		Binary: bin, Lane: os.Getenv("HEAVYQ_LANE"), LaneFor: worktreeLane}
+		Binary: bin, Lane: os.Getenv("HEAVYQ_LANE"), LaneFor: worktreeLane, CacheEnv: cfg.Cache.Env}
 	return func(cmd string) (string, bool, bool) {
 		raw, err := json.Marshal(map[string]any{"hook_event_name": "PreToolUse", "tool_name": "Bash", "cwd": root,
 			"tool_input": map[string]any{"command": cmd}})

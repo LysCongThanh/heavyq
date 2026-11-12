@@ -112,9 +112,10 @@ func newSerialRig(t *testing.T, config string) *rig {
 	for _, e := range os.Environ() {
 		name, _, _ := strings.Cut(e, "=")
 		// The suite may itself run under a coding agent (CLAUDECODE=1, ...): the
-		// child must not inherit agent mode unless a test asks for it.
+		// child must not inherit agent mode, nor the agent's Bash tool timeouts
+		// the PreToolUse hook reads, unless a test asks for it.
 		if !strings.HasPrefix(e, "HEAVYQ_") && !strings.HasPrefix(e, "XDG_CACHE_HOME=") && !strings.HasPrefix(e, "CLAUDE_CONFIG_DIR=") &&
-			!agentmode.IsAgentVar(name) {
+			!agentmode.IsAgentVar(name) && name != "BASH_DEFAULT_TIMEOUT_MS" && name != "BASH_MAX_TIMEOUT_MS" {
 			env = append(env, e)
 		}
 	}

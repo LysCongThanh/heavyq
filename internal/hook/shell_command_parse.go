@@ -27,6 +27,8 @@ type token struct {
 //	[cd DIR &&] [NAME=VAL ...] PROG ARGS... [2>&1] [| tail|head|grep ARGS...]
 type Parsed struct {
 	Src      string
+	HasCd    bool     // a leading `cd DIR &&`
+	Cd       string   // its DIR, unquoted
 	Env      []string // NAME=VAL assignments before the program
 	Words    []string // program and arguments, unquoted
 	EnvStart int      // byte offset where the assignments (or program) start
@@ -83,6 +85,9 @@ func Parse(src string) (*Parsed, error) {
 		}
 	}
 	p := &Parsed{Src: src, EnvStart: main[0].start}
+	if i == 1 {
+		p.HasCd, p.Cd = true, segs[0][1].val
+	}
 	for _, t := range main {
 		switch {
 		case t.op:

@@ -3,6 +3,8 @@ package preflight
 import (
 	"slices"
 	"strings"
+
+	"github.com/LysCongThanh/heavyq/internal/hook"
 )
 
 // Claude Code strips a fixed set of process wrappers and a leading assignment of
@@ -14,8 +16,9 @@ import (
 // known, and any other assignment makes the answer uncertain.
 var strippedWrappers = map[string]bool{"timeout": true, "time": true, "nice": true, "nohup": true, "stdbuf": true, "command": true, "builtin": true, "noglob": true}
 
-// safeEnvVars are leading assignments seen to be stripped by Claude Code.
-var safeEnvVars = []string{"NODE_ENV", "CI", "GOOS", "GOARCH", "CGO_ENABLED", "RUST_LOG", "NO_COLOR", "TZ", "LANG"}
+// safeEnvVars are leading assignments seen to be stripped by Claude Code. The
+// hook's permission = allow trusts the same list.
+var safeEnvVars = hook.ClaudeSafeEnvVars
 
 // normalized is a simple command as the rules see it.
 type normalized struct {

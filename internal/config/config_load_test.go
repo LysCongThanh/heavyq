@@ -153,6 +153,8 @@ max_entry_mb = 50
 	for _, bad := range []string{
 		"[hook]\npermission = \"ask\"",
 		"[hook]\nbinary = \"heavyq; rm x\"",
+		"[hook]\nmax_wait = \"400ms\"", // would round to --max-wait 0s, which means wait forever
+		"[hook]\nmax_wait = \"999ms\"",
 		"[[hook.rule]]\nmatch = []",
 		"[[hook.rule]]\nmatch = [\"npm test && x\"]",
 		"[[hook.rule]]\nmatch = [\"npm test\"]\npriority = 12",

@@ -63,7 +63,7 @@ func TestPermissionResults(t *testing.T) {
 	}
 
 	// Allowing the wrapped prefix, or hook.permission = allow, clears it.
-	settings(`{"permissions":{"allow":["Bash(heavyq 4 --lane api --max-wait 0s -- go test *)","Bash(heavyq item:*)"]},` + hook + `}`)
+	settings(`{"permissions":{"allow":["Bash(heavyq 4 --lane api --max-wait 1s -- go test *)","Bash(heavyq item:*)"]},` + hook + `}`)
 	if res := permissionResults(cfg, root, []string{"go test ./..."}); len(res.Found) != 0 {
 		t.Errorf("exact wrapped prefix: %+v", res.Found)
 	}
