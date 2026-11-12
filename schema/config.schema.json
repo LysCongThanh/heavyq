@@ -33,6 +33,96 @@
       "type": "object",
       "description": "CacheConfig is the [cache] section for --cache result reuse."
     },
+    "ForeignConfig": {
+      "anyOf": [
+        {
+          "required": [
+            "history"
+          ]
+        },
+        {
+          "required": [
+            "tickets"
+          ]
+        }
+      ],
+      "properties": {
+        "name": {
+          "not": {
+            "const": "heavyq"
+          },
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+          "description": "Name labels the queue in reports; it must not be \"heavyq\"."
+        },
+        "history": {
+          "type": "string",
+          "description": "History is the queue's run history on this machine: one line per finished run."
+        },
+        "format": {
+          "type": "string",
+          "enum": [
+            "tsv"
+          ],
+          "description": "Format of History; \"tsv\" (tab-separated, the default) is the one layout supported."
+        },
+        "columns": {
+          "items": {
+            "type": "string",
+            "enum": [
+              "end_epoch",
+              "machine",
+              "lane",
+              "prio",
+              "light",
+              "wait_s",
+              "run_s",
+              "exit"
+            ]
+          },
+          "type": "array",
+          "uniqueItems": true,
+          "description": "Columns name the History columns in order (default: ForeignColumns). Unknown names are refused."
+        },
+        "tickets": {
+          "type": "string",
+          "description": "Tickets is the directory of live tickets: \"\u003cprio\u003e-\u003c20-digit unix ns\u003e-\u003cpid\u003e-\u003clane\u003e\", \".run\" while running."
+        },
+        "infra_exits": {
+          "items": {
+            "type": "integer",
+            "maximum": 255,
+            "minimum": 1
+          },
+          "type": "array",
+          "description": "InfraExits are exit codes of this queue that mean infrastructure, not code (added to 127, 137 and 255)."
+        },
+        "machines_dir": {
+          "type": "string",
+          "description": "MachinesDir holds one \"\u003cmachine\u003e.env\" file per machine, KEY=VALUE lines (SLOTS, LIGHT_SLOTS, KIND)."
+        },
+        "slot_dirs": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object",
+          "description": "SlotDirs maps a heavyq machine name to the directory of this queue's slot lock files on that machine\n(absolute, or relative to that machine's home). A slot is busy while its file is flock-held."
+        },
+        "aliases": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object",
+          "description": "Aliases map a machine name the queue writes to the heavyq machine name (\"build-1\" = \"local\")."
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "description": "ForeignConfig is one [[foreign]] table: another queue that heavyq only observes (`heavyq fleet`)."
+    },
     "HookConfig": {
       "properties": {
         "enabled": {
@@ -167,6 +257,10 @@
         "env_path": {
           "type": "string",
           "description": "directories put first on the remote command's PATH (\"~/\" = remote home)"
+        },
+        "observe_only": {
+          "type": "boolean",
+          "description": "ObserveOnly: heavyq never runs anything there; `heavyq fleet` only probes it (load, RAM, processes,\nforeign slots). Such a remote takes only name and ssh (or transport)."
         }
       },
       "additionalProperties": false,
@@ -388,6 +482,13 @@
       },
       "type": "array",
       "description": "PoolSpecs are the [[pool]] tables as written; normalize validates them\ninto Pools. A pool of the same name in heavyq.toml replaces the user's."
+    },
+    "foreign": {
+      "items": {
+        "$ref": "#/definitions/ForeignConfig"
+      },
+      "type": "array",
+      "description": "Foreign are the other queues `heavyq fleet` observes, read-only."
     }
   },
   "additionalProperties": false,

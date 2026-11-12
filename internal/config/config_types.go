@@ -36,6 +36,8 @@ type Config struct {
 	// PoolSpecs are the [[pool]] tables as written; normalize validates them
 	// into Pools. A pool of the same name in heavyq.toml replaces the user's.
 	PoolSpecs []pools.Spec `toml:"pool"`
+	// Foreign are the other queues `heavyq fleet` observes, read-only.
+	Foreign []ForeignConfig `toml:"foreign"`
 
 	// Path is the file the config was loaded from ("" when defaults only).
 	Path string `toml:"-"`
@@ -47,6 +49,9 @@ type Config struct {
 	Unknown []UnknownKey `toml:"-"`
 	// Pools are the validated [[pool]] tables, in file order.
 	Pools []pools.Pool `toml:"-"`
+	// Observed are the [[remote]] tables with observe_only = true, moved out of Remotes: `heavyq fleet`
+	// probes them, nothing ever runs there.
+	Observed []MachineConfig `toml:"-"`
 }
 
 // QueueConfig holds queue-wide behaviour.
@@ -97,6 +102,9 @@ type MachineConfig struct {
 	GitURL    string   `toml:"git_url"`    // where bare repos live, as seen by `git push`
 	CacheHook string   `toml:"cache_hook"` // shell snippet run in the worktree before the command
 	EnvPath   string   `toml:"env_path"`   // directories put first on the remote command's PATH ("~/" = remote home)
+	// ObserveOnly: heavyq never runs anything there; `heavyq fleet` only probes it (load, RAM, processes,
+	// foreign slots). Such a remote takes only name and ssh (or transport).
+	ObserveOnly bool `toml:"observe_only"`
 }
 
 // IsLocal reports whether the machine is the local workstation.

@@ -1,0 +1,409 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/LysCongThanh/heavyq/main/schema/fleet.schema.json",
+  "definitions": {
+    "Group": {
+      "properties": {
+        "owner": {
+          "type": "string",
+          "description": "a queue name, or \"outside\""
+        },
+        "lane": {
+          "type": "string"
+        },
+        "comm": {
+          "type": "string"
+        },
+        "procs": {
+          "type": "integer"
+        },
+        "threads": {
+          "type": "integer",
+          "description": "0 when unknown (macOS)"
+        },
+        "cpu_pct": {
+          "type": "number",
+          "description": "one core = 100"
+        },
+        "rss_mb": {
+          "type": "integer"
+        },
+        "cmd": {
+          "type": "string",
+          "description": "the busiest member's command line, redacted and cut"
+        }
+      },
+      "type": "object",
+      "required": [
+        "owner",
+        "comm",
+        "procs",
+        "threads",
+        "cpu_pct",
+        "rss_mb"
+      ],
+      "description": "Group is the processes of one owner, lane and command name on a machine."
+    },
+    "LiveTicket": {
+      "properties": {
+        "lane": {
+          "type": "string"
+        },
+        "prio": {
+          "type": "integer"
+        },
+        "machine": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "wait_s": {
+          "type": "number",
+          "description": "waiting so far, or until it started"
+        },
+        "run_s": {
+          "type": "number",
+          "description": "running so far, when known"
+        },
+        "cmd": {
+          "type": "string",
+          "description": "redacted"
+        }
+      },
+      "type": "object",
+      "required": [
+        "lane",
+        "prio",
+        "wait_s"
+      ],
+      "description": "LiveTicket is a running or waiting ticket now."
+    },
+    "Machine": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "reachable": {
+          "type": "boolean"
+        },
+        "error": {
+          "type": "string",
+          "description": "why it is unreachable"
+        },
+        "cores": {
+          "type": "integer"
+        },
+        "load1": {
+          "type": "number"
+        },
+        "load_per_core": {
+          "type": "number"
+        },
+        "free_mb": {
+          "type": "integer"
+        },
+        "total_mb": {
+          "type": "integer"
+        },
+        "pressure": {
+          "$ref": "#/definitions/Pressure"
+        },
+        "overload": {
+          "type": "boolean"
+        },
+        "overload_why": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "slots": {
+          "items": {
+            "$ref": "#/definitions/SlotUse"
+          },
+          "type": "array"
+        },
+        "top": {
+          "items": {
+            "$ref": "#/definitions/Group"
+          },
+          "type": "array",
+          "description": "busiest process groups, attributed to a queue and lane, or \"outside\""
+        },
+        "outside_rss_mb": {
+          "type": "integer"
+        },
+        "worker_cap": {
+          "$ref": "#/definitions/WorkerCap"
+        },
+        "window": {
+          "$ref": "#/definitions/Stats",
+          "description": "runs of every queue that ended on this machine in the window"
+        }
+      },
+      "type": "object",
+      "required": [
+        "name",
+        "role",
+        "reachable",
+        "cores",
+        "load1",
+        "load_per_core",
+        "free_mb",
+        "total_mb",
+        "overload",
+        "overload_why",
+        "slots",
+        "top",
+        "outside_rss_mb",
+        "window"
+      ],
+      "description": "Machine is one machine of the fleet."
+    },
+    "MachineStats": {
+      "properties": {
+        "machine": {
+          "type": "string"
+        },
+        "window": {
+          "$ref": "#/definitions/Stats"
+        }
+      },
+      "type": "object",
+      "required": [
+        "machine",
+        "window"
+      ],
+      "description": "MachineStats is a queue's window on one machine."
+    },
+    "Pressure": {
+      "properties": {
+        "cpu_some_avg10": {
+          "type": "number"
+        },
+        "mem_some_avg10": {
+          "type": "number"
+        },
+        "mem_full_avg10": {
+          "type": "number"
+        }
+      },
+      "type": "object",
+      "required": [
+        "cpu_some_avg10",
+        "mem_some_avg10",
+        "mem_full_avg10"
+      ],
+      "description": "Pressure is Linux pressure stall information (/proc/pressure), avg10 in percent."
+    },
+    "Queue": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "window": {
+          "$ref": "#/definitions/Stats"
+        },
+        "machines": {
+          "items": {
+            "$ref": "#/definitions/MachineStats"
+          },
+          "type": "array",
+          "description": "the window per machine, most runs first"
+        },
+        "running": {
+          "items": {
+            "$ref": "#/definitions/LiveTicket"
+          },
+          "type": "array"
+        },
+        "waiting": {
+          "items": {
+            "$ref": "#/definitions/LiveTicket"
+          },
+          "type": "array",
+          "description": "longest wait first"
+        },
+        "stale": {
+          "type": "integer",
+          "description": "tickets whose process is gone"
+        },
+        "history_truncated": {
+          "type": "boolean"
+        }
+      },
+      "type": "object",
+      "required": [
+        "name",
+        "kind",
+        "window",
+        "machines",
+        "running",
+        "waiting",
+        "stale",
+        "history_truncated"
+      ],
+      "description": "Queue is one queue: heavyq's own or a foreign one."
+    },
+    "SlotUse": {
+      "properties": {
+        "owner": {
+          "type": "string"
+        },
+        "busy": {
+          "type": "integer"
+        },
+        "total": {
+          "type": "integer",
+          "description": "0 when unknown"
+        }
+      },
+      "type": "object",
+      "required": [
+        "owner",
+        "busy",
+        "total"
+      ],
+      "description": "SlotUse is one queue's slots on a machine."
+    },
+    "Stats": {
+      "properties": {
+        "runs": {
+          "type": "integer"
+        },
+        "run_hours": {
+          "type": "number"
+        },
+        "wait_p50_s": {
+          "type": "number"
+        },
+        "wait_p90_s": {
+          "type": "number"
+        },
+        "wait_p95_s": {
+          "type": "number"
+        },
+        "run_p50_s": {
+          "type": "number"
+        },
+        "per_hour": {
+          "type": "number",
+          "description": "runs finished per hour of the window"
+        },
+        "red": {
+          "type": "integer"
+        },
+        "red_infra": {
+          "type": "integer"
+        },
+        "red_code": {
+          "type": "integer"
+        },
+        "infra_rate": {
+          "type": "number",
+          "description": "InfraRate and CodeRate are the shares of all runs that were red for each reason."
+        },
+        "code_rate": {
+          "type": "number"
+        }
+      },
+      "type": "object",
+      "required": [
+        "runs",
+        "run_hours",
+        "wait_p50_s",
+        "wait_p90_s",
+        "wait_p95_s",
+        "run_p50_s",
+        "per_hour",
+        "red",
+        "red_infra",
+        "red_code",
+        "infra_rate",
+        "code_rate"
+      ],
+      "description": "Stats summarise the runs of a window."
+    },
+    "WorkerCap": {
+      "properties": {
+        "workers": {
+          "type": "integer"
+        },
+        "cores": {
+          "type": "integer"
+        },
+        "heavy_slots": {
+          "type": "integer"
+        },
+        "why": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "workers",
+        "cores",
+        "heavy_slots",
+        "why"
+      ],
+      "description": "WorkerCap is the suggested number of workers (test runner processes or threads) per heavy slot."
+    }
+  },
+  "properties": {
+    "schema": {
+      "type": "integer"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "since": {
+      "type": "string",
+      "format": "date-time",
+      "description": "start of the history window"
+    },
+    "window_s": {
+      "type": "number",
+      "description": "its length in seconds"
+    },
+    "machines": {
+      "items": {
+        "$ref": "#/definitions/Machine"
+      },
+      "type": "array"
+    },
+    "queues": {
+      "items": {
+        "$ref": "#/definitions/Queue"
+      },
+      "type": "array"
+    },
+    "notes": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array",
+      "description": "what could not be read (a partial history, a missing tickets dir)"
+    }
+  },
+  "type": "object",
+  "required": [
+    "schema",
+    "generated_at",
+    "since",
+    "window_s",
+    "machines",
+    "queues",
+    "notes"
+  ],
+  "title": "heavyq fleet --json",
+  "description": "The output of `heavyq fleet --json` (schema 1): every machine and every queue, heavyq's and the foreign ones. Fields may be added within schema 1; readers should ignore unknown ones."
+}
+

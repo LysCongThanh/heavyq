@@ -93,10 +93,11 @@ machines. It listens on loopback only. See [docs/dashboard.md](docs/dashboard.md
 | Mentor: break repeat failures, measured with a holdout (`heavyq mentor`) | [docs/mentor.md](docs/mentor.md) |
 | Dashboard, JSON snapshot, control API | [docs/dashboard.md](docs/dashboard.md) |
 | `heavyq top`: a terminal monitor for a tmux pane, with display modes | [docs/top.md](docs/top.md) |
+| `heavyq fleet`: observe every machine and every queue, other queues included (overload, waits, red runs split infra vs code, worker caps), as text, JSON, an atomic markdown report or an agent digest | [docs/fleet.md](docs/fleet.md) |
 | `heavyq flow`: where work waits (needs-you, the constraint, throughput), derived from the ledger, leases and hooks | [docs/flow.md](docs/flow.md) |
 | `heavyq statusline` (a segment for Claude Code's status line, with a forecast and local notices) and `heavyq recap` | [docs/statusline.md](docs/statusline.md), [docs/recap.md](docs/recap.md) |
 | Configuration and environment variables | [docs/configuration.md](docs/configuration.md) |
-| Editor support: JSON Schemas for `heavyq.toml`, the user config and `status --json` | [docs/configuration.md](docs/configuration.md#editor-support-json-schemas) |
+| Editor support: JSON Schemas for `heavyq.toml`, the user config, `status --json` and `fleet --json` | [docs/configuration.md](docs/configuration.md#editor-support-json-schemas) |
 | Exit codes | [docs/exit-codes.md](docs/exit-codes.md) |
 | Work items: claim, prove and finish (`heavyq item`) | [docs/items.md](docs/items.md) |
 | Steer: the brief after compaction, the stop gate (`heavyq steer off\|guard\|destroy`), the delivery canary | [docs/steer.md](docs/steer.md) |
