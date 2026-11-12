@@ -99,10 +99,12 @@ func StartJob(s JobSpec) (*Started, error) {
 	if err != nil {
 		return nil, err
 	}
-	line := b64(jobCommandLine(s.Argv))
+	// The identity variables travel with the command line on stdin, not in an
+	// environment variable: everything in env goes into the transport's one
+	// exec argument, and their values could fill it as a long argv would.
+	line := b64(cmdEnv + jobCommandLine(s.Argv))
 	env := []string{
 		"HEAVYQ_CMD_LEN=" + strconv.Itoa(len(line)),
-		"HEAVYQ_CMD_ENV_B64=" + b64(cmdEnv),
 		"HEAVYQ_SUBDIR=" + s.Subdir,
 		"HEAVYQ_WITH=" + strings.Join(s.Siblings, ","),
 		"HEAVYQ_WATCH_STDIN=1",
