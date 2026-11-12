@@ -18,17 +18,19 @@ import (
 
 // run is the state of one `heavyq <prio> -- cmd` invocation.
 type run struct {
-	cfg    *config.Config
-	opts   runOptions
-	pl     *placement
-	q      *queue.Dir
-	me     *queue.Ticket
-	probes *probeCache
-	sigs   chan os.Signal
-	stderr io.Writer
-	t0     time.Time
-	start  string      // our process start token
-	cache  *cacheState // nil without --cache
+	cfg *config.Config
+	// cfgWatch re-reads the config file while the ticket waits (run_config_reload.go).
+	cfgWatch *config.Watch
+	opts     runOptions
+	pl       *placement
+	q        *queue.Dir
+	me       *queue.Ticket
+	probes   *probeCache
+	sigs     chan os.Signal
+	stderr   io.Writer
+	t0       time.Time
+	start    string      // our process start token
+	cache    *cacheState // nil without --cache
 	// interrupted: a signal stopped the command, so its result is not real.
 	interrupted bool
 	// cancelled: an operator stopped the ticket (heavyq cancel / dashboard).
@@ -77,8 +79,8 @@ func runCommand(cfg *config.Config, args []string, stderr io.Writer) int {
 		return ExitUsage
 	}
 	r := &run{cfg: cfg, opts: o, pl: pl, q: q, stderr: stderr, t0: time.Now(), start: start,
-		probes: newProbeCache(cfg.Queue.ProbeTimeout.Duration),
-		sigs:   make(chan os.Signal, 4), scan: &suspectScan{}}
+		probes: newProbeCache(cfg.Queue.ProbeTimeout.Duration), cfgWatch: config.NewWatch(cfg),
+		sigs: make(chan os.Signal, 4), scan: &suspectScan{}}
 	r.out = newRunOutput(mode, o.Digest, stderr, r.t0, o.Lane)
 	defer r.out.discardLog()
 	signal.Notify(r.sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
@@ -94,6 +96,7 @@ func runCommand(cfg *config.Config, args []string, stderr io.Writer) int {
 	r.me = &queue.Ticket{
 		Pid: os.Getpid(), Start: start, Lane: o.Lane, Prio: o.Prio, Light: o.Light,
 		Target: pl.target, Candidates: pl.candidates, Since: r.t0, Cmd: queue.TruncateCmd(o.Argv), With: siblingLabels(pl.siblings),
+		ConfigSum: cfg.Origin.Sum,
 	}
 	if err := r.preparePools(); err != nil {
 		return usageFail(stderr, mode, err)

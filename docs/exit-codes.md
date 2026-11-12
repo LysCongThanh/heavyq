@@ -3,7 +3,7 @@
 | Code | Meaning |
 |---|---|
 | *command's own* | the command ran; this is its exit code (128+n if killed by signal n) |
-| 2 | usage or setup error (nothing ran) |
+| 2 | usage or setup error (nothing ran); also a waiting ticket whose `--needs` no longer fit the pools after a config edit ([configuration](configuration.md#editing-the-config-while-tickets-wait)) |
 | 75 | `--max-wait` elapsed before the ticket's turn (EX_TEMPFAIL: retry later) |
 | 76 | the ticket can only run remotely and its remotes were unreachable for `remote_down_max` |
 | 77 | remote preparation failed (push, worktree, cache hook, or a slot taken outside the queue) |

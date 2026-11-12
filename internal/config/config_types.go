@@ -39,6 +39,8 @@ type Config struct {
 
 	// Path is the file the config was loaded from ("" when defaults only).
 	Path string `toml:"-"`
+	// Origin is where Load looked and what it found, for a re-read (Watch).
+	Origin Origin `toml:"-"`
 	// Unknown are the keys of the file this heavyq does not define, in file
 	// order. They are ignored: a config written for a newer heavyq must not
 	// stop an older one (which may be the one about to upgrade it).

@@ -70,6 +70,8 @@ func causeOf(machine, reason string) []Span {
 		b.em(machine).text(" is unreachable")
 	case strings.Contains(reason, "paused"):
 		b.em(machine).text(" is paused")
+	case reason == OtherConfigReason:
+		b.text("its own config decides for ").em(machine)
 	default:
 		b.text(machine + ": " + reason)
 	}

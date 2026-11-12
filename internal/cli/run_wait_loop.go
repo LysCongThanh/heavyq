@@ -27,6 +27,9 @@ func (r *run) waitForTurn() (*claim, int) {
 			r.cancelled = true
 			return nil, ExitCancelled
 		}
+		if rc := r.reloadConfig(); rc != 0 {
+			return nil, rc
+		}
 		r.probes.refresh(r.cfg, r.me.Candidates)
 		if len(r.pl.siblings) > 0 || !r.pl.refIsHead {
 			r.pl.refreshLocal()
@@ -83,19 +86,17 @@ func (r *run) round(headSince *time.Time) (*claim, int, int, []*queue.Ticket, er
 	if pos == 0 {
 		return nil, 0, 0, nil, fmt.Errorf("our ticket disappeared from %s", r.q.Path)
 	}
-	opps, _ := schedule.Opportunities(r.me, skipPoolBlocked(r.setForAhead(ahead), r.me, ahead), slotCounts(r.cfg))
-	head := false
-	for _, op := range opps {
-		head = head || op.Head
-	}
+	opps, _, head := admissionOpportunities(r.cfg, r.me, ahead, r.setForAhead(ahead))
 	was := *headSince
 	if !head {
 		*headSince = time.Time{}
 	} else if headSince.IsZero() {
 		*headSince = time.Now()
 	}
-	if !was.Equal(*headSince) { // publish the anti-starvation clock for status / dash
-		r.me.HeadSince = *headSince
+	// Publish the anti-starvation clock and the config this round decides
+	// with, for status / why / dash.
+	if !was.Equal(*headSince) || r.me.ConfigSum != r.cfg.Origin.Sum {
+		r.me.HeadSince, r.me.ConfigSum = *headSince, r.cfg.Origin.Sum
 		_ = r.q.Rewrite(r.me)
 	}
 	var waited time.Duration

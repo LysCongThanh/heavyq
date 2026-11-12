@@ -39,11 +39,11 @@ func dashCommand(cfg *config.Config, args []string, stdout, stderr io.Writer) in
 		fmt.Fprintln(stderr, "heavyq:", err)
 		return ExitUsage
 	}
-	probes := newProbeCache(cfg.Queue.ProbeTimeout.Duration)
+	probes, live := newProbeCache(cfg.Queue.ProbeTimeout.Duration), newLiveConfig(cfg)
 	host, _ := os.Hostname()
 	srv, err := dash.New(dash.Options{
 		Control: *ctl, Interval: *interval, Version: version(), Host: host, Mailbox: controlBox(),
-		Snapshot: func() (snapshot.Snapshot, error) { return buildSnapshot(cfg, probes, cpuSampleInterval) },
+		Snapshot: func() (snapshot.Snapshot, error) { return buildSnapshot(live.get(), probes, cpuSampleInterval) },
 		History: func(n int) ([]history.Record, error) {
 			return history.ReadTail(history.DefaultPath(), history.TailLimit{Max: n})
 		},
@@ -54,7 +54,7 @@ func dashCommand(cfg *config.Config, args []string, stdout, stderr io.Writer) in
 			t, ok := q.Find(id)
 			return ok, ok && t.Running
 		},
-		Machine: func(name string) bool { _, ok := cfg.Machine(name); return ok },
+		Machine: func(name string) bool { _, ok := live.get().Machine(name); return ok },
 	})
 	if err != nil {
 		fmt.Fprintln(stderr, "heavyq:", err)

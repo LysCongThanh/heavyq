@@ -54,6 +54,31 @@ cache), `CLAUDE_CONFIG_DIR` (`--scope user` target). Commands run locally get `H
 `HEAVYQ_LANE` and `HEAVYQ_ACTIVE=1` (the hook never rewrites while it is set), plus `HEAVYQ_<POOL>` /
 `HEAVYQ_<POOL>_N` for each value leased with `--needs` ([pools](pools.md)).
 
+## Editing the config while tickets wait
+
+There is no daemon: each waiting ticket's own heavyq process decides on every poll whether it may start. It
+re-reads the config file when it changes (one `stat` per poll while it does not), validated exactly as at start,
+so a slot, a higher `max_load_ratio` or a bigger pool is used by tickets already waiting, on their next poll.
+`heavyq status`, `why`, `top` and the dashboard read the same file, so what they say about a waiting ticket is
+the decision it makes. Turn order does not change: a reload only changes what the tickets can get, never who
+goes first.
+
+- **What a waiting ticket keeps.** Its place and priority, its target and candidate machines (`--remote`, auto
+  placement: a remote added later is not one of them), its `--needs`, and the `[cache]` settings its cache key
+  and run identity were made with. Admission settings (`[queue]`, `[local]`, the `[[remote]]` entries of its
+  candidates, `[[pool]]`) come from the edited file; a candidate remote removed from the file is no longer used.
+- **An edit that does not load** (a syntax error, an unsafe or out-of-range value, a `--config` file that is gone)
+  changes nothing: the ticket keeps its last good config and says so once on stderr (not in agent mode):
+  `config edit not applied while waiting: ...; keeping the last good config`. Fix the file and the next poll
+  picks it up. Status refuses such a file outright, so it never explains a ticket with a config the ticket
+  refused.
+- **Needs that no longer fit.** If the edit removes or shrinks a pool a waiting ticket needs, the ticket gives up
+  with exit 2, as it would have at submit.
+- **Another config.** A ticket started with another `--config` / `$HEAVYQ_CONFIG` decides with that file. Each
+  ticket publishes which config it decides with; where the config status reads has room for it, status says
+  `decides under another config than this one` instead of promising a start that the ticket's own config may
+  refuse.
+
 ## Editor support: JSON Schemas
 
 Three JSON Schemas (draft 7) describe the files heavyq reads and writes. They are generated from the Go types the

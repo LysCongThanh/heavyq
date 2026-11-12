@@ -67,6 +67,9 @@ func TestStorySentences(t *testing.T) {
 		{"paused machine", Snapshot{
 			Waiting: []Waiting{head("web", -1, map[string]string{"local": "paused (heavyq resume to admit again)"})},
 		}, []string{"1 agent waits because local is paused."}},
+		{"room under this config, but the ticket decides under its own", Snapshot{
+			Waiting: []Waiting{head("web", -1, map[string]string{"local": OtherConfigReason})},
+		}, []string{"1 agent waits because its own config decides for local."}},
 		{"unreachable remote in the reasons", Snapshot{
 			Waiting: []Waiting{head("web", -1, map[string]string{"box": "unreachable"})},
 			Machines: []Machine{local(nil),

@@ -65,11 +65,7 @@ func (r *run) preparePools() error {
 	if len(r.opts.Needs) == 0 {
 		return nil
 	}
-	dir := r.opts.Repo
-	if dir == "" {
-		dir = r.pl.wd
-	}
-	set, err := poolSetFor(r.cfg, dir)
+	set, err := poolSetFor(r.cfg, r.needsDir())
 	if err != nil {
 		return err
 	}
@@ -79,6 +75,14 @@ func (r *run) preparePools() error {
 	r.poolSet = set
 	r.me.Needs = pools.FormatNeeds(r.opts.Needs)
 	return nil
+}
+
+// needsDir is the directory whose heavyq.toml pools a run's needs refer to.
+func (r *run) needsDir() string {
+	if r.opts.Repo != "" {
+		return r.opts.Repo
+	}
+	return r.pl.wd
 }
 
 // claimPools takes the pool values of the ticket for the claim c, on top of

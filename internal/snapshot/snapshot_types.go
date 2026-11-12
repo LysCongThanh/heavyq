@@ -138,6 +138,12 @@ type Running struct {
 	RSSMB     int       `json:"rss_mb"`  // whole process tree (local only)
 }
 
+// OtherConfigReason is the reason given for a machine where the config status
+// read has room for a ticket whose own process decides with another config
+// (another --config file, or an edit it has not polled yet): status cannot
+// promise the start that config may refuse.
+const OtherConfigReason = "decides under another config than this one"
+
 // Waiting is a ticket in the queue.
 type Waiting struct {
 	Ticket

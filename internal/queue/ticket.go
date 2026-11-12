@@ -42,6 +42,10 @@ type Ticket struct {
 	HeadSince time.Time `json:"head_since,omitzero"`
 	// Forced: admitted by the anti-starvation bypass of the resource gate.
 	Forced bool `json:"forced,omitempty"`
+	// ConfigSum identifies the config its owner decides with (config.Origin.Sum),
+	// written by the owner when it reads one; "" from an older heavyq. Status
+	// compares it with its own before it promises the ticket a start.
+	ConfigSum string `json:"config_sum,omitempty"`
 
 	Name    string `json:"-"` // file name without ".run"
 	Running bool   `json:"-"`

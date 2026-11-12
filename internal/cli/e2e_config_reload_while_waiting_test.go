@@ -122,3 +122,24 @@ func TestE2EWhyDoesNotPromiseAStartUnderAnotherConfig(t *testing.T) {
 	h.touch("go")
 	hold.wait(t, 20*time.Second)
 }
+
+// Needs are checked against the pools at submit (a need no pool can meet is a
+// usage error), and again when the config changes while the ticket waits: an
+// edit that removes the pool it waits for makes it give up (exit 2) instead of
+// waiting for ever, or taking values of a pool that no longer exists.
+func TestE2EWaitingTicketGivesUpWhenAnEditDropsItsPool(t *testing.T) {
+	const pool = "[[pool]]\nname = \"one\"\nsize = 1\n"
+	const noPool = "[queue]\npoll = \"50ms\"\nresource_gate = false\n[local]\nheavy_slots = 2\nlight_slots = 1\n" + calmLimits
+	h := newRig(t, noPool+pool)
+	hold := h.start("4", "--lane", "holder", "--needs", "one", "--", "sh", "-c", h.gateFile("go"))
+	h.running(1)
+	waiter := h.start("3", "--lane", "waiter", "--needs", "one", "--", "true")
+	h.waiting(1)
+
+	h.setConfig(noPool)
+	if rc := waiter.wait(t, 15*time.Second); rc != ExitUsage || !strings.Contains(waiter.out.String(), "--needs no longer fits") {
+		t.Fatalf("rc=%d, want %d:\n%s", rc, ExitUsage, waiter.out)
+	}
+	h.touch("go")
+	hold.wait(t, 20*time.Second)
+}
