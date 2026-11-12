@@ -61,7 +61,7 @@ func (r *run) checkExitTrust(m config.MachineConfig, repo, slot string, timeout 
 	if !ok || !v.Fresh(time.Now()) {
 		trusted, reason, err := remote.RunCanary(m, remote.CanaryJob{Repo: repo, SHA: r.pl.sha, Lane: r.me.Lane, Slot: slot}, timeout)
 		if err != nil {
-			fmt.Fprintf(r.stderr, "heavyq: the exit canary on %s could not run (%v); the command did not run\n", m.Name, err)
+			r.setupError(fmt.Errorf("the exit canary on %s could not run (%w); the command did not run", m.Name, err))
 			return r.setupFailed()
 		}
 		v = remote.CanaryVerdict{Trusted: trusted, Reason: reason, At: time.Now()}
@@ -74,9 +74,10 @@ func (r *run) checkExitTrust(m config.MachineConfig, repo, slot string, timeout 
 	}
 	r.distrust = snapshot.UntrustedExitText(m.Name, v.Reason)
 	if r.proving() || !m.AllowUntrustedExit {
-		fmt.Fprintf(r.stderr, "heavyq: %s; the command did not run (a result from there would prove nothing): %s\n", r.distrust, nextUntrusted)
+		// an agent reads these in the digest (digestRan), not as lines of their own
+		r.note("%s; the command did not run (a result from there would prove nothing): %s", r.distrust, nextUntrusted)
 		return r.setupFailed()
 	}
-	fmt.Fprintf(r.stderr, "heavyq: %s; running anyway (allow_untrusted_exit), but the result proves nothing\n", r.distrust)
+	r.note("%s; running anyway (allow_untrusted_exit), but the result proves nothing", r.distrust)
 	return 0
 }
