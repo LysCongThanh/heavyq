@@ -10,3 +10,6 @@
     one word, so every rewritten agent command exited 127. A leading `~/` is now expanded to your home.
   - a negative duration (`"-5m"`) or `load_weight_mb`, which silently became the default, and a `queue.poll` under
     `50ms`, which turned every waiting ticket into a busy loop on the queue lock. `0` still means the default.
+  - `legacy_lock_files` entries that are relative (each repository locked its own `<repo>/build-1.lock`, so the
+    shared limit and the exclusion with `flock` users were gone), empty, listed twice (two slots that admit one) or
+    sharing a base name (two slots with one name in `status` and claims).

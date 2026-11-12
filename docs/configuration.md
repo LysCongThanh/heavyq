@@ -17,7 +17,7 @@ A duration, `load_weight_mb`, `max_load_ratio` or `*_mb` budget set to `0` means
 | `queue.base_ref` | `""` | default `--base-ref`: `remote/branch` (e.g. `"origin/main"`) is recreated on the remote machine a run goes to and its commit is part of the run id; `""` = origin's default branch (`refs/remotes/origin/HEAD`, else `origin/main`) when the repository has one; `"none"` = no base ref. See [remote](remote.md) |
 | `local.heavy_slots` / `light_slots` | `2` / `1` | slots on this machine; each absent key gets its own default, an explicit `0` is kept. At least one machine needs a heavy slot: heavy runs (the default) cannot use light ones |
 | `remote.heavy_slots` / `light_slots` | `2` / `0` | slots on that remote, when neither key is set (`light_slots = 2` alone is a light-only remote) |
-| `local.legacy_lock_files` | `[]` | use these files as heavy slots (shared with `flock <file>` users); `light_slots` then defaults to `0` |
+| `local.legacy_lock_files` | `[]` | use these files as heavy slots (shared with `flock <file>` users): absolute paths, each with its own base name; `light_slots` then defaults to `0` |
 | `*.max_load_ratio` | `0.75` | admit while `load1 < ratio x cores` |
 | `*.job_mb` / `light_mb` / `reserve_mb` | `3072` / `1024` / `2048` | RAM budget per heavy / light job, and headroom |
 | `remote.name`, `remote.ssh` | required | name (not `local` or `auto`, which `--remote` reads as keywords) and ssh alias (`ssh` may be replaced by `transport` + `git_url`) |

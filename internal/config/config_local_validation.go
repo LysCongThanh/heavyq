@@ -1,6 +1,12 @@
 package config
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+	"path/filepath"
+	"strconv"
+	"strings"
+)
 
 // Default slot counts of [local], each applied when its own key is absent.
 const (
@@ -27,7 +33,39 @@ func (c *Config) normalizeLocal() error {
 			m.LightSlots = defaultLocalLightSlots
 		}
 	}
-	return m.normalizeCommon()
+	if err := m.normalizeCommon(); err != nil {
+		return err
+	}
+	return m.checkLegacyLockFiles()
+}
+
+// checkLegacyLockFiles: every heavyq process opens these paths as written, so a
+// relative one is a different file per working directory (no shared limit, no
+// exclusion with flock users), "" fails every claim, and a repeated path or
+// slot name (the base name without ".lock", which status and claims use) is
+// one slot counted twice.
+func (m *MachineConfig) checkLegacyLockFiles() error {
+	paths, names := map[string]bool{}, map[string]bool{}
+	for i := 1; i <= m.LightSlots; i++ {
+		names["light-"+strconv.Itoa(i)] = true
+	}
+	for i, f := range m.LegacyLockFiles {
+		key := fmt.Sprintf("legacy_lock_files[%d] %q", i, f)
+		if !filepath.IsAbs(f) {
+			return errors.New(key + " must be an absolute path")
+		}
+		clean := filepath.Clean(f)
+		name := strings.TrimSuffix(filepath.Base(clean), ".lock")
+		switch {
+		case paths[clean]:
+			return errors.New(key + " is listed twice")
+		case names[name]:
+			return fmt.Errorf("%s has the slot name %q of another slot; give each file its own base name", key, name)
+		}
+		paths[clean], names[name] = true, true
+		m.LegacyLockFiles[i] = clean
+	}
+	return nil
 }
 
 // checkSomeHeavySlot: runs, gates and hook rewrites are heavy by default, and
