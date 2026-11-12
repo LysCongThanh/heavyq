@@ -124,6 +124,10 @@ func patchUserConfig(root *jsonschema.Schema) {
 	needGH.Items.Pattern = config.SafeName.String()
 	machine := def(root, "MachineConfig")
 	prop(machine, "name").Pattern = config.SafeName.String()
+	prop(machine, "name").Not = &jsonschema.Schema{Enum: []any{config.RemoteAuto}}
+	legacy := prop(machine, "legacy_lock_files")
+	legacy.UniqueItems = true
+	legacy.Items.Pattern = "^/"
 	patchForeign(root)
 	patchPoolSpec(root)
 }

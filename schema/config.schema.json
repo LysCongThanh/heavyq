@@ -203,6 +203,11 @@
     "MachineConfig": {
       "properties": {
         "name": {
+          "not": {
+            "enum": [
+              "auto"
+            ]
+          },
           "type": "string",
           "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
         },
@@ -226,10 +231,12 @@
         },
         "legacy_lock_files": {
           "items": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^/"
           },
           "type": "array",
-          "description": "Local only: lock files shared with legacy `flock \u003cfile\u003e cmd` users.\nWhen set they replace the generated heavy slot files."
+          "uniqueItems": true,
+          "description": "Local only: lock files shared with legacy `flock \u003cfile\u003e cmd` users,\nabsolute paths with distinct base names. When set they replace the\ngenerated heavy slot files."
         },
         "ssh": {
           "type": "string",
@@ -244,7 +251,7 @@
         },
         "work_dir": {
           "type": "string",
-          "description": "remote dir holding git/, wt/, slots/, cache/"
+          "description": "remote dir holding git/, wt/, slots/, cache/ (relative to the remote home; \"~/\" = the same)"
         },
         "git_url": {
           "type": "string",
