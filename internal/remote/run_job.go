@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	"github.com/LysCongThanh/heavyq/internal/config"
@@ -17,8 +18,8 @@ import (
 //go:embed remote_job.sh
 var jobScript string
 
-// Job exit codes reserved by remote_job.sh (the command's own 97/98 are
-// remapped to 96 so these stay unambiguous).
+// Job exit codes reserved by remote_job.sh (the command's own 97, 98 and 255
+// are remapped to 96 so these stay unambiguous).
 const (
 	ExitSlotBusy    = 97
 	ExitSetupFailed = 98
@@ -48,16 +49,20 @@ type Started struct {
 	lifeline *os.File
 }
 
-// StartJob launches the job. Its stdin is a pipe heavyq never writes to: if
-// heavyq dies (even by SIGKILL) the pipe closes and the remote side cleans
-// up, which also covers transports that do not forward signals.
+// StartJob launches the job. Its stdin is a pipe that carries the command
+// line and nothing after it: if heavyq dies (even by SIGKILL) the pipe closes
+// and the remote side cleans up, which also covers transports that do not
+// forward signals. The command line goes there rather than into an argument:
+// the transport's command is one exec argument, limited to 128 KiB, and a
+// command line as long as a local argv does not fit in it.
 func StartJob(s JobSpec) (*Started, error) {
 	if !config.SafeName.MatchString(s.Repo) || !fullSHA.MatchString(s.SHA) ||
 		!config.SafeName.MatchString(s.Lane) || !config.SafeName.MatchString(s.Slot) {
 		return nil, errors.New("unsafe remote job parameters")
 	}
+	line := b64(jobCommandLine(s.Argv))
 	env := []string{
-		"HEAVYQ_CMD_B64=" + b64(ShellJoin(s.Argv)),
+		"HEAVYQ_CMD_LEN=" + strconv.Itoa(len(line)),
 		"HEAVYQ_SUBDIR=" + s.Subdir,
 		"HEAVYQ_WITH=" + strings.Join(s.Siblings, ","),
 		"HEAVYQ_WATCH_STDIN=1",
@@ -85,6 +90,8 @@ func StartJob(s JobSpec) (*Started, error) {
 		return nil, fmt.Errorf("start transport %q: %w", s.Machine.Transport[0], err)
 	}
 	r.Close() // the child owns the read end now
+	// The write ends once the job has read the line, or with an error once it is gone; Wait closes w.
+	go func() { _, _ = io.WriteString(w, line) }()
 	return &Started{cmd: cmd, lifeline: w}, nil
 }
 
@@ -113,6 +120,21 @@ func exitCode(err error) int {
 		return ExitConnectionLost // killed by a signal
 	}
 	return ExitConnectionLost
+}
+
+// jobCommandLine is argv as one command line for the remote bash. The first
+// word is always quoted: to bash a quoted word is a plain command name, as
+// argv[0] is to a local exec, never a reserved word (time, if, coproc) or an
+// assignment (FOO=1).
+func jobCommandLine(argv []string) string {
+	if len(argv) == 0 {
+		return ""
+	}
+	first := "'" + strings.ReplaceAll(argv[0], "'", `'\''`) + "'"
+	if len(argv) == 1 {
+		return first
+	}
+	return first + " " + ShellJoin(argv[1:])
 }
 
 func b64(s string) string { return base64.StdEncoding.EncodeToString([]byte(s)) }
