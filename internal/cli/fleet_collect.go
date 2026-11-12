@@ -43,6 +43,7 @@ func heavyqQueueInput(since time.Time, notes *[]string) fleet.QueueInput {
 	if err != nil {
 		*notes = append(*notes, "heavyq ledger: "+err.Error())
 	}
+	q.History = err == nil // a missing ledger is a history without runs
 	q.Truncated = len(recs) >= maxLedgerRecords
 	class := fleet.NewClassifier(heavyqInfraExits)
 	for _, r := range recs {
@@ -82,6 +83,7 @@ func foreignQueueInput(f config.ForeignConfig, since time.Time, notes *[]string)
 		if err != nil {
 			note("history", err)
 		}
+		q.History = err == nil
 		class := fleet.NewClassifier(f.InfraExits)
 		for _, r := range h.Runs {
 			r.Queue, r.Machine, r.Class = f.Name, f.MachineName(r.Machine), class.Class(r.Exit)
@@ -131,6 +133,9 @@ func probeFleet(cfg *config.Config, timeout time.Duration) []fleet.MachineInput 
 		for _, f := range cfg.Foreign {
 			if d, ok := f.SlotDirs[machine]; ok {
 				out = append(out, fleet.SlotDir{Owner: f.Name, Dir: d})
+			}
+			if g, ok := f.SlotGlobs[machine]; ok {
+				out = append(out, fleet.SlotGlob(f.Name, g))
 			}
 		}
 		return out

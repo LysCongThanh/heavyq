@@ -56,7 +56,7 @@ func textMachine(w io.Writer, m Machine) {
 		fmt.Fprintf(w, "  outside every queue: %s RSS\n", fmtGiB(m.OutsideRSS))
 	}
 	if m.Cap != nil {
-		fmt.Fprintf(w, "  cap: %s\n", clip(m.Cap.Why, 110))
+		fmt.Fprintf(w, "  cap: %s\n", clip(m.Cap.Why, 112))
 	}
 }
 

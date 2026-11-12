@@ -104,6 +104,7 @@ type QueueInput struct {
 	Tickets    []Ticket // live tickets; Machine already mapped to heavyq names
 	Stale      int
 	Truncated  bool
+	History    bool // the run history was read (it may hold no run): the worker cap counts slots used, not configured
 	// HeavySlots and TotalSlots are this queue's slots per machine (heavy, heavy + light), when known.
 	HeavySlots map[string]int
 	TotalSlots map[string]int

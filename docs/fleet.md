@@ -47,7 +47,7 @@ their RAM, so they stay in their group at 0% CPU; their command lines are never 
 | top | the busiest process groups: command name, processes, threads, %CPU, RSS, and **who they belong to**: a queue and lane, or `outside` |
 | outside every queue | RSS of the processes no queue owns (what exhausts RAM behind the queues' backs) |
 | slots | busy/total slots by owner: `heavyq` and each foreign queue |
-| worker cap | the suggested number of workers per heavy run, with the arithmetic shown |
+| worker cap | the suggested number of workers per heavy run: cores / the heavy slots in use, with the arithmetic shown |
 
 %CPU on Linux is measured over a 1 second sample of `/proc/<pid>/stat` (one core = 100%), not `ps`'s CPU time
 over a process's whole life. The sample is timed by `/proc/uptime`, read together with the stat files, and each
@@ -86,11 +86,28 @@ the OOM killer, `kill -9`), 255 (the ssh connection dropped), or one of the queu
 other red run is **code**. For heavyq's own runs, 77 (remote preparation failed) and cancelled or
 interrupted runs are infra; runs that gave up waiting (75, 76) or were served from the cache are not runs.
 
-**Worker cap.** `cores / heavy slots` (at least 1), counting the heavy slots of **every** queue on the machine:
-heavyq's `heavy_slots` and each foreign queue's `SLOTS` from its machine file. When every heavy run starts a
-test runner with one worker per core, N concurrent runs put N times the cores in runnable threads; capping each
-at `cores / N` keeps a full machine near `load = cores`. Pass it to the runner (`--maxWorkers`, `-p`, `-n`,
-`--jobs`, ...).
+**Worker cap.** `cores / heavy slots in use` (at least 1 worker), summing over **every** queue on the machine
+how many heavy slots it uses there, not how many it has:
+
+- a queue with a history (heavyq's ledger, a foreign `history`): `max(busy now, window peak)`, where *busy now*
+  is its slot locks held now (or its running tickets there when no lock is probed) and *window peak* is the
+  most of its heavy runs that ran at once on that machine in the window (each run spans `end - run_s` to
+  `end`; light runs are left out; a run that starts the second another ends took over its slot). It is never
+  more than the queue's configured heavy slots there (heavyq's `heavy_slots`, a foreign queue's `SLOTS`)
+  when those are known, since busy locks may include light slots. A configured slot that ran nothing in the
+  window is not load: it counts 0;
+- a queue without a history: its configured heavy slots (busy now if more), or busy now when nothing is
+  configured.
+
+A queue with nothing configured, busy or run on the machine is left out. When no slot is in use at all, the
+run being started is the one: `cores / 1`. Every number is shown: the text and markdown reports print the
+arithmetic (`12 cores / 4 heavy slots in use (heavyq 0 = max(now 0, peak 0) of 3; bashq 4 = max(now 1, peak 4)
+of 4) = 3 workers per run`), and `--json` has each queue's `busy_now`, `window_peak`, `configured`, `counted`
+and `basis` (`used`, `configured` or `busy_now`) under `worker_cap.queues`.
+
+When every heavy run starts a test runner with one worker per core, N concurrent runs put N times the cores in
+runnable threads; capping each at `cores / N` keeps a full machine near `load = cores`. Pass it to the runner
+(`--maxWorkers`, `-p`, `-n`, `--jobs`, ...).
 
 ## Configuration
 
@@ -118,6 +135,7 @@ tickets = "/var/tmp/bashq"                # live tickets: <prio>-<20-digit unix 
 infra_exits = [97, 124]                   # this queue's own infrastructure exit codes
 machines_dir = "/srv/ops/machines.d"      # <machine>.env files: SLOTS="s1 s2", LIGHT_SLOTS="s3", KIND=...
 slot_dirs = { box3 = ".bashq/slots" }     # per machine: the directory of its slot lock files there
+slot_globs = { local = "/tmp/bashq-[0-9]*.lock" }  # or a glob of its files in a directory shared with others
 aliases = { "build-1" = "local" }         # a machine name the queue writes -> the heavyq machine name
 ```
 
@@ -131,6 +149,15 @@ aliases = { "build-1" = "local" }         # a machine name the queue writes -> t
   `*.env.bak` and other names are ignored.
 - **slot_dirs**: probed on that machine (absolute, `~/`, or relative to its home). Every `*.lock` file there is
   a slot, busy while it is `flock(2)`-held. Give a directory that holds only that queue's slot files.
+- **slot_globs**: for slot locks that are plain files in a directory shared with other programs (`/tmp/<queue>-1.lock`,
+  `/tmp/<queue>-2.lock` beside everyone else's locks): per machine, an absolute or `~/` glob of that queue's
+  files. Probed like `slot_dirs`: every regular file it matches is a slot, named after its base name without
+  `.lock`, busy while it is `flock(2)`-held (Linux reads the holder from `/proc/locks` without taking the
+  lock). The glob is validated when the config loads and refused unless it can only match files of its one
+  directory: wildcards only in the base name, one `*` and any number of `[0-9]` classes and nothing else, the
+  rest `[A-Za-z0-9._-]`, at least one plain character, no leading `.`, and no `..`, `~` or shell
+  characters in the directory. A machine takes `slot_dirs` or `slot_globs`, not both. In either, a symbolic
+  link is never a slot.
 
 At least one of `history` and `tickets` is required.
 
@@ -149,7 +176,9 @@ fields may be added within it):
     "slots": [{"owner": "bashq", "busy": 4, "total": 6}],
     "top": [{"owner": "bashq", "lane": "api", "comm": "node", "procs": 18, "threads": 220, "cpu_pct": 1650, "rss_mb": 9200, "cmd": "node jest ..."}],
     "outside_rss_mb": 4100,
-    "worker_cap": {"workers": 4, "cores": 18, "heavy_slots": 4, "why": "18 cores / 4 heavy slots (bashq 4) = 4 workers per run"},
+    "worker_cap": {"workers": 4, "cores": 18, "heavy_slots": 4,
+                   "queues": [{"owner": "bashq", "busy_now": 4, "window_peak": 3, "configured": 6, "counted": 4, "basis": "used"}],
+                   "why": "18 cores / 4 heavy slots in use (bashq 4 = max(now 4, peak 3) of 6) = 4 workers per run"},
     "window": {"runs": 60, "run_hours": 15, "wait_p50_s": 1800, "wait_p90_s": 3240, "wait_p95_s": 3420, "run_p50_s": 900,
                "per_hour": 2.5, "red": 9, "red_infra": 3, "red_code": 6, "infra_rate": 0.05, "code_rate": 0.1}
   }],

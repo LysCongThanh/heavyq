@@ -24,6 +24,9 @@ func patchForeign(root *jsonschema.Schema) {
 	}
 	cols.Items.Enum = enum
 	cols.UniqueItems = true
+	// The shape of config.CheckSlotGlob: absolute or ~/, wildcards ("*", "[0-9]") in the base name only, which
+	// does not start with "."; the loader also refuses "..", a second "*" and a base name without a wildcard.
+	prop(f, "slot_globs").AdditionalProperties.Pattern = `^(/|~/)([A-Za-z0-9._-]+/)*([A-Za-z0-9_*-]|\[0-9\])([A-Za-z0-9._*-]|\[0-9\])*$`
 	exits := prop(f, "infra_exits")
 	exits.Items.Minimum = json.Number("1")
 	exits.Items.Maximum = json.Number("255")

@@ -128,4 +128,5 @@ env = []                 # variables whose values are part of the key, e.g. ["CI
 # infra_exits = [97, 124]                  # this queue's own infrastructure exits (127, 137, 255 always are)
 # machines_dir = "/srv/ops/machines.d"     # <machine>.env with SLOTS, LIGHT_SLOTS, KIND
 # slot_dirs = { box3 = ".bashq/slots" }    # its slot lock files on each machine
+# slot_globs = { local = "/tmp/bashq-[0-9]*.lock" }   # or a glob of them in a shared directory (not both on one machine)
 # aliases = { "build-1" = "local" }        # names the queue writes -> heavyq machine names

@@ -133,7 +133,7 @@ func TestSchemasRefuseWhatHeavyqRefuses(t *testing.T) {
 	}
 	for name, doc := range map[string]string{
 		"full":  "[queue]\npoll = \"5s\"\nresource_gate = false\n[local]\nheavy_slots = 4\n[[remote]]\nname = \"box\"\nssh = \"box\"\n[hook]\npermission = \"allow\"\n[[hook.rule]]\nmatch = [\"bun test\"]\n[cache]\nttl = \"1h30m\"\n",
-		"fleet": "[[remote]]\nname = \"watch\"\nssh = \"watch\"\nobserve_only = true\n[[foreign]]\nname = \"bashq\"\nhistory = \"/q/h.tsv\"\ncolumns = [\"end_epoch\", \"machine\", \"exit\"]\ninfra_exits = [97]\nslot_dirs = { watch = \"q/slots\" }\n",
+		"fleet": "[[remote]]\nname = \"watch\"\nssh = \"watch\"\nobserve_only = true\n[[foreign]]\nname = \"bashq\"\nhistory = \"/q/h.tsv\"\ncolumns = [\"end_epoch\", \"machine\", \"exit\"]\ninfra_exits = [97]\nslot_dirs = { watch = \"q/slots\" }\nslot_globs = { local = \"/tmp/q-[0-9]*.lock\" }\n",
 	} {
 		if err := cfg.Validate(tomlDoc(t, doc)); err != nil {
 			t.Errorf("config %q should be valid: %v", name, err)

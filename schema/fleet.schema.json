@@ -2,6 +2,41 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://raw.githubusercontent.com/LysCongThanh/heavyq/main/schema/fleet.schema.json",
   "definitions": {
+    "CapQueue": {
+      "properties": {
+        "owner": {
+          "type": "string"
+        },
+        "busy_now": {
+          "type": "integer"
+        },
+        "window_peak": {
+          "type": "integer",
+          "description": "0 also when there is no history (see basis)"
+        },
+        "configured": {
+          "type": "integer",
+          "description": "0 when unknown"
+        },
+        "counted": {
+          "type": "integer"
+        },
+        "basis": {
+          "type": "string",
+          "description": "\"used\", \"configured\" or \"busy_now\""
+        }
+      },
+      "type": "object",
+      "required": [
+        "owner",
+        "busy_now",
+        "window_peak",
+        "configured",
+        "counted",
+        "basis"
+      ],
+      "description": "CapQueue is one queue's term of the worker cap, every number shown."
+    },
     "Group": {
       "properties": {
         "owner": {
@@ -344,7 +379,14 @@
           "type": "integer"
         },
         "heavy_slots": {
-          "type": "integer"
+          "type": "integer",
+          "description": "the heavy slots counted as in use, every queue together"
+        },
+        "queues": {
+          "items": {
+            "$ref": "#/definitions/CapQueue"
+          },
+          "type": "array"
         },
         "why": {
           "type": "string"
@@ -355,9 +397,10 @@
         "workers",
         "cores",
         "heavy_slots",
+        "queues",
         "why"
       ],
-      "description": "WorkerCap is the suggested number of workers (test runner processes or threads) per heavy slot."
+      "description": "WorkerCap is the suggested number of workers (test runner processes or threads) per heavy run."
     }
   },
   "properties": {
