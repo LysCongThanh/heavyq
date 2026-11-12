@@ -39,13 +39,14 @@ var receivingHooks = []string{"pre-receive", "update", "post-receive", "post-upd
 // is this machine) use hooksDir as core.hooksPath, the way a machine with a global hooks directory does.
 func globalHooksPath(t *testing.T, hooksDir string) {
 	t.Helper()
-	home := t.TempDir()
+	// GIT_CONFIG_GLOBAL (git 2.32+), not HOME: a git installed as a wrapper that finds its real binary
+	// under $HOME (a portable git on a Mac without developer tools) stops working when HOME moves.
+	global := filepath.Join(t.TempDir(), "gitconfig")
 	cfg := "[core]\n\thooksPath = " + hooksDir + "\n"
-	if err := os.WriteFile(filepath.Join(home, ".gitconfig"), []byte(cfg), 0o644); err != nil {
+	if err := os.WriteFile(global, []byte(cfg), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("HOME", home)
-	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, "xdg"))
+	t.Setenv("GIT_CONFIG_GLOBAL", global)
 	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 }
 

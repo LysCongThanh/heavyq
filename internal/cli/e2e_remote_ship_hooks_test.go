@@ -35,14 +35,13 @@ func TestE2ERemoteRunRunsNoGitHooksAndShowsNoHookOutput(t *testing.T) {
 		write(global, n)
 	}
 	// The user's own git config is replaced, so the test does not depend on the machine it runs on.
-	home := filepath.Join(h.root, "home")
-	if err := os.MkdirAll(home, 0o755); err != nil {
+	// GIT_CONFIG_GLOBAL (git 2.32+), not HOME: a git installed as a wrapper that finds its real binary
+	// under $HOME (a portable git on a Mac without developer tools) stops working when HOME moves.
+	gitconfig := filepath.Join(h.root, "gitconfig")
+	if err := os.WriteFile(gitconfig, []byte("[core]\n\thooksPath = "+global+"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(home, ".gitconfig"), []byte("[core]\n\thooksPath = "+global+"\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	h.env = append(h.env, "HOME="+home, "GIT_CONFIG_NOSYSTEM=1", "XDG_CONFIG_HOME="+filepath.Join(home, "xdg"))
+	h.env = append(h.env, "GIT_CONFIG_GLOBAL="+gitconfig, "GIT_CONFIG_NOSYSTEM=1")
 
 	rc, out := h.run("3", "--remote", "box", "--lane", "api", "--", "sh", "-c", "cat marker.txt")
 	noANSI(t, out)
