@@ -106,13 +106,3 @@ func (m Mailbox) TargetAnswer(ticket string) (refusal string, ok bool) {
 	b, ok := m.take(key(ticket) + ".target-done")
 	return strings.TrimSpace(b), ok
 }
-
-// take reads and removes a request file.
-func (m Mailbox) take(name string) (string, bool) {
-	b, err := os.ReadFile(m.path(name))
-	if err != nil {
-		return "", false
-	}
-	_ = os.Remove(m.path(name))
-	return string(b), true
-}

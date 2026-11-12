@@ -40,6 +40,9 @@ func runWriter(dir string, args []string) int {
 }
 
 func burst(m Mailbox, n, last int) string {
+	if os.Getenv(targetWriterEnv) != "" {
+		return targetBurst(m, n)
+	}
 	for i := 0; i < n; i++ {
 		p := 5
 		if i == n-1 {
@@ -61,10 +64,10 @@ type writer struct {
 	out *bufio.Reader
 }
 
-func startWriter(t *testing.T, dir string, requests, last int) writer {
+func startWriter(t *testing.T, dir string, requests, last int, env ...string) writer {
 	t.Helper()
 	cmd := exec.Command(os.Args[0], "-test.run=^$", strconv.Itoa(requests), strconv.Itoa(last))
-	cmd.Env = append(os.Environ(), writerEnv+"="+dir)
+	cmd.Env = append(append(os.Environ(), writerEnv+"="+dir), env...)
 	cmd.Stderr = os.Stderr
 	in, err := cmd.StdinPipe()
 	if err != nil {

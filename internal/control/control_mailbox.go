@@ -70,8 +70,26 @@ func (m Mailbox) put(name, content string) error {
 	return nil
 }
 
-// claims makes the names TakePrio moves a request to unique per call.
+// claims makes the names take moves a request to unique per call.
 var claims atomic.Uint64
+
+// take returns and consumes the request file name.
+//
+// It claims the file by renaming it to a name of its own before reading it,
+// so a newer request written meanwhile stays in place for the next poll
+// instead of being deleted unseen.
+func (m Mailbox) take(name string) (string, bool) {
+	claimed := m.path(fmt.Sprintf(".%s.%d-%d.taken", name, os.Getpid(), claims.Add(1)))
+	if err := os.Rename(m.path(name), claimed); err != nil {
+		return "", false
+	}
+	b, err := os.ReadFile(claimed)
+	_ = os.Remove(claimed)
+	if err != nil {
+		return "", false
+	}
+	return string(b), true
+}
 
 func (m Mailbox) exists(name string) bool {
 	_, err := os.Stat(m.path(name))
@@ -103,25 +121,15 @@ func (m Mailbox) RequestPrio(ticket string, prio int) error {
 }
 
 // TakePrio returns and consumes a pending priority request for ticket.
-//
-// It claims the request by renaming it to a name of its own before reading
-// it, so a newer request written meanwhile stays in place for the next poll
-// instead of being deleted unseen.
 func (m Mailbox) TakePrio(ticket string) (int, bool) {
 	if !ticketRe.MatchString(ticket) {
 		return 0, false
 	}
-	name := key(ticket) + ".prio"
-	claimed := m.path(fmt.Sprintf(".%s.%d-%d.taken", name, os.Getpid(), claims.Add(1)))
-	if err := os.Rename(m.path(name), claimed); err != nil {
+	b, ok := m.take(key(ticket) + ".prio")
+	if !ok {
 		return 0, false
 	}
-	b, err := os.ReadFile(claimed)
-	_ = os.Remove(claimed)
-	if err != nil {
-		return 0, false
-	}
-	p, err := strconv.Atoi(strings.TrimSpace(string(b)))
+	p, err := strconv.Atoi(strings.TrimSpace(b))
 	if err != nil || p < 1 || p > 9 {
 		return 0, false
 	}
