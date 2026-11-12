@@ -20,6 +20,10 @@ heavyq 3 --lane api -- npm test
 - **Priority tickets.** Priority 1-9 (lower runs first), FIFO within a priority. A ticket is a file in a
   queue directory. If its process dies, the ticket is pruned (pid plus start time, so a reused pid
   doesn't keep it alive). Ctrl-C, SIGTERM and SIGHUP clean up. `--max-wait` gives up with exit 75.
+  A waiter suspended with Ctrl-Z keeps its ticket and place but holds nobody back: the tickets behind it
+  run, `status` marks it `[stopped ...]`, and it takes its turn again once resumed (`fg`). A heavyq that
+  is stopped or hangs while it holds the queue lock cannot hang the others either: they keep answering
+  Ctrl-C, SIGTERM, `heavyq cancel` and `--max-wait` (a person is told after 10 s who holds things up).
 - **Slots.** Each machine has N heavy slots and M light slots. `--light` jobs (lint, typecheck, unit tests)
   can use light slots, and jump ahead of waiting heavy jobs into them. Heavy jobs never use light slots,
   so they lose nothing. Slots are plain `flock(2)` files, so existing `flock <file> cmd` users still

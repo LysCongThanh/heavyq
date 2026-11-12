@@ -154,8 +154,14 @@ func (l *lockedBuf) String() string {
 
 func (h *rig) start(args ...string) *proc {
 	h.t.Helper()
+	return h.startWith(nil, args...)
+}
+
+// startWith is start with process attributes (its own process group, ...).
+func (h *rig) startWith(attr *syscall.SysProcAttr, args ...string) *proc {
+	h.t.Helper()
 	cmd := exec.Command(binPath, args...)
-	cmd.Dir, cmd.Env = h.cwd, h.env
+	cmd.Dir, cmd.Env, cmd.SysProcAttr = h.cwd, h.env, attr
 	p := &proc{cmd: cmd, out: &lockedBuf{}, done: make(chan int, 1)}
 	cmd.Stdout, cmd.Stderr = p.out, p.out
 	if err := cmd.Start(); err != nil {

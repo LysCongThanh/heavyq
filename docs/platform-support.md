@@ -9,7 +9,7 @@ every Mac has:
 | RAM / load gate | `/proc/meminfo`, `/proc/loadavg` | `sysctl -n hw.memsize hw.ncpu vm.loadavg` and `vm_stat` |
 | Per-lane CPU, "outside the queue" | `/proc/<pid>/stat` | `ps -axo pid=,ppid=,rss=,time=,comm=`, sampled twice |
 | Process-tree cancel | child subreaper: orphans re-parent to heavyq | walk of the `ps` ppid map; no subreaper |
-| Process identity (pid reuse) | `/proc/<pid>/stat` start time | `ps -o lstart=` |
+| Process identity (pid reuse), stopped waiters | `/proc/<pid>/stat` start time and state | `ps -o pid=,stat=,lstart= -p <all ticket pids>`, one run per prune |
 | Remote machines | yes | no (remotes must be Linux; a Mac can still *use* them) |
 
 On macOS "available memory" is `free + inactive + purgeable + speculative` pages times the page size, capped at

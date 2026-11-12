@@ -1,7 +1,6 @@
 package queue
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -40,26 +39,6 @@ func Open(path string) (*Dir, error) {
 	return &Dir{Path: path}, nil
 }
 
-// Mutex serialises scheduling decisions across all heavyq processes.
-// The returned func releases it.
-func (d *Dir) Mutex() (func(), error) {
-	f, err := os.OpenFile(filepath.Join(d.Path, ".mutex"), os.O_RDWR|os.O_CREATE, 0o600)
-	if err != nil {
-		return nil, fmt.Errorf("queue mutex: %w", err)
-	}
-	for {
-		err = syscall.Flock(int(f.Fd()), syscall.LOCK_EX)
-		if !errors.Is(err, syscall.EINTR) {
-			break
-		}
-	}
-	if err != nil {
-		f.Close()
-		return nil, fmt.Errorf("queue mutex: %w", err)
-	}
-	return func() { _ = f.Close() }, nil
-}
-
 // writeAtomic writes data to name via a temp file + rename.
 func (d *Dir) writeAtomic(name string, data []byte) error {
 	tmp := filepath.Join(d.Path, "."+name+".tmp")
@@ -75,7 +54,7 @@ func (d *Dir) writeAtomic(name string, data []byte) error {
 
 // Add enqueues t and sets t.Name.
 func (d *Dir) Add(t *Ticket) error {
-	t.Name = t.fileName(time.Now())
+	t.Name = t.fileName(d.enqueueTime(time.Now()))
 	b, err := t.encode()
 	if err != nil {
 		return err
@@ -166,21 +145,6 @@ func (d *Dir) List() (Snapshot, error) {
 		}
 	}
 	return s, nil
-}
-
-// Prune removes tickets whose owning process is gone, and session files
-// older than SessionTTL. alive is procinfo.ProcFS.Alive in production.
-func (d *Dir) Prune(alive func(pid int, start string) bool) {
-	d.pruneSessions(time.Now())
-	s, err := d.List()
-	if err != nil {
-		return
-	}
-	for _, t := range append(s.Waiting, s.Running...) {
-		if !alive(t.Pid, t.Start) {
-			d.Remove(t)
-		}
-	}
 }
 
 // Reprio moves waiting ticket t to priority prio. The ticket keeps its

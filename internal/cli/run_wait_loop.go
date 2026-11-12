@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -20,7 +21,7 @@ const (
 // waitForTurn loops until the ticket claims a slot (returns it) or must give
 // up (returns nil and the exit code).
 func (r *run) waitForTurn() (*claim, int) {
-	var headSince, downSince, lastDownWarn time.Time
+	var headSince, downSince, lastDownWarn, lastBusyWarn time.Time
 	for {
 		if controlBox().CancelRequested(r.me.Name) {
 			r.giveUp("cancelled by an operator while waiting")
@@ -40,8 +41,10 @@ func (r *run) waitForTurn() (*claim, int) {
 			}
 			r.me.Candidates = r.pl.machines()
 		}
+		tried := time.Now()
 		c, pos, total, ahead, err := r.round(&headSince)
-		if err != nil {
+		busy := errors.Is(err, queue.ErrMutexBusy) // skip this round; signals, cancel and --max-wait still count
+		if err != nil && !busy {
 			r.giveUp("%v", err)
 			return nil, ExitUsage
 		}
@@ -54,8 +57,12 @@ func (r *run) waitForTurn() (*claim, int) {
 			r.probes.refresh(r.cfg, r.me.Candidates)
 		}
 		now := time.Now()
-		r.out.nar.observe(now, waitView{pos: pos, total: total, target: r.pl.target, prio: r.me.Prio,
-			lane: r.me.Lane, ahead: ahead})
+		if busy {
+			r.warnMutexBusy(now.Sub(tried), &lastBusyWarn)
+		} else {
+			r.out.nar.observe(now, waitView{pos: pos, total: total, target: r.pl.target, prio: r.me.Prio,
+				lane: r.me.Lane, ahead: ahead})
+		}
 		if rc := r.checkRemoteDown(&downSince, &lastDownWarn); rc != 0 {
 			return nil, rc
 		}
@@ -69,23 +76,29 @@ func (r *run) waitForTurn() (*claim, int) {
 	}
 }
 
-// round runs one scheduling decision under the queue mutex.
+// round runs one scheduling decision under the queue mutex. It gives up with
+// queue.ErrMutexBusy when another heavyq keeps the mutex, or when stopWaiting.
 func (r *run) round(headSince *time.Time) (*claim, int, int, []*queue.Ticket, error) {
-	unlock, err := r.q.Mutex()
+	// Before the mutex: a round that skips on a busy mutex must not keep the
+	// old machines' clock, as waitForTurn clears moved after any round.
+	if r.moved { // heavyq retarget moved it right before this round (applyRetarget)
+		*headSince = time.Time{} // the anti-starvation clock restarts on the new machines
+	}
+	// Outside the mutex: on macOS the survey runs ps, and nobody else's round waits for it.
+	owners := r.q.Prune(procinfo.Default)
+	r.inRound.Lock() // a Ctrl-Z waits until the mutex is released (catchStops)
+	defer r.inRound.Unlock()
+	unlock, err := r.q.Mutex(mutexWait, r.stopWaiting)
 	if err != nil {
 		return nil, 0, 0, nil, err
 	}
 	defer unlock()
-	r.q.Prune(procinfo.Default.Alive)
 	if p, ok := controlBox().TakePrio(r.me.Name); ok && p != r.me.Prio {
 		if err := r.q.Reprio(r.me, p); err != nil {
 			fmt.Fprintln(r.stderr, "heavyq: warning: priority not changed:", err)
 		} else {
 			fmt.Fprintf(r.stderr, "heavyq: priority changed to %d by an operator\n", p)
 		}
-	}
-	if r.moved { // heavyq retarget moved it right before this round (applyRetarget)
-		*headSince = time.Time{} // the anti-starvation clock restarts on the new machines
 	}
 	snap, err := r.q.List()
 	if err != nil {
@@ -95,6 +108,7 @@ func (r *run) round(headSince *time.Time) (*claim, int, int, []*queue.Ticket, er
 	if pos == 0 {
 		return nil, 0, 0, nil, fmt.Errorf("our ticket disappeared from %s", r.q.Path)
 	}
+	ahead = owners.Active(ahead) // a stopped waiter never claims: it holds nobody back
 	opps, _, head := admissionOpportunities(r.cfg, r.me, ahead, r.setForAhead(ahead))
 	was := *headSince
 	if !head {
