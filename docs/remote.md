@@ -51,10 +51,10 @@ What a remote run sees, and what it doesn't:
   `why` and `gate status` do not.
 - **No git hook runs while shipping.** `git push` runs with `--no-verify`, so the repository's own `pre-push`
   never runs, whatever it prints or checks. The bare repo on the remote gets `core.hooksPath=/dev/null` in its
-  own config each time a commit is shipped, so hooks of the remote machine (a global `core.hooksPath`, a
-  `init.templateDir` that carries hooks) do not run in it either: not on the receiving side of the push, not in
-  the `git worktree add` of the job. A hook that declines or prints can therefore neither fail a ship (exit
-  77) nor add lines to a run's output.
+  own config each time a commit is shipped, and so does the job's own checkout, so hooks of the remote machine
+  (a global `core.hooksPath`, a `init.templateDir` that carries hooks) do not run in them either: not on the
+  receiving side of the push, not in the checkout or the base ref of the job. A hook that declines or prints can
+  therefore neither fail a ship (exit 77) nor add lines to a run's output.
 - **The base ref travels too.** A command that diffs against `origin/main` (`git diff origin/main...`, a lint of
   the changed files) needs that ref, and a remote checkout has no remote called origin. So unless you say
   otherwise, heavyq recreates `refs/remotes/<base ref>` there, pointing at the same commit as here: the base ref

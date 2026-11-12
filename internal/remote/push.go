@@ -16,10 +16,10 @@ var fullSHA = regexp.MustCompile(`^[0-9a-f]{40}$`)
 // Shipping is plumbing: a hook that runs in the bare repo (a template that carries hooks, a global
 // core.hooksPath on this machine, hooks left by an earlier version) could decline the push, print into the
 // job's output or run slow checks. core.hooksPath=/dev/null in the repo's own config overrides every one of
-// them for every command that runs in or through the repo: the receiving side of the push, "git worktree
-// add" and "git update-ref" of the job script. Init runs under the same setting because a
-// reference-transaction hook already sees the repo's first ref. Two runs may set it at once; the loser only
-// needs to see the value the winner wrote.
+// them for every command that runs in or through the repo: the receiving side of the push and the "git
+// update-ref" of the job script (the job's own checkout sets the same in its config). Init runs under the
+// same setting because a reference-transaction hook already sees the repo's first ref. Two runs may set it at
+// once; the loser only needs to see the value the winner wrote.
 //
 // Runs shipping one repo to a new remote at once all try to create it, and
 // every git init but one may fail on the lock of its config ("could not lock

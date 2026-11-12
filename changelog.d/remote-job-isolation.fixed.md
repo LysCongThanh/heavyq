@@ -2,7 +2,9 @@
   `refs/remotes/<base_ref>`: a run started after a `git fetch` moved it under a run already going, and it could be
   left behind for later runs that asked for no base. A run whose remote side died without its cleanup (a reboot, a
   SIGKILL there) left its checkout under `work_dir` forever; the next job now reclaims it, and only the refs of the 100
-  most recently committed shipped commits are kept (they used to pile up forever).
+  most recently committed shipped commits are kept (they used to pile up forever). The checkout switches git hooks
+  off in its own config like the bare repo, so a hook of the remote machine cannot fail its base ref (exit 77) or
+  print into the run's output.
 - **A cancel or a dropped connection stops the `cache_hook` at once.** It used to run to its end (an `npm ci`) while
   the remote slot stayed locked, so the next ticket on that slot failed with 77.
 - **A remote command runs as typed.** Its first word is a command name as it is locally (`time -v make` runs

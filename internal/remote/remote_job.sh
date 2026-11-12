@@ -168,9 +168,12 @@ pin() { # <bare> <what> <sha>: keep <sha> reachable in <bare> while this job run
   PIN_BARES+=("$1"); PIN_REFS+=("refs/heavyq/jobs/$NAME/$2")
 }
 checkout() { # <bare> <dir> <sha>: a repository of its own at <dir>, borrowing <bare>'s objects, detached at <sha>
+  # Hooks off in its own config, as in the bare repo (push.go): every later git in it (checkout, the base
+  # ref's update-ref) skips the machine's hooks, which do not reach it through the borrowed objects.
   git -c core.hooksPath=/dev/null init -q --template= "$2" > /dev/null 2>&1 || return 1
+  git -C "$2" config core.hooksPath /dev/null || return 1
   mkdir -p "$2/.git/objects/info" && printf '%s\n' "$1/objects" > "$2/.git/objects/info/alternates" || return 1
-  git -C "$2" -c core.hooksPath=/dev/null -c advice.detachedHead=false checkout -q --detach "$3"
+  git -C "$2" -c advice.detachedHead=false checkout -q --detach "$3"
 }
 [[ -d "$BARE" ]] || fail "no bare repo $BARE (push first)"
 git -C "$BARE" cat-file -e "$SHA^{commit}" 2> /dev/null || fail "commit $SHA not in $BARE"
