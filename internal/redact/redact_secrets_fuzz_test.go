@@ -33,6 +33,7 @@ func FuzzCommand(f *testing.F) {
 		`PASSWORD="a b" sh -c "TOKEN='c d' x" -u "u:p w"`,
 		"curl -u a:b --user=c:d -H 'Authorization: token e' postgresql://f:g@h@i/j",
 		"mysql -pa -pb | sshpass -p c ssh -p 2 x; docker login -p d; aws configure set aws_secret_access_key e",
+		"mysql -e 'a; b' -pc \"d|e\" -pf; mkdir -p g 'h",
 		"",
 	} {
 		f.Add(s)
@@ -66,6 +67,9 @@ func FuzzArgv(f *testing.F) {
 		"curl\x1f-H\x1fX-Upstream: Basic dXNlcjpwYXNzd29yZA==\x1fu", // gitleaks:allow (fake test fixture)
 		"mysql\x1f-u\x1froot\x1f-pS3cr&tPart2\x1fdb",                // gitleaks:allow (fake test fixture)
 		"mysql\x1f-u\x1froot\x1f-pab;cd|ef\x1fdb",                   // gitleaks:allow (fake test fixture)
+		"mysql\x1f-e\x1fUSE app; SHOW TABLES\x1f-pS3cretpw\x1fdb",   // gitleaks:allow (fake test fixture)
+		"mysql\x1f-h\x1fdb\x1f-e\x1fselect 1;\x1f-pS3cretpw",        // gitleaks:allow (fake test fixture)
+		"sh\x1f-c\x1fmysql -e 'USE app; SHOW TABLES' -pS3cretpw db", // gitleaks:allow (fake test fixture)
 	} {
 		f.Add(s)
 	}

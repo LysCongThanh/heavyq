@@ -17,10 +17,13 @@ var shellScriptFlag = regexp.MustCompile(`^-[A-Za-z]*c$`)
 // hidden. Argv keeps such an element one value by standing NUL in for its
 // spaces while Command runs (Command treats NUL as part of a value), then puts
 // the spaces back where nothing was hidden. A script after -c is shell text
-// and is redacted as such. The result is a fixed point of Command.
+// and is redacted as such. Argv has no shell operators, so a mysql -pPASSWORD
+// is hidden even after an element with ';', '&' or '|' in it. The result is a
+// fixed point of Command.
 func Argv(argv []string) string {
 	parts := make([]string, len(argv))
 	copy(parts, argv)
+	maskMysqlArgvPasswords(parts)
 	encoded := false
 	if !anyHasNUL(argv) { // NUL cannot be in a real argv; never confuse one with a space
 		for i, a := range argv {

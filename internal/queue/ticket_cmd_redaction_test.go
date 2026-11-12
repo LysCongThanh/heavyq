@@ -20,6 +20,10 @@ func TestTruncateCmdHidesWholeArgvValues(t *testing.T) {
 		// '&', ';' and '|' in an attached -p value are part of the password
 		{[]string{"mysql", "-u", "root", "-pS3cr&tPart2", "db"}, "mysql -u root -p*** db"}, // gitleaks:allow (fake test fixture)
 		{[]string{"mysql", "-u", "root", "-pab;cd|ef", "db"}, "mysql -u root -p*** db"},    // gitleaks:allow (fake test fixture)
+		// ';', '&' and '|' in an earlier argument (-e SQL) do not end the mysql command
+		{[]string{"mysql", "-e", "USE app; SHOW TABLES", "-pS3cretpw", "db"}, "mysql -e USE app; SHOW TABLES -p*** db"},           // gitleaks:allow (fake test fixture)
+		{[]string{"mysql", "-h", "db", "-e", "select 1;", "-pS3cretpw"}, "mysql -h db -e select 1; -p***"},                        // gitleaks:allow (fake test fixture)
+		{[]string{"sh", "-c", "mysql -e 'USE app; SHOW TABLES' -pS3cretpw db"}, "sh -c mysql -e 'USE app; SHOW TABLES' -p*** db"}, // gitleaks:allow (fake test fixture)
 		{[]string{"curl", "-H", "Authorization: token abc def", "u"}, "curl -H Authorization: token *** u"},
 		// no scheme: the raw value is hidden, the URL after it stays readable
 		{[]string{"curl", "-H", "Authorization: abc123secretvalue", "https://api.example.com/x"}, "curl -H Authorization: *** https://api.example.com/x"},

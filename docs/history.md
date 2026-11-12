@@ -24,7 +24,7 @@ Each run appends one JSON line. These fields say what it ran on and who asked:
   values whole), `user:password@` in URLs (up to the last `@` before the host), `-u`/`--user user:password`
   (not a numeric `uid:gid`), any `Authorization:` header value (a known scheme such as `Bearer` or `token`
   stays readable; a quoted header is hidden up to its closing quote), `X-Api-Key:`-style headers,
-  `Bearer`/`Basic` values in any header or flag, mysql `-pPASSWORD` (whole, `&`/`;`/`|` included), `sshpass -p`, `docker login -p`,
+  `Bearer`/`Basic` values in any header or flag, mysql `-pPASSWORD` (whole, `&`/`;`/`|` included, also after `-e` SQL that contains them), `sshpass -p`, `docker login -p`,
   `set <secret-looking key> <value>` and well-known token shapes. An argv element with spaces after such a key is hidden as a whole: the
   shell already removed its quotes. Redaction is a best-effort filter, so pass secrets through the environment
   or files rather than the command line.
