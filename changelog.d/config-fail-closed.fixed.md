@@ -13,3 +13,5 @@
   - `legacy_lock_files` entries that are relative (each repository locked its own `<repo>/build-1.lock`, so the
     shared limit and the exclusion with `flock` users were gone), empty, listed twice (two slots that admit one) or
     sharing a base name (two slots with one name in `status` and claims).
+  - remote-only keys under `[local]` (`env_path`, `cache_hook`, `ssh`, `transport`, `work_dir`, `git_url`, `name`):
+    they loaded with no warning and did nothing.

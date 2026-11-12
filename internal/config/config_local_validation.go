@@ -21,6 +21,9 @@ type slotKeys struct{ heavy, light bool }
 // normalizeLocal fills the [local] defaults and refuses what [local] cannot use.
 func (c *Config) normalizeLocal() error {
 	m := &c.Local
+	if err := m.refuseRemoteOnlyKeys(); err != nil {
+		return err
+	}
 	m.Name = LocalName
 	if n := len(m.LegacyLockFiles); n > 0 {
 		// The files ARE the heavy slots; light_slots stays as written (0 when absent).
@@ -37,6 +40,29 @@ func (c *Config) normalizeLocal() error {
 		return err
 	}
 	return m.checkLegacyLockFiles()
+}
+
+// refuseRemoteOnlyKeys: [local] decodes into the shared machine type, so the
+// remote keys are known there: without this they load with no warning and do
+// nothing (local runs never get that env_path or cache_hook).
+func (m *MachineConfig) refuseRemoteOnlyKeys() error {
+	for _, k := range []struct {
+		key string
+		set bool
+	}{
+		{"name", m.Name != "" && m.Name != LocalName},
+		{"ssh", m.SSH != ""},
+		{"transport", len(m.Transport) > 0},
+		{"work_dir", m.WorkDir != ""},
+		{"git_url", m.GitURL != ""},
+		{"cache_hook", m.CacheHook != ""},
+		{"env_path", m.EnvPath != ""},
+	} {
+		if k.set {
+			return fmt.Errorf("%s is only valid in [[remote]]", k.key)
+		}
+	}
+	return nil
 }
 
 // checkLegacyLockFiles: every heavyq process opens these paths as written, so a
