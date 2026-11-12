@@ -4,10 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"math/rand/v2"
-	"os"
 	"path/filepath"
-	"syscall"
 	"time"
+
+	"github.com/LysCongThanh/heavyq/internal/slots"
 )
 
 // ErrMutexBusy means the queue mutex stayed taken for the whole wait, or the
@@ -25,26 +25,25 @@ const maxMutexPause = 50 * time.Millisecond
 // signals, cancel and --max-wait (a signal caught by os/signal does not
 // interrupt a blocking flock). It gives up with ErrMutexBusy after wait, or as
 // soon as stop (which may be nil) reports true.
+//
+// Each attempt goes through slots.TryLock, which opens .mutex at its path
+// again and checks after flock that it holds the file still there. A waiter
+// that kept retrying on a .mutex a temp cleaner unlinked meanwhile would
+// otherwise win a lock nobody else can see, and two rounds would run at once
+// on two different files. The held .mutex is kept fresh like a slot file.
 func (d *Dir) Mutex(wait time.Duration, stop func() bool) (func(), error) {
-	f, err := os.OpenFile(filepath.Join(d.Path, ".mutex"), os.O_RDWR|os.O_CREATE, 0o600)
-	if err != nil {
-		return nil, fmt.Errorf("queue mutex: %w", err)
-	}
+	path := filepath.Join(d.Path, ".mutex")
 	deadline := time.Now().Add(wait)
 	pause := time.Millisecond
 	for {
-		err = syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
+		l, err := slots.TryLock(path)
 		switch {
-		case err == nil:
-			return func() { _ = f.Close() }, nil
-		case errors.Is(err, syscall.EINTR):
-			continue
-		case !errors.Is(err, syscall.EWOULDBLOCK):
-			f.Close()
+		case err != nil:
 			return nil, fmt.Errorf("queue mutex: %w", err)
+		case l != nil:
+			return l.Release, nil
 		}
 		if (stop != nil && stop()) || !time.Now().Before(deadline) {
-			f.Close()
 			return nil, ErrMutexBusy
 		}
 		// Jitter keeps the waiters of a busy queue from retrying in lockstep.

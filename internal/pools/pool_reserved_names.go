@@ -22,6 +22,7 @@ var reservedNames = []string{
 	// Test switches, the installer and the example hook script.
 	"test", "test_fake_metrics", "test_norace", "test_network", "test_mac_remote", "test_mac_env_path",
 	"update_golden", "lease_test_helper", "lease_test_helper_exit", "release_base", "hook_pattern",
+	"slots_pidns_helper",
 }
 
 // reserved is reservedNames as a set.
