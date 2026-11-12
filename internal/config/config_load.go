@@ -119,9 +119,6 @@ func (c *Config) normalize() error {
 	if c.Pools, err = pools.Build(c.PoolSpecs); err != nil {
 		return err
 	}
-	if c.Local.ObserveOnly {
-		return errors.New("[local]: observe_only is for a [[remote]]")
-	}
 	// "local" and "auto" are --remote keywords: a remote so named could never
 	// be targeted by its name.
 	seen := map[string]bool{LocalName: true, RemoteAuto: true}

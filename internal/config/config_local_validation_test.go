@@ -78,6 +78,8 @@ func TestRemoteOnlyKeysAreRefusedInLocal(t *testing.T) {
 		"cache_hook": `cache_hook = "true"`,
 		"env_path":   `env_path = "~/go/bin"`,
 		"name":       `name = "ws"`,
+		// observe_only is a [[remote]] key too, refused by the same check.
+		"observe_only": `observe_only = true`,
 	} {
 		_, err := Load(writeConfig(t, "[local]\n"+line+"\n"), true)
 		if err == nil || !strings.Contains(err.Error(), key) {

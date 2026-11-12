@@ -3,7 +3,7 @@
 `--config FILE`, else `$HEAVYQ_CONFIG`, else `$XDG_CONFIG_HOME/heavyq/config.toml` (`~/.config/heavyq/config.toml`).
 Every key is optional; keys this heavyq does not know are ignored with a warning. [`examples/config.toml`](../examples/config.toml) has every key with comments.
 A duration, `load_weight_mb`, `max_load_ratio` or `*_mb` budget set to `0` means its default; a negative one is an error that names the key.
-The remote-only keys (`ssh`, `transport`, `work_dir`, `git_url`, `cache_hook`, `env_path`, `name`) are an error under `[local]`, as `legacy_lock_files` is under `[[remote]]`.
+The remote-only keys (`ssh`, `transport`, `work_dir`, `git_url`, `cache_hook`, `env_path`, `name`, `observe_only`) are an error under `[local]`, as `legacy_lock_files` is under `[[remote]]`.
 
 | Key | Default | Meaning |
 |---|---|---|
