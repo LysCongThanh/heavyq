@@ -95,23 +95,33 @@ func (p *placement) withoutLacking(names []string) []string {
 	return slices.DeleteFunc(names, func(n string) bool { _, lacks := p.lacking[n]; return lacks })
 }
 
-// lacksError is the refusal of a run that no machine of its target can run:
-// each remote with the tools it lacks, and where that is fixed.
-func lacksError(cfg *config.Config, lacking map[string][]string) error {
+// lacksSummary names each remote with the tools it lacks and its env_path, where that is fixed.
+func lacksSummary(cfg *config.Config, lacking map[string][]string) string {
 	var parts []string
 	for _, n := range slices.Sorted(maps.Keys(lacking)) {
 		m, _ := cfg.Machine(n)
 		parts = append(parts, fmt.Sprintf("%s lacks %s (env_path %q)", n, strings.Join(lacking[n], ", "), m.EnvPath))
 	}
-	return fmt.Errorf("not run, nothing shipped: %s on the PATH its jobs get; add the tool's directory to that [[remote]]'s "+
-		"env_path in %s (`heavyq doctor` lists each remote's tools), or choose another --remote", strings.Join(parts, "; "), cfgName(cfg))
+	return strings.Join(parts, "; ")
 }
 
-// toolsFail reports a run refused by placeByTools (exit 2). For an agent it also says what to do.
-func toolsFail(stderr io.Writer, mode agentmode.Mode, err error) int {
-	fmt.Fprintln(stderr, "heavyq:", err)
-	if mode.Terse() {
-		fmt.Fprintln(stderr, "next: install the tool there or add its directory to the remote's env_path, or use --remote local")
+// lacksError is the refusal of a run that no machine of its target can run.
+func lacksError(cfg *config.Config, lacking map[string][]string) error {
+	return fmt.Errorf("not run, nothing shipped: %s on the PATH its jobs get; add the tool's directory to that [[remote]]'s "+
+		"env_path in %s (`heavyq doctor` lists each remote's tools), or choose another --remote", lacksSummary(cfg, lacking), cfgName(cfg))
+}
+
+// nextToolsGap is what an agent does after a run was refused for the tools of its remotes.
+const nextToolsGap = "install the tool there or add its directory to the remote's env_path (`heavyq doctor` lists its tools), " +
+	"or add --remote local, then re-run"
+
+// toolsFail reports a run refused by placeByTools (exit 2) before it was queued. A person reads the error;
+// an agent (or --digest) reads the usual digest: NOT RUN, which remotes lack what, and what to do.
+func (r *run) toolsFail(err error) int {
+	r.note("%s", err)
+	if r.out.digest {
+		r.printDigest(agentmode.Result{Verdict: agentmode.NotRun, Cmd: r.cmdText(), Exit: ExitUsage,
+			Why: lacksSummary(r.cfg, r.pl.lacking), Next: nextToolsGap})
 	}
 	return ExitUsage
 }

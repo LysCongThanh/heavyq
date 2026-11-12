@@ -40,6 +40,32 @@ func TestProbeToolsSeesThePathAJobGets(t *testing.T) {
 	}
 }
 
+// A file on PATH that is not executable is not a tool a job can run: bash's `command -v` names it, the probe
+// must not. A builtin has no path and is found.
+func TestProbeToolsFindsOnlyWhatARunCanExecute(t *testing.T) {
+	m := fakeRemote(t)
+	bin := t.TempDir()
+	if err := os.WriteFile(filepath.Join(bin, "hq-probe-plain-file"), []byte("#!/bin/sh\nexit 0\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(bin, "hq-probe-a-directory"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	m.EnvPath = bin
+	got, err := ProbeTools(m, []string{"hq-probe-plain-file", "hq-probe-a-directory", "cd"}, 20*time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"hq-probe-plain-file", "hq-probe-a-directory"} {
+		if p, ok := got[name]; !ok || p != "" {
+			t.Fatalf("%s is not executable: want the answer \"\", got %q", name, got)
+		}
+	}
+	if got["cd"] == "" {
+		t.Fatalf("a builtin is found (a job's bash -c has it): %q", got)
+	}
+}
+
 func TestJobPathBlockIsCutFromTheJobScript(t *testing.T) {
 	if !strings.Contains(jobPathScript, "HEAVYQ_ENV_PATH") || !strings.Contains(jobPathScript, "export PATH") {
 		t.Fatalf("the PATH block of remote_job.sh was not found:\n%s", jobPathScript)

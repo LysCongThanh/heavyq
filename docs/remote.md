@@ -211,11 +211,13 @@ heavyq 3 --tools envsubst,initdb -- bash scripts/e2e.sh   # argv[0] is bash: nam
   stored on the ticket.
 - **Refused before shipping.** When no machine is left (`--remote box`, a list, or `auto` while this machine is not
   eligible), the run exits 2 before anything is pushed, naming each remote, the tools it lacks and its `env_path`.
+  An agent gets that as the usual digest (`heavyq: NOT RUN ...`, the remotes and tools in the first lines, `next:`).
 - **Cached.** Answers are kept per remote in `remote-tools/<remote>.json` in the state directory (beside the ledger):
   "found" for an hour, "missing" for two minutes; a changed `env_path` or transport starts over. Before refusing a run
   on a cached "missing", heavyq asks that remote again. A probe also asks about `go`, `node`, `npx`, `pnpm`,
   `python3`, `cargo` and `docker`, so most later runs need no probe. Only remotes the metrics probe reached are asked;
-  a remote that cannot be asked keeps its place (unknown is not missing).
+  a remote that cannot be asked keeps its place (unknown is not missing). A tool counts as found when it is a shell
+  builtin or an executable file on that PATH, not when a file of that name is there without the execute bit.
 - **Not known in advance.** A tool the `cache_hook` installs, or one in a relative `env_path` directory (resolved in
   the job's worktree, which a probe does not have: a tool missing there counts as unknown).
 - **`heavyq doctor`** asks every remote now and lists which of those common tools, and of the tools the gates of the

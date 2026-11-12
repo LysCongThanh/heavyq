@@ -84,5 +84,7 @@ the cache and proof treat runs on different databases as the same run.
 
 ## Limits
 
-Remote machines have no pools: a remote cannot satisfy `--needs` yet. Values are leased, not created: heavyq does not
-start databases or free ports, it only makes sure two runs never get the same name or port from the same pool.
+Remote machines have no pools: a remote cannot satisfy `--needs` yet. (`--needs` / `needs` name pool values, leased on
+this machine; `--tools` / `tools` name commands that must resolve on a remote, see
+[remote](remote.md#placed-where-its-tools-are---tools).) Values are leased, not created: heavyq does not start
+databases or free ports, it only makes sure two runs never get the same name or port from the same pool.

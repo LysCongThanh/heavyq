@@ -61,6 +61,14 @@ func TestE2ERemoteToolsPlaceTheRunWhereItsCommandResolves(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(h.root, "remote-work", "git", "app.git")); !os.IsNotExist(err) {
 		t.Fatalf("code was shipped to box, which cannot run the command (stat: %v)", err)
 	}
+	// An agent reads the same refusal as a digest, within its budget, with what to do next.
+	agent := h.human()
+	agent.env = append(agent.env, "CLAUDECODE=1")
+	rc, out = agent.run("3", "--remote", "box", "--", onlyTool)
+	if d := digestOf(t, out); rc != ExitUsage || !strings.HasPrefix(d, "heavyq: NOT RUN") || !strings.Contains(d, "box lacks "+onlyTool) ||
+		!strings.Contains(d, "env_path") || !strings.Contains(d, "\nnext: ") || len(d) >= 4096 {
+		t.Fatalf("agent digest: rc=%d (want %d)\n%s", rc, ExitUsage, out)
+	}
 	// Tool names are plain command names: paths and shell syntax are refused.
 	for _, bad := range []string{"../bin/x", "a b", "-rf", "x;y", ",go"} {
 		if rc, out := h.run("3", "--tools", bad, "--", "true"); rc != ExitUsage || !strings.Contains(out, "--tools") {

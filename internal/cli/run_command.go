@@ -100,7 +100,7 @@ func runCommand(cfg *config.Config, args []string, stderr io.Writer) int {
 	r.probes.refresh(cfg, pl.candidates)
 	repo, commit := pl.shipped()             // what a later move to a remote (heavyq retarget) would ship
 	if err := r.placeByTools(); err != nil { // before queueing: nothing is shipped to a remote that cannot run it
-		return toolsFail(stderr, mode, err)
+		return r.toolsFail(err)
 	}
 	r.me = &queue.Ticket{
 		Pid: os.Getpid(), Start: start, Lane: o.Lane, Prio: o.Prio, Light: o.Light,

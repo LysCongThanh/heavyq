@@ -29,9 +29,16 @@ func cutBlock(s, begin, end string) string {
 }
 
 // toolProbeTail answers, for each tool in "$@", "heavyq-tool + <name> <where>" or "heavyq-tool - <name>".
-// `command -v` also finds builtins and keywords, which a job's `bash -c` has too.
+// `command -v` also finds builtins and keywords, which a job's `bash -c` has too (no slash: found). A path it
+// prints counts only when it is an executable file: bash also reports a file on PATH that is not executable,
+// which running the command would refuse.
 const toolProbeTail = `for t in "$@"; do
-  if p="$(command -v "$t" 2> /dev/null)"; then echo "heavyq-tool + $t $p"; else echo "heavyq-tool - $t"; fi
+  p="$(command -v "$t" 2> /dev/null)" || p=""
+  case "$p" in
+    "") echo "heavyq-tool - $t" ;;
+    */*) if [[ -f "$p" && -x "$p" ]]; then echo "heavyq-tool + $t $p"; else echo "heavyq-tool - $t"; fi ;;
+    *) echo "heavyq-tool + $t $p" ;;
+  esac
 done
 `
 
