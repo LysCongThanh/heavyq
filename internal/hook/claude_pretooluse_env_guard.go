@@ -58,11 +58,12 @@ func allowScopeOK(p *Parsed, cwd string) bool {
 }
 
 // cdStaysInside reports whether `cd dir` from cwd lands in cwd or below it,
-// judged on the text alone: no "..", no "~", no option, an absolute dir only
-// under cwd.
+// judged on the text alone: no "..", no "~", no option, no glob, an absolute
+// dir only under cwd. A glob is out because the text is not the path: where
+// globskipdots is off (bash before 5.2) `.[.]` and `.?` expand to "..".
 func cdStaysInside(dir, cwd string) bool {
 	if dir == "" || strings.HasPrefix(dir, "-") || strings.HasPrefix(dir, "~") ||
-		slices.Contains(strings.Split(dir, "/"), "..") {
+		strings.ContainsAny(dir, "*?[") || slices.Contains(strings.Split(dir, "/"), "..") {
 		return false
 	}
 	if !filepath.IsAbs(dir) {

@@ -63,6 +63,7 @@ func TestCdStaysInside(t *testing.T) {
 		"web": true, "web/app": true, "./web": true, ".": true, "/work/wt-api": true, "/work/wt-api/web": true,
 		"": false, "..": false, "../x": false, "web/../..": false, "~": false, "~/x": false, "-": false,
 		"/": false, "/work": false, "/work/wt-api-evil": false, "/work/wt-api/../x": false,
+		".[.]": false, ".?": false, "web/*": false, "/work/wt-api/.[.]": false,
 	} {
 		if got := cdStaysInside(dir, "/work/wt-api"); got != want {
 			t.Errorf("cd %q from /work/wt-api: %v, want %v", dir, got, want)
@@ -70,6 +71,33 @@ func TestCdStaysInside(t *testing.T) {
 	}
 	if cdStaysInside("/work/wt-api", "") {
 		t.Error("an absolute cd with no known cwd must not count as inside")
+	}
+}
+
+// A real bash with globskipdots off (the default before 5.2) expands `.[.]`
+// to "..", so a glob in the cd text can leave cwd.
+func TestCdGlobLeavesCwdInRealBash(t *testing.T) {
+	bash, err := exec.LookPath("bash")
+	if err != nil {
+		t.Skip("no bash")
+	}
+	root := t.TempDir()
+	cwd := filepath.Join(root, "a", "b")
+	if err := os.MkdirAll(cwd, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command(bash, "-c", "shopt -u globskipdots 2>/dev/null; cd .[.]/.[.] && pwd -P")
+	cmd.Dir = cwd
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("bash: %v", err)
+	}
+	want, _ := filepath.EvalSymlinks(root)
+	if got := strings.TrimSpace(string(out)); got != want {
+		t.Fatalf("cd .[.]/.[.] from %s landed in %s, want %s", cwd, got, want)
+	}
+	if cdStaysInside(".[.]/.[.]", cwd) {
+		t.Fatal("a cd that bash expands out of cwd must not count as inside")
 	}
 }
 

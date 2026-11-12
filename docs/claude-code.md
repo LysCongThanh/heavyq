@@ -155,8 +155,8 @@ So permission rules see `heavyq 4 --lane api --max-wait 300s -- npm test`, not `
    anyway. Deny and ask rules still apply. It approves no more than the prefix rule you would have written
    (`Bash(npm test:*)`): a leading assignment Claude Code does not strip for prefix rules (only `NODE_ENV`,
    `CI`, `GOOS`, `GOARCH`, `CGO_ENABLED`, `RUST_LOG`, `NO_COLOR`, `TZ` and `LANG` are), or a `cd` that may
-   leave the agent's cwd (`..`, `~`, an absolute path outside it), gets the rewrite without a decision, so
-   Claude Code asks as usual.
+   leave the agent's cwd (`..`, `~`, an absolute path outside it, a glob such as `.[.]` that older bash
+   expands to `..`), gets the rewrite without a decision, so Claude Code asks as usual.
 
 The Claude session id reaches the ledger out of band. When the hook wraps a command it writes
 `<queue dir>/sessions/<lane>` (JSON `{"session_id": ..., "at": ...}`, atomic, mode 0600), and `heavyq <prio>`
