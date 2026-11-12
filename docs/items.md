@@ -60,7 +60,7 @@ Exit codes: 0 done; **1** refused (held by another lane, not proven, nothing to 
 | `open` | nobody holds it and nothing proves it (an expired lease holds nothing) |
 | `claimed` | a live lease holds it: `lane`, `session`, `expires` |
 | `proven` | its proof passes on the code it was judged on: `commit` (short) and `at` |
-| `stale` | its proof passed on an older tree of this repository and the code has changed since |
+| `stale` | its proof passed on an older tree of this repository and the code has changed since (for a gate with `paths`, "the code" is the files they name, so a docs-only commit does not make it stale, see [gates](gates.md#a-gate-with-paths)) |
 | `blocked` | `needs` says what a human must provide |
 | `claimed_done_unproven` | the box is ticked (or a plan-file item was marked done) but nothing proves it |
 

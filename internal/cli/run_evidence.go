@@ -31,9 +31,9 @@ func (r *run) checkoutFor(machine string) gitutil.Checkout {
 		err error
 	)
 	if machine != "" && machine != config.LocalName && r.pl.sha != "" {
-		co, err = gitutil.Pinned(r.localDir(), r.pl.sha)
+		co, err = gitutil.PinnedScoped(r.localDir(), r.pl.sha, r.gatePaths())
 	} else {
-		co, err = gitutil.Identify(r.localDir())
+		co, err = gitutil.IdentifyScoped(r.localDir(), r.gatePaths())
 	}
 	if err != nil {
 		r.verbosef("ledger: code identity incomplete: %v", err)
@@ -54,7 +54,7 @@ func (r *run) settled(before gitutil.Checkout) gitutil.Checkout {
 		before.Tree = ""
 		return before
 	}
-	after, err := gitutil.Identify(r.localDir())
+	after, err := gitutil.IdentifyScoped(r.localDir(), r.gatePaths())
 	if err != nil || after.Tree == before.Tree {
 		return before
 	}

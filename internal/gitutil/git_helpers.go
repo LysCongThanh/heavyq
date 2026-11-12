@@ -96,10 +96,14 @@ func workTreeClean(repo string) (bool, error) { return workTreeCleanExcept(repo,
 // paths in exclude (the bookkeeping paths, see bookkeepingPaths), nor nested
 // work trees and repositories (see NestedWorkTreeDirs and isNestedRepo).
 func workTreeCleanExcept(repo string, exclude []string) (bool, error) {
+	return workTreeCleanSpecs(repo, untrackedSpecs(exclude))
+}
+
+// workTreeCleanSpecs is workTreeCleanExcept for the paths specs (pathspecs after "--") let through.
+func workTreeCleanSpecs(repo string, specs []string) (bool, error) {
 	// Submodules are never ignored, whatever submodule.<name>.ignore or
 	// diff.ignoreSubmodules say: a changed submodule is a changed tree.
-	args := append([]string{"status", "--porcelain", "-z", "--untracked-files=normal", "--ignore-submodules=none"},
-		untrackedSpecs(exclude)...)
+	args := append([]string{"status", "--porcelain", "-z", "--untracked-files=normal", "--ignore-submodules=none"}, specs...)
 	out, err := gitRaw(repo, args...)
 	if err != nil {
 		return false, err
@@ -113,7 +117,7 @@ func workTreeCleanExcept(repo string, exclude []string) (bool, error) {
 			return false, nil // a change to a tracked file, or an untracked file
 		}
 		// An untracked directory: clean only when all it holds is nested repositories.
-		if only, err := onlyNestedRepos(repo, path, exclude); err != nil || !only {
+		if only, err := onlyNestedRepos(repo, path, specs); err != nil || !only {
 			return false, err
 		}
 	}

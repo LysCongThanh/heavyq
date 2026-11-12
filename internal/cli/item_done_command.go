@@ -182,7 +182,7 @@ func (c *itemCtx) runProof(it anchor.Item, remoteFlag string) (rc int, started b
 		fmt.Fprintln(c.stderr, "heavyq:", err)
 		return ExitUsage, false
 	}
-	pl, why := fitProofToTree(c.root, pl, c.stderr)
+	pl, why := fitProofToTree(c.root, nil, pl, c.stderr)
 	if why != "" {
 		return c.refuse(why, "heavyq item done "+it.ID+" --run --remote local"), false
 	}

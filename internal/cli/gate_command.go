@@ -151,12 +151,15 @@ func pickGate(repo *repoconfig.Repo, name string, stderr io.Writer) (repoconfig.
 // directory, the cache.env allowlist read from this process's environment, the
 // configured base ref), so a ledger record only proves the command when it ran
 // under the same environment.
-func subjectOf(cfg *config.Config, root string) proof.Subject { return subjectOfWith(cfg, root, nil) }
+func subjectOf(cfg *config.Config, root string) proof.Subject {
+	return subjectOfWith(cfg, root, nil, nil)
+}
 
-// subjectOfWith is subjectOf for a gate that needs sibling repositories: sibs
-// ("name@sha", see gateSubject) join the run_id of every command.
-func subjectOfWith(cfg *config.Config, root string, sibs []string) proof.Subject {
-	co, err := gitutil.Identify(root)
+// subjectOfWith is subjectOf for a gate that declares `paths` (scope: the code is the files they name, see
+// gitutil.IdentifyScoped; nil is the whole tree) and that needs sibling repositories (sibs, "name@sha", see
+// gateSubject, join the run_id of every command).
+func subjectOfWith(cfg *config.Config, root string, scope, sibs []string) proof.Subject {
+	co, err := gitutil.IdentifyScoped(root, scope)
 	s := proof.Subject{Repo: co.Repo, Tree: co.Tree, Commit: co.Commit, Dirty: co.Dirty,
 		EnvFree: len(cfg.Cache.Env) == 0}
 	if co.Tree != "" {

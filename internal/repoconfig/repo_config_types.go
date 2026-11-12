@@ -63,6 +63,9 @@ type Gate struct {
 	// Tools are commands every command of the gate needs on the machine it
 	// runs on; a remote without one is skipped (--tools, docs/remote.md).
 	Tools []string
+	// Paths are the files whose content is the gate's proof identity: globs relative to the repository root
+	// (see package gatepaths). A commit that changes none of them keeps the gate proven. Empty: the whole tree.
+	Paths []string
 	// Detected marks the default gate Detect made up from files at the git
 	// root because the repository has no heavyq.toml; Sources names those
 	// files. Both are zero for a gate read from a file.
@@ -163,6 +166,7 @@ type rawGate struct {
 	With   []string `toml:"with"`
 	NeedGH bool     `toml:"need_gh"`
 	Tools  []string `toml:"tools"`
+	Paths  []string `toml:"paths"`
 }
 
 type rawAnchor struct {

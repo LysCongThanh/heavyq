@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/LysCongThanh/heavyq/internal/config"
+	"github.com/LysCongThanh/heavyq/internal/gatepaths"
 	"github.com/LysCongThanh/heavyq/internal/pools"
 	"github.com/LysCongThanh/heavyq/internal/toolcheck"
 )
@@ -130,6 +131,10 @@ func (rg rawGate) validate() (Gate, error) {
 		return Gate{}, fmt.Errorf("tools: %w", err)
 	}
 	g.Tools = rg.Tools
+	if err := gatepaths.ValidList(rg.Paths); err != nil {
+		return Gate{}, fmt.Errorf("paths: %w", err)
+	}
+	g.Paths = rg.Paths
 	return g, nil
 }
 

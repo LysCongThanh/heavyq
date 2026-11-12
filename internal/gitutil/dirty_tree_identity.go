@@ -33,11 +33,18 @@ const gitlinkMode = "160000"
 //     says "dirty" for those, whatever they are, so the tree is unknown (ID "");
 //   - too much untracked content to hash, or HEAD moved: unknown as well.
 func dirtyTreeAt(repo, head string, exclude []string) (TreeID, error) {
-	unknown := TreeID{Dirty: true}
 	headTree, err := effectiveTreeOf(repo, head, exclude)
 	if err != nil {
 		return TreeID{}, err
 	}
+	return dirtyTreeFrom(repo, head, headTree, excludeSpecs(exclude), untrackedSpecs(exclude))
+}
+
+// dirtyTreeFrom is dirtyTreeAt on a head tree id already found (headTree, what a clean tree is called), with the
+// paths the diff (diffSpecs) and the untracked listing (listSpecs) look at given as pathspecs after "--": a whole
+// tree leaves out only the bookkeeping paths, a gate's scope (see IdentifyScoped) names the files that count.
+func dirtyTreeFrom(repo, head, headTree string, diffSpecs, listSpecs []string) (TreeID, error) {
+	unknown := TreeID{Dirty: true}
 	sub, err := submoduleChanged(repo)
 	if err != nil {
 		return TreeID{}, err
@@ -45,11 +52,11 @@ func dirtyTreeAt(repo, head string, exclude []string) (TreeID, error) {
 	if sub {
 		return unknown, nil
 	}
-	diff, diffBytes, err := trackedDiffDigest(repo, head, exclude)
+	diff, diffBytes, err := trackedDiffDigest(repo, head, diffSpecs)
 	if err != nil {
 		return TreeID{}, err
 	}
-	ut, err := untrackedDigest(repo, exclude...)
+	ut, err := untrackedDigestSpecs(repo, listSpecs)
 	if err != nil {
 		return TreeID{}, err
 	}
@@ -67,23 +74,20 @@ func dirtyTreeAt(repo, head string, exclude []string) (TreeID, error) {
 // the same bytes under any git config: no external drivers or textconv, no
 // rename detection, fixed prefixes, algorithm, heuristics and context, full
 // hashes, submodules never ignored, and paths quoted the default way.
-func diffArgs(head string, exclude []string) []string {
+func diffArgs(head string, specs []string) []string {
 	args := []string{"-c", "core.quotePath=true", "diff", head, "--binary", "--full-index", "--no-renames",
 		"--no-ext-diff", "--no-textconv", "--no-color", "--src-prefix=a/", "--dst-prefix=b/",
 		"--diff-algorithm=myers", "--no-indent-heuristic", "--submodule=short", "--ignore-submodules=none",
 		"-U3", "--inter-hunk-context=0"}
-	if len(exclude) > 0 {
-		args = append(args, excludeSpecs(exclude)...)
-	}
-	return args
+	return append(args, specs...)
 }
 
 // trackedDiffDigest hashes `git diff <head> --binary`, streamed so a large
 // binary change is never held in memory, and reports how many bytes it was.
-func trackedDiffDigest(repo, head string, exclude []string) (digest string, n int64, err error) {
+func trackedDiffDigest(repo, head string, specs []string) (digest string, n int64, err error) {
 	h := sha256.New()
 	cw := &countWriter{w: h}
-	if err := gitTo(cw, repo, diffArgs(head, exclude)...); err != nil {
+	if err := gitTo(cw, repo, diffArgs(head, specs)...); err != nil {
 		return "", 0, err
 	}
 	return hex.EncodeToString(h.Sum(nil)), cw.n, nil

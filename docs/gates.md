@@ -99,6 +99,7 @@ needs  = ["pg", "port:2"]              # optional: pool values each command hold
 with   = ["shared-schema@v2.1.0"]      # optional: sibling repos next to this one, pinned (see remote.md)
 need_gh = false                        # optional: the commands use this machine's GitHub CLI login: run here only
 tools  = ["envsubst", "initdb"]        # optional: commands they need where they run; remotes without them are skipped
+paths  = ["**/*.go", "go.mod", "go.sum"]  # optional: the files the proof is made of (default: the whole tree)
 
 [proof]                                # optional: where proofs run (gates without a remote key, item done --run)
 remote = "auto"                        # local (default) | auto | <remote name>
@@ -123,6 +124,7 @@ max_proof_share = 1.0                  # share of the 30 min lease the expected 
 | `gate.with` | list of strings | none | sibling repositories each command needs next to this one: `"name"` or `"name@ref"` (a directory next to the repository, or a path containing `/`). Passed to every command as `--with`: pinned at the start of the run, shipped with remote runs, and part of the proof, so a sibling at another commit is another run, and a sibling that cannot be resolved proves nothing. See [remote](remote.md#sibling-repositories---with). |
 | `gate.need_gh` | bool | `false` | the commands call the GitHub CLI with this machine's login, so the gate runs here only (passes `--need-gh`). Not with a named `remote`; it overrides a `[proof] remote` default, and `--remote <name>` on the command line is exit 2. |
 | `gate.tools` | list of strings | none | commands every command of the gate needs on the machine it runs on, besides the one it starts (a script's `envsubst`, `initdb`, GNU `sed`): plain command names (`[A-Za-z0-9_][A-Za-z0-9._+-]{0,63}`, at most 32). Passed to every command as `--tools`: a remote where one does not resolve on the PATH its jobs get is skipped, and a named remote without one is refused before anything is shipped, so an environment gap never shows up as a red gate. Not part of the proof. See [remote](remote.md#placed-where-its-tools-are---tools). |
+| `gate.paths` | list of strings | none (the whole tree) | at most 64 globs relative to the repository root, none twice, each at most 200 bytes. `*` and `?` stay inside one path component, `**` is a whole component (`**/*.go`, `docs/**`), a path with no wildcard names a file or a directory with everything below it. No character classes, escapes, `..`, absolute paths or a trailing `/`. A gate's proof is then the content of the files they match, see [what "proven" means](#a-gate-with-paths). |
 | `pool` | tables | none | `[[pool]]` tables, as in the user config; a pool here replaces the user's pool of the same name. See [pools](pools.md). |
 | `proof.remote` | string | unset | `[proof]`: where `item done --run` and `gate run` run proofs for gates without their own `remote` key; `local`, `auto`, a remote name or an ordered list `"a,b,c"`. Overrides `[proof]` of the user config. See [items](items.md#where-the-proof-runs). |
 | `anchor.file` | string | none | relative path inside the repository |
@@ -191,6 +193,36 @@ the index is not one of these: changes inside it still make the tree unknown. `g
 directories; `heavyq doctor` and `heavyq init` print the line that hides them from it:
 `echo '.claude/worktrees/' >> "$(git rev-parse --git-path info/exclude)"`.
 
+### A gate with `paths`
+
+By default a gate's proof is the whole tree, so a commit that changes only `CHANGELOG.md` makes every proof stale.
+A gate that declares `paths` is proven by the files they name instead:
+
+```toml
+[[gate]]
+name  = "go"
+run   = ["go vet ./...", "go test ./..."]
+paths = ["**/*.go", "go.mod", "go.sum", "testdata/**"]
+```
+
+A commit or an uncommitted edit that changes none of those files leaves the gate proven (and `gate run` runs
+nothing); a change to any of them, or a new or deleted file among them, voids the proof. So does editing the
+list itself. Everything the commands read has to be listed: a gate that reads `heavyq.toml`, a script or a
+fixture outside `paths` would stay proven when that file changes. Without `paths` nothing changes.
+
+- The tree id of such a gate is `paths-` and 40 hex characters (plus `+` and a digest of the edits while a listed
+  file is edited): a digest of the patterns and of the committed files they match, never a git tree id. It is
+  what `gate status`, the ledger records of the gate's runs and its `run_id` carry, so a run of the gate belongs
+  to it and to no other code. The whole tree id of a run that proves no gate is unchanged.
+- `heavyq.toml` is not in the scope unless a pattern names it. The bookkeeping files (see above) are never in it.
+- Patterns that match no committed file give a gate that no code can be proven on (`gate status` says why, and
+  `gate run` refuses): a typo must not make a gate that is proven forever.
+- A nested repository or submodule with changes of its own still makes the tree unknown, whatever `paths` say.
+- The result cache stays keyed by the whole tree (a cache hit is recorded on the scoped id of the code it
+  replays). `--remote` ships the committed `HEAD`: a work tree whose edits are all outside `paths` still runs on a
+  remote, and the run is recorded on the scoped id of the commit it ran.
+- An item whose proof is `gate:<name>` follows the gate: a docs-only commit does not make it `stale`.
+
 ### Run identity
 
 Every ledger record carries a `run_id`, the single definition of "the same run" that the result cache, proof,
@@ -198,7 +230,7 @@ flaky detection and the Tower's loop detection share (`internal/runident`). It i
 
 | Component | Notes |
 |---|---|
-| tree id | `HEAD`'s tree, or `<tree>+<digest of the edits>` when dirty, without bookkeeping files (above) |
+| tree id | `HEAD`'s tree, or `<tree>+<digest of the edits>` when dirty, without bookkeeping files (above); for a gate with `paths`, the scoped id of the files they name ([above](#a-gate-with-paths)) |
 | exact argv | NUL-joined, before redaction and truncation (this is `cmd_hash`) |
 | subdirectory | relative to the repository root; gate commands run from the root |
 | `cache.env` | for each listed variable its value, or "unset" (set-but-empty differs from unset) |

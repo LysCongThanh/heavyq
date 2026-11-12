@@ -45,7 +45,8 @@ heavyq status                            # what runs, what waits, and why
 
 **Prove.** A gate in `heavyq.toml` (or one detected from `go.mod`, `package.json`, `pytest`, `Cargo.toml`)
 says what "done" means. `gate status` answers from the ledger in about 20 ms, for the exact tree checked
-out now, uncommitted edits included.
+out now, uncommitted edits included; a gate that lists its `paths` is proven by those files only, so a docs-only
+commit keeps the proof.
 
 ```bash
 heavyq gate status    # PROVEN or NOT PROVEN on this tree; exit 0 or 1

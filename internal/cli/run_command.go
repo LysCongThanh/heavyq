@@ -54,6 +54,9 @@ type run struct {
 	// that line when the command nevertheless exited 0 (see run_suspect_judge.go).
 	scan    *suspectScan
 	suspect string
+	// scope is the `paths` of the gate this run proves, read once (see gatePaths).
+	scope     []string
+	scopeRead bool
 }
 
 func runCommand(cfg *config.Config, args []string, stderr io.Writer) int {

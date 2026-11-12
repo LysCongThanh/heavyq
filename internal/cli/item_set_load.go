@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/LysCongThanh/heavyq/internal/anchor"
@@ -29,7 +30,7 @@ type itemSet struct {
 	repo  *repoconfig.Repo // heavyq.toml (or the detected default gate); nil when there is none
 	file  *anchor.File
 	store *lease.Store
-	// subjects caches the identity of each work tree looked at, by root.
+	// subjects caches the identity of each work tree looked at, by root and scope.
 	subjects map[string]proof.Subject
 	// worktrees is `git worktree list`, read when a lane's tree is needed.
 	worktrees []string
@@ -66,12 +67,28 @@ func loadItemSet(cfg *config.Config, dir string) (*itemSet, error) {
 }
 
 // subject is the identity of the code in work tree root, cached.
-func (s *itemSet) subject(root string) proof.Subject {
-	if sub, ok := s.subjects[root]; ok {
+func (s *itemSet) subject(root string) proof.Subject { return s.scopedSubject(root, nil) }
+
+// proofSubject is the identity of the code in work tree root that proof p is judged on: the files named by the
+// `paths` of the gate p stands for, else the whole tree.
+func (s *itemSet) proofSubject(root string, p anchor.Proof) proof.Subject {
+	var scope []string
+	if p.Kind == anchor.ProofGate {
+		if g, ok := proofGate(s, p.Value); ok {
+			scope = g.Paths
+		}
+	}
+	return s.scopedSubject(root, scope)
+}
+
+// scopedSubject is subject for the code a gate's `paths` (scope) name, cached by work tree and scope.
+func (s *itemSet) scopedSubject(root string, scope []string) proof.Subject {
+	key := root + "\x00" + strings.Join(scope, "\x00")
+	if sub, ok := s.subjects[key]; ok {
 		return sub
 	}
-	sub := subjectOf(s.cfg, root)
-	s.subjects[root] = sub
+	sub := subjectOfWith(s.cfg, root, scope, nil)
+	s.subjects[key] = sub
 	return sub
 }
 

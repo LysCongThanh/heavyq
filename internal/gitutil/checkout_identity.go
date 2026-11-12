@@ -53,7 +53,10 @@ func Locate(dir string) (Checkout, error) {
 // Identify is Locate plus the commit and the exact tree the work tree holds
 // right now, dirty or not. A repository without commits has no Commit or Tree.
 // On error the fields found so far are still returned.
-func Identify(dir string) (Checkout, error) {
+func Identify(dir string) (Checkout, error) { return identify(dir, workTreeAt) }
+
+// identify is Identify with the way the work tree is identified left to treeAt (workTreeAt, or a gate's scope).
+func identify(dir string, treeAt func(repo, head string) (TreeID, error)) (Checkout, error) {
 	co, err := Locate(dir)
 	if err != nil {
 		return co, err
@@ -65,7 +68,7 @@ func Identify(dir string) (Checkout, error) {
 	}
 	co.Commit = head
 	// HEAD is resolved once: commit, tree and edits all refer to this commit.
-	id, err := workTreeAt(co.Worktree, head)
+	id, err := treeAt(co.Worktree, head)
 	if err != nil {
 		return co, err
 	}
@@ -77,6 +80,13 @@ func Identify(dir string) (Checkout, error) {
 // commit): Commit is sha, Tree is its effective tree and the checkout is never dirty,
 // whatever the local work tree looks like.
 func Pinned(dir, sha string) (Checkout, error) {
+	return pinned(dir, sha, func(repo, commit string) (string, error) {
+		return effectiveTreeOf(repo, commit, bookkeepingPaths(repo, commit))
+	})
+}
+
+// pinned is Pinned with the tree of the commit found by treeOf (the whole tree, or a gate's scope).
+func pinned(dir, sha string, treeOf func(repo, commit string) (string, error)) (Checkout, error) {
 	co, err := Locate(dir)
 	if err != nil {
 		return co, err
@@ -84,6 +94,6 @@ func Pinned(dir, sha string) (Checkout, error) {
 	if co.Commit, err = ResolveCommit(co.Worktree, sha); err != nil {
 		return co, err
 	}
-	co.Tree, err = effectiveTreeOf(co.Worktree, co.Commit, bookkeepingPaths(co.Worktree, co.Commit))
+	co.Tree, err = treeOf(co.Worktree, co.Commit)
 	return co, err
 }

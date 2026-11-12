@@ -61,7 +61,12 @@ type untrackedResult struct {
 // own .git) is listed by git as "dir/"; it is left out (see isNestedRepo), as
 // is everything in NestedWorkTreeDirs.
 func untrackedDigest(repo string, exclude ...string) (untrackedResult, error) {
-	args := append([]string{"ls-files", "--others", "--exclude-standard", "-z"}, untrackedSpecs(exclude)...)
+	return untrackedDigestSpecs(repo, untrackedSpecs(exclude))
+}
+
+// untrackedDigestSpecs is untrackedDigest for the paths given as pathspecs after "--" (see scopeSpecs).
+func untrackedDigestSpecs(repo string, specs []string) (untrackedResult, error) {
+	args := append([]string{"ls-files", "--others", "--exclude-standard", "-z"}, specs...)
 	list, err := gitRaw(repo, args...)
 	if err != nil {
 		return untrackedResult{}, err
