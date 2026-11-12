@@ -1,6 +1,7 @@
 package gitutil
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -58,5 +59,30 @@ func TestScopedIdentityStillRefusesAChangedSubmoduleOutsideTheScope(t *testing.T
 	gitIn(t, sub, "checkout", "-q", "--", "f.txt")
 	if co := scoped(t, super, scope); co.Tree == "" || !co.Dirty || co.Tree == clean.Tree {
 		t.Fatalf("submodule restored: %+v, want a dirty scoped id", co)
+	}
+}
+
+// git status skips a submodule that is not checked out, so a linked work tree (git worktree add checks none out)
+// looked clean to a scope that lists the submodule, and got the main checkout's clean scoped id: a proof of the
+// submodule's code replayed where that code is missing. A scope listing it gets a dirty id of its own; a scope
+// without it is untouched by the missing checkout.
+func TestScopedIdentityOfASubmoduleThatIsNotCheckedOutIsDirty(t *testing.T) {
+	super, _ := superWithSubmodule(t)
+	withMod, withoutMod := []string{"mod", "a.txt"}, []string{"a.txt"}
+	mainWith, mainWithout := scoped(t, super, withMod), scoped(t, super, withoutMod)
+	if mainWith.Dirty || mainWithout.Dirty {
+		t.Fatalf("precondition: main checkout scoped ids %+v, %+v should be clean", mainWith, mainWithout)
+	}
+
+	wt := filepath.Join(t.TempDir(), "wt")
+	gitIn(t, super, "worktree", "add", "-q", "-b", "agent", wt)
+	if _, err := os.Lstat(filepath.Join(wt, "mod", ".git")); err == nil {
+		t.Fatal("precondition: git worktree add should not check out submodules")
+	}
+	if co := scoped(t, wt, withMod); co.Tree == "" || !co.Dirty || co.Tree == mainWith.Tree || co.Commit != mainWith.Commit {
+		t.Fatalf("scope lists the missing submodule: %+v, want a dirty id other than %q on commit %s", co, mainWith.Tree, mainWith.Commit)
+	}
+	if co := scoped(t, wt, withoutMod); co.Tree != mainWithout.Tree || co.Dirty {
+		t.Fatalf("scope without the submodule: %+v, want the clean scoped id %q", co, mainWithout.Tree)
 	}
 }
