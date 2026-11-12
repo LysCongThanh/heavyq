@@ -61,7 +61,8 @@ light_slots = 2
 	if !ok {
 		t.Fatal("remote not found")
 	}
-	if got := strings.Join(r.Transport, " "); got != "ssh -o BatchMode=yes -o ConnectTimeout=10 box" {
+	want := "ssh -o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=15 -o ServerAliveCountMax=4 box"
+	if got := strings.Join(r.Transport, " "); got != want {
 		t.Fatalf("transport = %q", got)
 	}
 	if r.GitURL != "box:.heavyq/git" || r.HeavySlots != 0 || r.LightSlots != 2 {
