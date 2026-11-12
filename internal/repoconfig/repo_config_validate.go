@@ -139,7 +139,7 @@ func (rg rawGate) validate() (Gate, error) {
 }
 
 // validRemote accepts local, auto, a name shaped like a configured remote, or
-// an ordered list of local and such names ("mac,local,linuxi"). Whether a
+// an ordered list of local and such names ("box1,local,box2"). Whether a
 // remote exists is checked when the gate runs, against the user's own config:
 // this file cannot know it.
 func validRemote(v string) error {

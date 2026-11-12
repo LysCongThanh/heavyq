@@ -17,11 +17,11 @@ The remote-only keys (`ssh`, `transport`, `work_dir`, `git_url`, `cache_hook`, `
 | `queue.probe_timeout` | `"5s"` | timeout of one remote metrics probe |
 | `queue.base_ref` | `""` | default `--base-ref`: `remote/branch` (e.g. `"origin/main"`) is recreated on the remote machine a run goes to and its commit is part of the run id; `""` = origin's default branch (`refs/remotes/origin/HEAD`, else `origin/main`) when the repository has one; `"none"` = no base ref. See [remote](remote.md) |
 | `local.heavy_slots` / `light_slots` | `2` / `1` | slots on this machine; each absent key gets its own default, an explicit `0` is kept. At least one machine needs a heavy slot: heavy runs (the default) cannot use light ones |
-| `remote.heavy_slots` / `light_slots` | `2` / `0` | slots on that remote, when neither key is set (`light_slots = 2` alone is a light-only remote) |
+| `remote.heavy_slots` / `light_slots` | `2` / `0` | slots on that remote, when neither key is set (`light_slots = 2` alone is a light-only remote). Each machine has at least one slot and at most 64 |
 | `local.legacy_lock_files` | `[]` | use these files as heavy slots (shared with `flock <file>` users): absolute paths, each with its own base name; `light_slots` then defaults to `0` |
-| `*.max_load_ratio` | `0.75` | admit while `load1 < ratio x cores` |
-| `*.job_mb` / `light_mb` / `reserve_mb` | `3072` / `1024` / `2048` | RAM budget per heavy / light job, and headroom |
-| `remote.name`, `remote.ssh` | required | name (not `local` or `auto`, which `--remote` reads as keywords) and ssh alias (`ssh` may be replaced by `transport` + `git_url`) |
+| `*.max_load_ratio` | `0.75` | admit while `load1 < ratio x cores`; at most 64 |
+| `*.job_mb` / `light_mb` / `reserve_mb` | `3072` / `1024` / `2048` | RAM budget per heavy / light job, and headroom; `0` = the default |
+| `remote.name`, `remote.ssh` | required | name (`[A-Za-z0-9][A-Za-z0-9._-]{0,63}`, unique, not `local` or `auto`, which `--remote` reads as keywords) and a plain ssh alias, options in `~/.ssh/config` (`ssh` may be replaced by `transport` + `git_url`) |
 | `remote.transport` | `["ssh","-o","BatchMode=yes","-o","ConnectTimeout=10","-o","ServerAliveInterval=15","-o","ServerAliveCountMax=4",ssh]` | argv prefix; the remote script is appended as one argument. A custom ssh transport should keep the `ServerAlive*` options: they end the local side of a run about a minute after its link dies silently (the remote side needs `ClientAliveInterval` in its `sshd_config`, see docs/remote.md) |
 | `remote.work_dir` | `".heavyq"` | remote directory, relative to the remote home (a leading `~/` means the same; any other `~` is refused) |
 | `remote.git_url` | `"<ssh>:<work_dir>/git"` | where bare repos are pushed (never starts with `-`) |
@@ -113,7 +113,7 @@ parsers use, so a key cannot be in one and not the other; CI fails when `schema/
 | Schema | Describes | Used for |
 |---|---|---|
 | [`schema/heavyq.schema.json`](../schema/heavyq.schema.json) | `heavyq.toml` at the repository root: `[[gate]]`, `[[pool]]`, `[anchor]`, `[items]` | completion, hover help and errors for gates (name shape, `prio` 1-9, non-empty `run`) |
-| [`schema/config.schema.json`](../schema/config.schema.json) | the user config, `~/.config/heavyq/config.toml` | the same for slots, budgets, `[[remote]]`, `[[hook.rule]]`, `[cache]`, durations like `"15m"` |
+| [`schema/config.schema.json`](../schema/config.schema.json) | the user config, `~/.config/heavyq/config.toml` | the same for slots, budgets, `[[remote]]` (required `name`, ssh alias shape; `[local]` does not offer the remote-only keys), `[[hook.rule]]`, `[cache]`, `[mentor]` ranges, durations like `"15m"` |
 | [`schema/status.schema.json`](../schema/status.schema.json) | the output of `heavyq status --json` (schema 1) | typed clients; extra fields are allowed, because fields are added within schema 1 |
 | [`schema/fleet.schema.json`](../schema/fleet.schema.json) | the output of `heavyq fleet --json` (schema 1) | the same for the fleet report ([fleet](fleet.md#json)) |
 
@@ -159,8 +159,9 @@ include = ["**/heavyq.toml"]
 schema.path = "https://raw.githubusercontent.com/LysCongThanh/heavyq/main/schema/heavyq.schema.json"
 ```
 
-`taplo lint heavyq.toml` then checks a file in CI. The schema describes the shape only; `heavyq gate status` and
-`heavyq doctor` are still what validate semantics (duplicate gate names, unknown remotes, pool ranges).
+`taplo lint heavyq.toml` then checks a file in CI. The schemas carry what one key can be on its own (ranges, name
+shapes); `heavyq gate status` and `heavyq doctor` are still what validate rules across keys (duplicate gate or
+remote names, unknown remotes, pool ranges, the slot total of a machine).
 
 **Regenerating.** `schema/` is written by `tools/schemagen`, a separate Go module (its own `go.mod`), so the main
 module keeps its single dependency. After changing a config type, a key or a validation rule:
@@ -169,6 +170,8 @@ module keeps its single dependency. After changing a config type, a key or a val
 cd tools/schemagen && go test ./... && go run .
 ```
 
-The tests there validate `heavyq.toml` and `examples/config.toml` against the schemas and check that the committed
-files are current. Rules that only a validator knows (required keys, ranges, name shapes) are in
-`tools/schemagen/patches.go`; add one there when you add a rule to a validator.
+The tests there validate `heavyq.toml` and `examples/config.toml` against the schemas, check that the committed
+files are current, that `examples/config.toml` shows every key, and that the user config schema refuses what
+heavyq's loader refuses (`schema_validator_parity_test.go`). Rules that only a validator knows (required keys,
+ranges, name shapes) are in `tools/schemagen/patches*.go`, built from the patterns and limits `internal/config`
+exports; add one there, and a case to the parity test, when you add a rule to a validator.

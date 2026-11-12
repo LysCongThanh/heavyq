@@ -24,7 +24,7 @@ reserve_mb = 2048        # headroom kept free on top of the budget
 # When set, these files ARE the heavy slots (their count replaces heavy_slots).
 # legacy_lock_files = ["/tmp/build-1.lock", "/tmp/build-2.lock"]   # example
 
-# One [[remote]] block per spare machine (example).
+# One [[remote]] block per spare machine (example). With no slot key set, a remote has 2 heavy and 0 light slots.
 [[remote]]
 name = "buildbox"        # used in --remote buildbox and in status
 ssh = "buildbox"         # alias from ~/.ssh/config; key auth, ControlMaster recommended
@@ -75,6 +75,7 @@ cache = true             # add --cache
 [[pool]]
 name = "port"
 values = "4100-4199"     # a range, or a list; ports are probed and never inside the OS ephemeral range
+# port = true            # TCP ports; default: true for a pool called "port" or ending in "_port"
 
 [[pool]]
 name = "pg"
@@ -87,7 +88,18 @@ size = 2                 # capacity only: the values are 1 and 2
 # Where `heavyq item done --run` and `heavyq gate run` run proofs. A [proof] table in a
 # repository's heavyq.toml overrides it there; --remote overrides both.
 [proof]
-remote = "local"         # "local" (default) | "auto" (scheduler picks, free slots first) | a [[remote]] name
+remote = "local"         # "local" (default) | "auto" (scheduler picks, free slots first) | a [[remote]] name | an ordered list "a,b,c" (the first with room)
+
+# Defaults for `heavyq <prio> -- cmd`.
+[run]
+need_gh_repos = []       # repository directory names whose commands use this machine's GitHub CLI login: runs there stay here, as with --need-gh (example: ["infra"])
+
+# The mentor experiment of `heavyq hook claude-posttooluse` (docs/mentor.md).
+[mentor]
+holdout_pct = 20         # share of eligible events logged but not shown, 0-100; 100 = shadow mode
+auto_mute = true         # a rule that shows too little lift mutes itself
+min_events = 200         # resolved events per arm before the lift is judged
+min_lift_pp = 10.0       # lift, in percentage points, below which a rule is muted
 
 # Result cache and coalescing for --cache runs.
 [cache]

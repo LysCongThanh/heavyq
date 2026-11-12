@@ -94,7 +94,7 @@ run    = ["gofmt -l . | (! grep .)",   # required, non-empty, run in order
           "go test -race ./..."]
 prio   = 3                             # optional, 1-9, default 3
 light  = false                         # optional, may use the light slots
-remote = "local"                       # optional: local (default) | auto | <remote name>
+remote = "local"                       # optional: local (default) | auto | <remote name> | "a,b,c"
 needs  = ["pg", "port:2"]              # optional: pool values each command holds while it runs (see pools.md)
 with   = ["shared-schema@v2.1.0"]      # optional: sibling repos next to this one, pinned (see remote.md)
 need_gh = false                        # optional: the commands use this machine's GitHub CLI login: run here only
@@ -102,9 +102,9 @@ tools  = ["envsubst", "initdb"]        # optional: commands they need where they
 paths  = ["**/*.go", "go.mod", "go.sum"]  # optional: the files the proof is made of (default: the whole tree)
 
 [proof]                                # optional: where proofs run (gates without a remote key, item done --run)
-remote = "auto"                        # local (default) | auto | <remote name>
+remote = "auto"                        # local (default) | auto | <remote name> | "a,b,c"
 
-[anchor]                               # reserved: accepted, not used yet
+[anchor]                               # optional: the checklist of `heavyq item`, `flow` and `steer` (anchor.md)
 file  = ".heavyq/anchor.md"
 extra = ["plans/*/phase-*.md"]
 
@@ -126,9 +126,9 @@ max_proof_share = 1.0                  # share of the 30 min lease the expected 
 | `gate.tools` | list of strings | none | commands every command of the gate needs on the machine it runs on, besides the one it starts (a script's `envsubst`, `initdb`, GNU `sed`): plain command names (`[A-Za-z0-9_][A-Za-z0-9._+-]{0,63}`, at most 32). Passed to every command as `--tools`: a remote where one does not resolve on the PATH its jobs get is skipped, and a named remote without one is refused before anything is shipped, so an environment gap never shows up as a red gate. Not part of the proof. See [remote](remote.md#placed-where-its-tools-are---tools). |
 | `gate.paths` | list of strings | none (the whole tree) | at most 64 globs relative to the repository root, none twice, each at most 200 bytes. `*` and `?` stay inside one path component, `**` is a whole component (`**/*.go`, `docs/**`), a path with no wildcard names a file or a directory with everything below it. No character classes, escapes, `..`, absolute paths or a trailing `/`. A gate's proof is then the content of the files they match, see [what "proven" means](#a-gate-with-paths). |
 | `pool` | tables | none | `[[pool]]` tables, as in the user config; a pool here replaces the user's pool of the same name. See [pools](pools.md). |
-| `proof.remote` | string | unset | `[proof]`: where `item done --run` and `gate run` run proofs for gates without their own `remote` key; `local`, `auto`, a remote name or an ordered list `"a,b,c"`. Overrides `[proof]` of the user config. See [items](items.md#where-the-proof-runs). |
-| `anchor.file` | string | none | relative path inside the repository |
-| `anchor.extra` | list of strings | none | relative globs inside the repository |
+| `proof.remote` | string | unset (= `"local"`) | `[proof]`: where `item done --run` and `gate run` run proofs for gates without their own `remote` key; `local`, `auto`, a remote name or an ordered list `"a,b,c"`. Overrides `[proof]` of the user config. See [items](items.md#where-the-proof-runs). |
+| `anchor.file` | string | `".heavyq/anchor.md"` | relative path inside the repository: the checklist `heavyq item`, `flow` and `steer` read ([anchor](anchor.md)); heavyq's own edits to it never change the tree id (see below) |
+| `anchor.extra` | list of strings | none | relative globs inside the repository: extra read-only sources of items |
 | `items.iterations` | integer | `3` | 1-20; proof runs an item is expected to need; `item claim` refuses an item whose proof p50 times this is over the lease budget |
 | `items.max_proof_share` | number | `1` | above 0, at most 1; the share of the 30 minute lease that budget is |
 | `items.tick` | string | `"auto"` | `"auto"`, `"always"` or `"never"`: whether `item done` ticks the box in the anchor file. `auto` ticks unless the repository has more than one work tree, where parallel lanes ticking adjacent lines conflict at merge time; without a tick `item sync` ticks later, once. See [items](items.md#parallel-work-trees-tick-and-sync) |

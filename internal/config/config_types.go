@@ -118,6 +118,18 @@ func (m MachineConfig) IsLocal() bool { return m.Name == LocalName }
 // LocalName is the reserved machine name for the local workstation.
 const LocalName = "local"
 
+// Limits the validators enforce, exported so tools/schemagen puts the same rules in config.schema.json.
+const (
+	// MaxSlots caps heavy_slots + light_slots of one machine.
+	MaxSlots = 64
+	// MaxLoadRatio caps max_load_ratio.
+	MaxLoadRatio = 64
+	// WorkDirUnsafe are the characters a remote's work_dir may not contain (".." is refused too).
+	WorkDirUnsafe = "'\"`$\\\n "
+	// EnvPathUnsafe are the characters a remote's env_path may not contain, on top of control characters.
+	EnvPathUnsafe = "'\"`$\\"
+)
+
 // Default values.
 const (
 	defaultPoll          = 2 * time.Second

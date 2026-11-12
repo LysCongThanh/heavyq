@@ -73,8 +73,9 @@ type Gate struct {
 	Sources  []string
 }
 
-// Anchor is the reserved [anchor] section. It is parsed and validated so
-// files written today keep working, but nothing reads it yet.
+// Anchor is the [anchor] section: where the checklist of `heavyq item`,
+// flow and steer lives (anchor.Load reads it; File defaults to
+// .heavyq/anchor.md), and the extra read-only sources of items.
 type Anchor struct {
 	File  string   // checklist file, relative to Root
 	Extra []string // extra globs, relative to Root
@@ -83,7 +84,7 @@ type Anchor struct {
 // Proof is the [proof] section of heavyq.toml: where `heavyq item done --run`
 // and `heavyq gate run` run proofs for this repository.
 type Proof struct {
-	Remote string // "local" | "auto" | <remote name>; "" when not set
+	Remote string // "local" | "auto" | <remote name> | an ordered list "a,b,c"; "" when not set
 }
 
 // Defaults of the [items] section.

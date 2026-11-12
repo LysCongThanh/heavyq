@@ -44,7 +44,7 @@ func (m *MachineConfig) normalizeObserved() error {
 	if m.SSH == "" {
 		return errors.New("set ssh (an ssh alias) or transport")
 	}
-	if !sshAliasPattern.MatchString(m.SSH) {
+	if !SSHAliasPattern.MatchString(m.SSH) {
 		return fmt.Errorf("ssh %q must be a plain host alias (put options in ~/.ssh/config)", m.SSH)
 	}
 	m.Transport = []string{"ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", m.SSH}

@@ -82,6 +82,7 @@ func TestUserConfigSchemaRefusesWhatTheLoaderRefuses(t *testing.T) {
 		"legacy locks locally":   "[local]\nlegacy_lock_files = [\"/tmp/build-1.lock\"]\n",
 		"need_gh repos":          "[run]\nneed_gh_repos = [\"app\", \"infra.tools\"]\n",
 		"list target for proofs": box + "[[remote]]\nname = \"spare\"\nssh = \"spare\"\n[proof]\nremote = \"box,local,spare\"\n",
+		"examples/config.toml":   readFile(t, "examples/config.toml"),
 	} {
 		if err := loadConfig(t, doc); err != nil {
 			t.Errorf("%s: heavyq refuses it (%v); this case belongs in the refused list", name, err)

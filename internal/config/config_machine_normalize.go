@@ -10,8 +10,8 @@ import (
 // normalizeCommon fills the defaults the local machine and remotes share and
 // rejects values out of range.
 func (m *MachineConfig) normalizeCommon() error {
-	if m.HeavySlots < 0 || m.LightSlots < 0 || m.HeavySlots+m.LightSlots > 64 {
-		return errors.New("heavy_slots/light_slots must be >= 0 and total <= 64")
+	if m.HeavySlots < 0 || m.LightSlots < 0 || m.HeavySlots+m.LightSlots > MaxSlots {
+		return fmt.Errorf("heavy_slots/light_slots must be >= 0 and total <= %d", MaxSlots)
 	}
 	if m.HeavySlots+m.LightSlots == 0 {
 		return errors.New("needs at least one slot")
@@ -21,8 +21,8 @@ func (m *MachineConfig) normalizeCommon() error {
 	}
 	// Written as "not inside" so TOML's nan, for which every comparison is
 	// false, is refused too (it would switch the load gate off).
-	if !(m.MaxLoadRatio > 0 && m.MaxLoadRatio <= 64) {
-		return fmt.Errorf("max_load_ratio %v must be in (0, 64]", m.MaxLoadRatio)
+	if !(m.MaxLoadRatio > 0 && m.MaxLoadRatio <= MaxLoadRatio) {
+		return fmt.Errorf("max_load_ratio %v must be in (0, %d]", m.MaxLoadRatio, MaxLoadRatio)
 	}
 	for _, v := range []*int{&m.JobMB, &m.LightMB, &m.ReserveMB} {
 		if *v < 0 {
@@ -62,7 +62,7 @@ func (m *MachineConfig) normalizeRemote() error {
 		return err
 	}
 	// ssh also builds the default git_url when transport is customised.
-	if m.SSH != "" && !sshAliasPattern.MatchString(m.SSH) {
+	if m.SSH != "" && !SSHAliasPattern.MatchString(m.SSH) {
 		return fmt.Errorf("ssh %q must be a plain host alias (put options in ~/.ssh/config)", m.SSH)
 	}
 	if len(m.Transport) == 0 {
@@ -102,7 +102,7 @@ func normalizeWorkDir(dir string) (string, error) {
 	if strings.HasPrefix(dir, "~") {
 		return "", fmt.Errorf(`work_dir %q: only a leading "~/" (the remote home) is understood; a relative path is already relative to it`, dir)
 	}
-	if strings.ContainsAny(dir, "'\"`$\\\n ") || strings.Contains(dir, "..") {
+	if strings.ContainsAny(dir, WorkDirUnsafe) || strings.Contains(dir, "..") {
 		return "", fmt.Errorf("work_dir %q contains unsafe characters", dir)
 	}
 	return dir, nil

@@ -13,17 +13,20 @@
           ]
         },
         "max_size_mb": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 0
         },
         "max_entry_mb": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 0
         },
         "cache_failures": {
           "type": "boolean"
         },
         "env": {
           "items": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
           },
           "type": "array",
           "description": "Env lists variable names whose values are part of the cache key."
@@ -152,6 +155,7 @@
         },
         "binary": {
           "type": "string",
+          "pattern": "^[^'\"`\\$\\\\;\u0026\\|\u003c\u003e\\(\\)\n]*$",
           "description": "Binary is how the rewritten command calls heavyq (\"\" = \"heavyq\" when it\nis on PATH, else the absolute path of the running binary)."
         },
         "rule": {
@@ -169,7 +173,8 @@
       "properties": {
         "match": {
           "items": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^\\s*[A-Za-z0-9_./:@%+=,-]+(\\s+[A-Za-z0-9_./:@%+=,-]+)*\\s*$"
           },
           "type": "array",
           "minItems": 1,
@@ -186,6 +191,7 @@
         },
         "lane": {
           "type": "string",
+          "pattern": "^$|^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
           "description": "fixed lane (\"\" = $HEAVYQ_LANE, else worktree name)"
         },
         "cache": {
@@ -200,34 +206,34 @@
       ],
       "description": "HookRule wraps commands whose words start with one of Match."
     },
-    "MachineConfig": {
+    "LocalMachine": {
       "properties": {
-        "name": {
-          "not": {
-            "enum": [
-              "auto"
-            ]
-          },
-          "type": "string",
-          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
-        },
         "heavy_slots": {
-          "type": "integer"
+          "type": "integer",
+          "maximum": 64,
+          "minimum": 0
         },
         "light_slots": {
-          "type": "integer"
+          "type": "integer",
+          "maximum": 64,
+          "minimum": 0
         },
         "max_load_ratio": {
-          "type": "number"
+          "type": "number",
+          "maximum": 64,
+          "minimum": 0
         },
         "job_mb": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 0
         },
         "light_mb": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 0
         },
         "reserve_mb": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 0
         },
         "legacy_lock_files": {
           "items": {
@@ -238,33 +244,6 @@
           "uniqueItems": true,
           "description": "Local only: lock files shared with legacy `flock \u003cfile\u003e cmd` users,\nabsolute paths with distinct base names. When set they replace the\ngenerated heavy slot files."
         },
-        "ssh": {
-          "type": "string",
-          "description": "Remote only."
-        },
-        "transport": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "description": "argv prefix; the remote script is appended as ONE argument"
-        },
-        "work_dir": {
-          "type": "string",
-          "description": "remote dir holding git/, wt/, slots/, cache/ (relative to the remote home; \"~/\" = the same)"
-        },
-        "git_url": {
-          "type": "string",
-          "description": "where bare repos live, as seen by `git push`"
-        },
-        "cache_hook": {
-          "type": "string",
-          "description": "shell snippet run in the worktree before the command"
-        },
-        "env_path": {
-          "type": "string",
-          "description": "directories put first on the remote command's PATH (\"~/\" = remote home)"
-        },
         "observe_only": {
           "type": "boolean",
           "description": "ObserveOnly: heavyq never runs anything there; `heavyq fleet` only probes it (load, RAM, processes,\nforeign slots). Such a remote takes only name and ssh (or transport)."
@@ -272,12 +251,14 @@
       },
       "additionalProperties": false,
       "type": "object",
-      "description": "MachineConfig describes the local machine or one remote."
+      "description": "This machine: slots and RAM budgets. With no slot key set it has 2 heavy slots and 1 light slot (0 means the default)."
     },
     "MentorConfig": {
       "properties": {
         "holdout_pct": {
           "type": "integer",
+          "maximum": 100,
+          "minimum": 0,
           "description": "HoldoutPct is the share of eligible events logged but not shown, 0-100\n(default 20). 100 is shadow mode: events are logged and measured, the\nagent sees nothing."
         },
         "auto_mute": {
@@ -286,10 +267,13 @@
         },
         "min_events": {
           "type": "integer",
+          "minimum": 0,
           "description": "MinEvents is how many resolved events each arm needs before the lift\nis judged (default 200)."
         },
         "min_lift_pp": {
           "type": "number",
+          "maximum": 100,
+          "minimum": 0,
           "description": "MinLiftPP is the lift, in percentage points, below which a rule is\nmuted (default 10)."
         }
       },
@@ -301,7 +285,7 @@
       "properties": {
         "remote": {
           "type": "string",
-          "description": "\"local\" (the default), \"auto\" (the scheduler picks among local and the configured remotes, free slots first) or the name of a [[remote]]. A gate with its own remote key keeps it; --remote wins over both.",
+          "description": "\"local\" (the default), \"auto\" (the scheduler picks among local and the configured remotes, free slots first), the name of a [[remote]], or an ordered list \"a,b,c\" of such names and \"local\" (the first with a free slot that passes the resource gate). A gate with its own remote key keeps it; --remote wins over both.",
           "default": "local"
         }
       },
@@ -369,13 +353,131 @@
           ]
         },
         "base_ref": {
+          "not": {
+            "pattern": "\\.\\."
+          },
           "type": "string",
+          "pattern": "^$|^[A-Za-z0-9._-]+/[A-Za-z0-9._/-]+$",
           "description": "BaseRef is the default --base-ref: \"\" = origin's default branch when the repository has one,\n\"none\" = no base ref at all, else remote/branch."
         }
       },
       "additionalProperties": false,
       "type": "object",
       "description": "QueueConfig holds queue-wide behaviour."
+    },
+    "RemoteMachine": {
+      "anyOf": [
+        {
+          "properties": {
+            "ssh": {
+              "minLength": 1
+            }
+          },
+          "required": [
+            "ssh"
+          ]
+        },
+        {
+          "properties": {
+            "transport": {
+              "minItems": 1
+            },
+            "git_url": {
+              "minLength": 1
+            }
+          },
+          "required": [
+            "transport",
+            "git_url"
+          ]
+        }
+      ],
+      "properties": {
+        "name": {
+          "not": {
+            "enum": [
+              "local",
+              "auto"
+            ]
+          },
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+          "description": "Machine name, used in --remote and in status; unique, and not \"local\" or \"auto\" (--remote keywords)."
+        },
+        "heavy_slots": {
+          "type": "integer",
+          "maximum": 64,
+          "minimum": 0
+        },
+        "light_slots": {
+          "type": "integer",
+          "maximum": 64,
+          "minimum": 0
+        },
+        "max_load_ratio": {
+          "type": "number",
+          "maximum": 64,
+          "minimum": 0
+        },
+        "job_mb": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "light_mb": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reserve_mb": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ssh": {
+          "type": "string",
+          "pattern": "^$|^[A-Za-z0-9][A-Za-z0-9._@-]*$",
+          "description": "Remote only."
+        },
+        "transport": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "argv prefix; the remote script is appended as ONE argument"
+        },
+        "work_dir": {
+          "not": {
+            "pattern": "\\.\\."
+          },
+          "type": "string",
+          "pattern": "^[^'\"`\\$\\\\\n ]*$",
+          "description": "remote dir holding git/, wt/, slots/, cache/ (relative to the remote home; \"~/\" = the same)"
+        },
+        "git_url": {
+          "type": "string",
+          "description": "where bare repos live, as seen by `git push`"
+        },
+        "cache_hook": {
+          "type": "string",
+          "description": "shell snippet run in the worktree before the command"
+        },
+        "env_path": {
+          "not": {
+            "pattern": "^:+$"
+          },
+          "type": "string",
+          "pattern": "^[^'\"`\\$\\\\\\x00-\\x1f\\x7f]*$",
+          "description": "directories put first on the remote command's PATH (\"~/\" = remote home)"
+        },
+        "observe_only": {
+          "type": "boolean",
+          "description": "ObserveOnly: heavyq never runs anything there; `heavyq fleet` only probes it (load, RAM, processes,\nforeign slots). Such a remote takes only name and ssh (or transport)."
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "description": "A spare machine heavyq ships runs to over SSH, by exact commit (docs/remote.md). With no slot key set it has 2 heavy slots and 0 light slots."
     },
     "RunConfig": {
       "properties": {
@@ -385,6 +487,7 @@
             "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
           },
           "type": "array",
+          "uniqueItems": true,
           "description": "Repository directory names whose commands call the GitHub CLI with this machine's login: runs there behave as if --need-gh were given (this machine only)."
         }
       },
@@ -460,11 +563,11 @@
       "$ref": "#/definitions/QueueConfig"
     },
     "local": {
-      "$ref": "#/definitions/MachineConfig"
+      "$ref": "#/definitions/LocalMachine"
     },
     "remote": {
       "items": {
-        "$ref": "#/definitions/MachineConfig"
+        "$ref": "#/definitions/RemoteMachine"
       },
       "type": "array"
     },
