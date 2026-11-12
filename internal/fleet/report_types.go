@@ -34,7 +34,8 @@ type Machine struct {
 	Name        string     `json:"name"`
 	Role        string     `json:"role"`
 	Reachable   bool       `json:"reachable"`
-	Error       string     `json:"error,omitempty"` // why it is unreachable
+	Error       string     `json:"error,omitempty"`   // why it is unreachable
+	Partial     string     `json:"partial,omitempty"` // what the probe could not measure in time, and why; the numbers are there
 	Cores       int        `json:"cores"`
 	Load1       float64    `json:"load1"`
 	LoadPerCore float64    `json:"load_per_core"`

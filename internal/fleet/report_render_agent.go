@@ -59,6 +59,9 @@ func agentMachine(m Machine) string {
 	if len(m.Top) > 0 {
 		l += ", top " + groupText(m.Top[0], 24)
 	}
+	if m.Partial != "" {
+		l += ", partial (" + clip(m.Partial, 100) + ")"
+	}
 	return l
 }
 

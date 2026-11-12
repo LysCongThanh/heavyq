@@ -67,12 +67,26 @@ func (t Transport) Command(ctx context.Context, env []string, script string, arg
 
 // Output runs script remotely with a timeout and returns stdout.
 func (t Transport) Output(timeout time.Duration, script string, args ...string) (string, error) {
+	return whole(t.output(context.Background(), timeout, false, nil, script, args...))
+}
+
+// OutputPartial is Output that also returns, with the error, what the script printed before it failed or
+// ran out of time: a script that reports in steps keeps the steps that arrived.
+func (t Transport) OutputPartial(timeout time.Duration, script string, args ...string) (string, error) {
 	return t.output(context.Background(), timeout, false, nil, script, args...)
 }
 
 // outputEnv is Output with env (K=V) set for the script on the remote side.
 func (t Transport) outputEnv(timeout time.Duration, env []string, script string, args ...string) (string, error) {
-	return t.output(context.Background(), timeout, false, env, script, args...)
+	return whole(t.output(context.Background(), timeout, false, env, script, args...))
+}
+
+// whole drops the partial output of a failed run.
+func whole(out string, err error) (string, error) {
+	if err != nil {
+		return "", err
+	}
+	return out, nil
 }
 
 // OutputContext is Output that also ends with ctx. The transport runs in a
@@ -80,7 +94,7 @@ func (t Transport) outputEnv(timeout time.Duration, env []string, script string,
 // ends ctx and reports the signal, and the end of ctx stops the transport
 // with everything it started.
 func (t Transport) OutputContext(ctx context.Context, timeout time.Duration, script string, args ...string) (string, error) {
-	return t.output(ctx, timeout, true, nil, script, args...)
+	return whole(t.output(ctx, timeout, true, nil, script, args...))
 }
 
 func (t Transport) output(parent context.Context, timeout time.Duration, own bool, env []string, script string, args ...string) (string, error) {
@@ -98,16 +112,16 @@ func (t Transport) output(parent context.Context, timeout time.Duration, own boo
 	cmd.Stdout, cmd.Stderr = &out, &errb
 	if err := cmd.Run(); err != nil {
 		if parent.Err() != nil {
-			return "", errors.New("stopped")
+			return out.String(), errors.New("stopped")
 		}
 		if ctx.Err() != nil {
-			return "", fmt.Errorf("timed out after %s", timeout)
+			return out.String(), fmt.Errorf("timed out after %s", timeout)
 		}
 		msg := strings.TrimSpace(errb.String())
 		if msg == "" {
 			msg = err.Error()
 		}
-		return "", fmt.Errorf("%s", msg)
+		return out.String(), fmt.Errorf("%s", msg)
 	}
 	return out.String(), nil
 }

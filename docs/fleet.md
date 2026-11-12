@@ -21,6 +21,23 @@ usage or config error (nothing is probed), 1 when `--md` cannot be written.
 transport, each within `--timeout` (default 10s). A machine that does not answer in time is shown as
 `unreachable` with the reason; it never holds the report.
 
+**A slow machine degrades, it is not unreachable.** The probe measures cheapest first and sends each part as
+soon as it has it: the machine's numbers (cores, load, RAM, pressure), then slot states, then the expensive
+part (the CPU sample of every process, the busiest command lines, heavyq job attribution). It starts no
+expensive step once half the timeout is spent, and the transport is ended at the timeout; a machine that sent
+its numbers by then is shown with them and with `partial: <what is missing> (<why>)` in the terminal report,
+the markdown report (state column) and the digest, and `"partial"` in JSON. Only a machine that sent nothing
+usable within the timeout is `unreachable`. On a loaded machine starting a process can take half a second, so
+the probe starts a fixed handful of them, never one per process: `/proc/<pid>/stat` is read by one `cat` per
+sample and parsed by one `awk`, command lines are read by the shell itself, only for the busiest, and given up on when they do not
+return within the budget (such a read waits for the process's memory map lock and can hang for minutes).
+
+**Zombies are not processes to count.** A task that exited and was not reaped (state `Z`, often by the thousand
+in a container without an init) uses no CPU and no memory: it is left out of every group, count and
+attribution, on `/proc` and on `ps`. Stopped and frozen tasks (`kill -STOP`, a `docker pause`d container) keep
+their RAM, so they stay in their group at 0% CPU; their command lines are never read (nor those of tasks in
+`D` state, which can hold the lock such a read waits on).
+
 | Field | Meaning |
 |---|---|
 | cores, load1, load/cores | from `/proc` (Linux) or `sysctl` (macOS) |
@@ -144,8 +161,10 @@ fields may be added within it):
 }
 ```
 
-A machine that did not answer has `"reachable": false` and an `"error"`. `notes` lists what could not be read
-(a missing tickets dir, a partial history).
+A machine that did not answer has `"reachable": false` and an `"error"`. A machine that answered with its
+numbers but not with everything in time has `"reachable": true` and `"partial"`, for example
+`"no top consumers and attribution (timed out after 30s)"`; its `top` is then empty. `notes` lists what could
+not be read (a missing tickets dir, a partial history).
 
 ## Every 10 minutes, without a daemon
 

@@ -41,7 +41,7 @@ func assembleMachine(in MachineInput, queues []QueueInput, window time.Duration,
 		return m
 	}
 	p := in.Probe
-	m.Reachable = true
+	m.Reachable, m.Partial = true, p.Partial
 	m.Cores, m.Load1, m.FreeMB, m.TotalMB, m.Pressure = p.Cores, p.Load1, p.FreeMB, p.TotalMB, p.Pressure
 	if p.Cores > 0 {
 		m.LoadPerCore = round2(p.Load1 / float64(p.Cores))
@@ -50,7 +50,7 @@ func assembleMachine(in MachineInput, queues []QueueInput, window time.Duration,
 	m.Overload = len(m.OverloadWhy) > 0
 
 	groups, outside := Attribute(*p, rootsOf(in, queues))
-	m.Top, m.OutsideRSS = groups[:min(topN, len(groups))], outside
+	m.Top, m.OutsideRSS = append(m.Top, groups[:min(topN, len(groups))]...), outside // [] when nothing was measured
 	var caps []SlotCount
 	for _, q := range queues {
 		heavy, total := q.HeavySlots[in.Name], q.TotalSlots[in.Name]

@@ -31,6 +31,9 @@ func RenderMarkdown(r Report) []byte {
 		if m.Overload {
 			state = "**OVERLOAD**: " + strings.Join(m.OverloadWhy, "; ")
 		}
+		if m.Partial != "" {
+			state += "; partial: " + m.Partial
+		}
 		if m.Cap != nil {
 			capText = fmt.Sprint(m.Cap.Workers)
 		}
@@ -70,10 +73,10 @@ func mdMachineDetail(b *bytes.Buffer, m Machine) {
 	if m.Cap != nil {
 		fmt.Fprintf(b, "Suggested worker cap: **%d** per run (%s).\n\n", m.Cap.Workers, m.Cap.Why)
 	}
-	fmt.Fprintf(b, "Outside every queue: %s RSS.\n\n", fmtGiB(m.OutsideRSS))
 	if len(m.Top) == 0 {
-		return
+		return // not measured (a partial probe): no RSS figure either
 	}
+	fmt.Fprintf(b, "Outside every queue: %s RSS.\n\n", fmtGiB(m.OutsideRSS))
 	b.WriteString("| owner | lane | comm | procs | threads | %CPU | RSS | command |\n|---|---|---|---|---|---|---|---|\n")
 	for _, g := range m.Top {
 		fmt.Fprintf(b, "| %s | %s | %s | %d | %d | %.0f | %s | %s |\n", mdCell(g.Owner), mdCell(g.Lane), mdCell(g.Comm),

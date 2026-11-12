@@ -12,15 +12,17 @@ import (
 // comm is deliberately the LAST column. On macOS it is the full executable
 // path and may contain spaces ("/Applications/Google Chrome.app/..."); on
 // Linux it is the short name and may be truncated. Because it is last, the
-// four numeric columns are split off from the left and everything after them
-// is the command, whatever it holds. ucomm (always the short name) would
+// four numeric columns and the state are split off from the left and
+// everything after them is the command, whatever it holds. ucomm (always the short name) would
 // avoid the paths but is capped at 16 bytes on macOS, which cuts names such
 // as "Google Chrome Helper (Renderer)"; the basename of comm keeps them whole.
-const psColumns = "pid=,ppid=,rss=,time=,comm="
+const psColumns = "pid=,ppid=,rss=,time=,stat=,comm="
 
-// parsePS turns the output of `ps -axo pid=,ppid=,rss=,time=,comm=` into a
-// process table. Lines that do not start with four plausible numbers are
-// skipped: a half-written line must never poison the whole sample. CPU
+// parsePS turns the output of `ps -axo pid=,ppid=,rss=,time=,stat=,comm=` into
+// a process table. Lines that do not start with four plausible numbers and a
+// state are skipped: a half-written line must never poison the whole sample.
+// A process that exited and waits to be reaped (state Z, a zombie) is left
+// out: it uses no CPU and no memory, and counting it inflates every group. CPU
 // time is kept in centiseconds, the unit /proc ticks have (USER_HZ = 100).
 func parsePS(out []byte) map[int]procSample {
 	table := map[int]procSample{}
@@ -34,7 +36,7 @@ func parsePS(out []byte) map[int]procSample {
 
 func parsePSLine(line string) (int, procSample, bool) {
 	rest := line
-	var tok [4]string
+	var tok [5]string
 	for i := range tok {
 		tok[i], rest = nextField(rest)
 		if tok[i] == "" {
@@ -44,7 +46,7 @@ func parsePSLine(line string) (int, procSample, bool) {
 	pid, err1 := strconv.Atoi(tok[0])
 	ppid, err2 := strconv.Atoi(tok[1])
 	rss, err3 := strconv.ParseUint(tok[2], 10, 64)
-	if err1 != nil || err2 != nil || err3 != nil || pid < 0 || ppid < 0 {
+	if err1 != nil || err2 != nil || err3 != nil || pid < 0 || ppid < 0 || exited(tok[4]) {
 		return 0, procSample{}, false
 	}
 	// An unreadable time keeps the process (it still belongs to the tree)

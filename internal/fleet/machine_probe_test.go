@@ -133,16 +133,22 @@ func TestParseProbeOutput(t *testing.T) {
 		"psi_cpu some avg10=61.50 avg60=50.00 avg300=40.00 total=1",
 		"psi_memory some avg10=3.00 avg60=1.00 avg300=0.50 total=1",
 		"psi_memory full avg10=1.25 avg60=0.10 avg300=0.00 total=1",
+		"done base",
+		"s bashq s1 1 10",
+		"s bashq s2 0 -",
+		"done slots",
 		"p 10 1 64 820.5 4096000 node",
 		"p 11 10 12 99.0 512000 Web Content",
 		"self 99",                                                     // the probe itself and its ps are not the machine's load
 		"clk 100", "interval_ns 2000000000", "c 10 400", "c 100 1800", // 400 ticks over 2 s at 100 Hz: 200%
 		"p 99 1 1 500.0 1000 bash",
 		"p 100 99 1 900.0 1000 ps",
+		"done procs",
 		"a\t10\tnode jest --maxWorkers=18 --token=supersecret",
+		"done args",
 		"w 11",
-		"s bashq s1 1 10",
-		"s bashq s2 0 -",
+		"done wt",
+		"end",
 	}, "\n")
 	p, err := ParseProbe(out)
 	if err != nil {
@@ -165,7 +171,31 @@ func TestParseProbeOutput(t *testing.T) {
 	if len(groups) != 2 || groups[0].Owner != "bashq" || groups[0].CPUPct != 200 || groups[1].CPUPct != 0 || strings.Contains(groups[0].Cmd, "supersecret") {
 		t.Fatalf("groups: %+v", groups)
 	}
+	if p.Partial != "" {
+		t.Fatalf("a whole probe is not partial: %q", p.Partial)
+	}
 	if _, err := ParseProbe("Permission denied (publickey)."); err == nil {
 		t.Fatal("output without the marker is an error")
+	}
+
+	// Cut by the timeout in the middle of the process table: the machine's numbers and slots stay, the
+	// half table and its half line go, and Partial says so.
+	cutAt := strings.Index(out, "p 11 10 12")
+	p, err = parseProbe(out[:cutAt+5], "timed out after 30s", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.Cores != 18 || len(p.Slots) != 2 || len(p.Procs) != 0 || len(p.Args) != 0 ||
+		p.Partial != "no top consumers and attribution (timed out after 30s)" {
+		t.Fatalf("cut probe: %+v", p)
+	}
+	// Cut before the machine's numbers: nothing to show, the machine is unreachable.
+	if _, err := parseProbe(out[:strings.Index(out, "done base")], "timed out after 30s", false); err == nil {
+		t.Fatal("a probe cut before its numbers is an error")
+	}
+	// The script gave up on its expensive steps when its budget was spent.
+	p, err = ParseProbe(out[:strings.Index(out, "p 10 1")] + "skip procs 15\nend\n")
+	if err != nil || p.Cores != 18 || len(p.Procs) != 0 || !strings.Contains(p.Partial, "budget was spent after 15s") {
+		t.Fatalf("skipped procs: %+v %v", p, err)
 	}
 }
