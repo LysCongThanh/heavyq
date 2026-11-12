@@ -16,7 +16,8 @@ type Owner struct {
 
 // Survey reads the start token and stop state of every pid in one pass:
 // one /proc read per pid, or ONE ps run for all of them where ps is the
-// source (macOS). A pid that is gone is absent from the result. ok is false
+// source (macOS). A pid that is gone, or has exited and waits to be reaped
+// (a zombie, as Alive judges it), is absent from the result. ok is false
 // when the process table could not be read at all; a caller must then not
 // take an absent pid for a dead one.
 func (p ProcFS) Survey(pids []int) (map[int]Owner, bool) {
@@ -38,7 +39,7 @@ func (p ProcFS) Survey(pids []int) (map[int]Owner, bool) {
 		return psSurvey(live)
 	}
 	for _, pid := range live {
-		if f, err := p.statFields(pid); err == nil {
+		if f, err := p.statFields(pid); err == nil && !exited(f[0]) {
 			out[pid] = Owner{Start: f[19], Stopped: f[0] == "T" || f[0] == "t"}
 		}
 	}
@@ -66,7 +67,7 @@ func psSurvey(pids []int) (map[int]Owner, bool) {
 			continue
 		}
 		pid, err := strconv.Atoi(f[0])
-		if err != nil {
+		if err != nil || exited(f[1]) {
 			continue
 		}
 		out[pid] = Owner{Start: strings.Join(f[2:], "_"), Stopped: f[1][0] == 'T' || f[1][0] == 't'}
