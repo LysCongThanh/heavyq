@@ -12,7 +12,8 @@ import (
 
 // The default transport must notice a silently dropped link (power loss, an
 // expired NAT/VPN mapping): without ServerAlive* the job's ssh waits for TCP
-// keepalive, about two hours, holding the ticket and the remote slot. The
+// keepalive, about two hours, holding the ticket. (The remote side is freed by
+// the remote sshd's ClientAlive*, which heavyq cannot set from here.) The
 // options are checked by ssh itself (ssh -G parses them without connecting;
 // -F /dev/null keeps the operator's ~/.ssh/config out of it).
 func TestDefaultTransportDetectsADeadLinkWithinAMinuteOrTwo(t *testing.T) {

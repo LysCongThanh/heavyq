@@ -112,9 +112,11 @@ func normalizeWorkDir(dir string) (string, error) {
 // ssh only reads (heavyq never writes to the lifeline), so without
 // ServerAlive* a silently dropped link (power loss, an expired NAT or VPN
 // mapping) is noticed by TCP keepalive after about two hours, with the ticket
-// and the remote slot held all along. With them ssh exits 255 about a minute
-// after the link dies, and the remote sshd closes the session, which stops
-// the command (its lifeline sees EOF).
+// held all along. With them the local ssh exits 255 about a minute after the
+// link dies. That frees only the local side: a remote that stays up never sees
+// this ssh go, so its command and slot live on until the remote sshd's own
+// ClientAlive* (off by default) or TCP keepalive closes the session and the
+// lifeline sees EOF. docs/remote.md asks for ClientAlive* on the remote.
 func defaultTransport(alias string) []string {
 	return []string{"ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10",
 		"-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=4", alias}
