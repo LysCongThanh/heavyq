@@ -4,3 +4,5 @@
   - `max_load_ratio = nan` and `mentor.min_lift_pp = nan` (TOML has `nan`, and every range check let it through):
     the load gate was silently off, `status --json` and history records failed to encode, and every mentor rule
     muted itself.
+  - a `[[remote]]` named `auto`: `--remote auto` and `[proof] remote = "auto"` meant the scheduler, so the machine
+    could never be targeted by its name.

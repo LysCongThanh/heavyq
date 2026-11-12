@@ -137,11 +137,13 @@ func (c *Config) normalize() error {
 	if c.Local.ObserveOnly {
 		return errors.New("[local]: observe_only is for a [[remote]]")
 	}
-	seen := map[string]bool{LocalName: true}
+	// "local" and "auto" are --remote keywords: a remote so named could never
+	// be targeted by its name.
+	seen := map[string]bool{LocalName: true, RemoteAuto: true}
 	for i := range c.Remotes {
 		r := &c.Remotes[i]
 		if !SafeName.MatchString(r.Name) || seen[r.Name] {
-			return fmt.Errorf("[[remote]] #%d: name %q must be unique, not %q, and match %s", i+1, r.Name, LocalName, SafeName)
+			return fmt.Errorf("[[remote]] #%d: name %q must be unique, not %q or %q, and match %s", i+1, r.Name, LocalName, RemoteAuto, SafeName)
 		}
 		seen[r.Name] = true
 		if r.ObserveOnly {
