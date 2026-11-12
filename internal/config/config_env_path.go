@@ -13,7 +13,7 @@ func validateEnvPath(p string) error {
 	if p == "" {
 		return nil
 	}
-	bad := func(r rune) bool { return r < ' ' || r == 0x7f || strings.ContainsRune("'\"`$\\", r) }
+	bad := func(r rune) bool { return r < ' ' || r == 0x7f || strings.ContainsRune(EnvPathUnsafe, r) }
 	if strings.Trim(p, ":") == "" || strings.IndexFunc(p, bad) >= 0 {
 		return fmt.Errorf("env_path %q must be directories separated by ':' without quotes, '$', backticks or control characters", p)
 	}

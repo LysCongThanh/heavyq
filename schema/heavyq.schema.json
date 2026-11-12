@@ -68,7 +68,8 @@
       "properties": {
         "file": {
           "type": "string",
-          "description": "Checklist file, relative to the repository root (default .heavyq/anchor.md)."
+          "description": "Checklist file, relative to the repository root.",
+          "default": ".heavyq/anchor.md"
         },
         "extra": {
           "items": {
@@ -113,7 +114,7 @@
         },
         "remote": {
           "type": "string",
-          "description": "Where to run: \"local\", \"auto\" (best machine) or the name of a [[remote]] of the user config.",
+          "description": "Where to run: \"local\", \"auto\" (best machine), the name of a [[remote]] of the user config, or an ordered list \"a,b,c\" of such names and \"local\" (the first with a free slot that passes the resource gate).",
           "default": "local"
         },
         "needs": {
@@ -200,7 +201,7 @@
       "properties": {
         "remote": {
           "type": "string",
-          "description": "\"local\" (the default), \"auto\" (the scheduler picks among local and the configured remotes, free slots first) or the name of a [[remote]]. A gate with its own remote key keeps it; --remote wins over both.",
+          "description": "\"local\" (the default), \"auto\" (the scheduler picks among local and the configured remotes, free slots first), the name of a [[remote]], or an ordered list \"a,b,c\" of such names and \"local\" (the first with a free slot that passes the resource gate). A gate with its own remote key keeps it; --remote wins over both.",
           "default": "local"
         }
       },

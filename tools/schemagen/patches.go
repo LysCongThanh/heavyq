@@ -6,7 +6,7 @@ import (
 
 	"github.com/invopop/jsonschema"
 
-	"github.com/LysCongThanh/heavyq/internal/config"
+	"github.com/LysCongThanh/heavyq/internal/anchor"
 	"github.com/LysCongThanh/heavyq/internal/gatepaths"
 	"github.com/LysCongThanh/heavyq/internal/pools"
 	"github.com/LysCongThanh/heavyq/internal/repoconfig"
@@ -34,6 +34,9 @@ func def(root *jsonschema.Schema, name string) *jsonschema.Schema {
 
 func u64(n int) *uint64 { v := uint64(n); return &v }
 
+// proofRemoteDescription describes [proof] remote, the same key in heavyq.toml and in the user config.
+const proofRemoteDescription = `"local" (the default), "auto" (the scheduler picks among local and the configured remotes, free slots first), the name of a [[remote]], or an ordered list "a,b,c" of such names and "local" (the first with a free slot that passes the resource gate). A gate with its own remote key keeps it; --remote wins over both.`
+
 func patchRepoFile(root *jsonschema.Schema) {
 	gate := def(root, "rawGate")
 	gate.Description = "A named list of shell commands that must all pass on the current code (heavyq gate status, heavyq gate run)."
@@ -54,7 +57,7 @@ func patchRepoFile(root *jsonschema.Schema) {
 	prio.Default = repoconfig.DefaultPrio
 	prop(gate, "light").Description = "Light job: may use the light slots and jump ahead into them."
 	remote := prop(gate, "remote")
-	remote.Description = `Where to run: "local", "auto" (best machine) or the name of a [[remote]] of the user config.`
+	remote.Description = `Where to run: "local", "auto" (best machine), the name of a [[remote]] of the user config, or an ordered list "a,b,c" of such names and "local" (the first with a free slot that passes the resource gate).`
 	remote.Default = repoconfig.DefaultRemote
 	needs := prop(gate, "needs")
 	needs.Description = `Pool values every command holds while it runs, for example ["pg", "port:2"]. A gate with needs runs on this machine.`
@@ -76,13 +79,15 @@ func patchRepoFile(root *jsonschema.Schema) {
 
 	proof := def(root, "rawProof")
 	proof.Description = "Where `heavyq item done --run` and `heavyq gate run` run proofs for this repository; the user config has the same table."
-	prop(proof, "remote").Description = `"local" (the default), "auto" (the scheduler picks among local and the configured remotes, free slots first) or the name of a [[remote]]. A gate with its own remote key keeps it; --remote wins over both.`
+	prop(proof, "remote").Description = proofRemoteDescription
 	prop(proof, "remote").Default = repoconfig.DefaultRemote
 
-	anchor := def(root, "rawAnchor")
-	anchor.Description = "The anchor checklist: the work items of `heavyq item`."
-	prop(anchor, "file").Description = "Checklist file, relative to the repository root (default .heavyq/anchor.md)."
-	prop(anchor, "extra").Description = "Extra read-only sources, as globs relative to the repository root."
+	anchorDef := def(root, "rawAnchor")
+	anchorDef.Description = "The anchor checklist: the work items of `heavyq item`."
+	file := prop(anchorDef, "file")
+	file.Description = "Checklist file, relative to the repository root."
+	file.Default = anchor.DefaultFile
+	prop(anchorDef, "extra").Description = "Extra read-only sources, as globs relative to the repository root."
 
 	items := def(root, "rawItems")
 	items.Description = "Limits of the claim size gate (`heavyq item claim` refuses an item whose proof is expected to outlast the lease) and whether `heavyq item done` ticks the box."
@@ -102,55 +107,6 @@ func patchRepoFile(root *jsonschema.Schema) {
 	iter.Default = repoconfig.DefaultIterations
 
 	patchPoolSpec(root)
-}
-
-func patchUserConfig(root *jsonschema.Schema) {
-	hook := def(root, "HookConfig")
-	prop(hook, "permission").Enum = []any{"", "allow"}
-	rule := def(root, "HookRule")
-	rule.Required = []string{"match"}
-	prop(rule, "match").MinItems = u64(1)
-	prio := prop(rule, "priority")
-	prio.Minimum = json.Number("1")
-	prio.Maximum = json.Number("9")
-	proof := def(root, "ProofConfig")
-	proof.Description = "Where `heavyq item done --run` and `heavyq gate run` run proofs. The same table in a repository's heavyq.toml overrides it there."
-	prop(proof, "remote").Description = `"local" (the default), "auto" (the scheduler picks among local and the configured remotes, free slots first) or the name of a [[remote]]. A gate with its own remote key keeps it; --remote wins over both.`
-	prop(proof, "remote").Default = config.LocalName
-	runCfg := def(root, "RunConfig")
-	runCfg.Description = "Defaults for `heavyq <prio> -- cmd`."
-	needGH := prop(runCfg, "need_gh_repos")
-	needGH.Description = "Repository directory names whose commands call the GitHub CLI with this machine's login: runs there behave as if --need-gh were given (this machine only)."
-	needGH.Items.Pattern = config.SafeName.String()
-	machine := def(root, "MachineConfig")
-	prop(machine, "name").Pattern = config.SafeName.String()
-	prop(machine, "name").Not = &jsonschema.Schema{Enum: []any{config.RemoteAuto}}
-	legacy := prop(machine, "legacy_lock_files")
-	legacy.UniqueItems = true
-	legacy.Items.Pattern = "^/"
-	patchForeign(root)
-	patchPoolSpec(root)
-}
-
-// patchForeign refines [[foreign]]: what config.normalizeForeign accepts.
-func patchForeign(root *jsonschema.Schema) {
-	f := def(root, "ForeignConfig")
-	f.Required = []string{"name"}
-	f.AnyOf = []*jsonschema.Schema{{Required: []string{"history"}}, {Required: []string{"tickets"}}}
-	name := prop(f, "name")
-	name.Pattern = config.SafeName.String()
-	name.Not = &jsonschema.Schema{Const: "heavyq"}
-	prop(f, "format").Enum = []any{config.ForeignFormatTSV}
-	cols := prop(f, "columns")
-	enum := make([]any, len(config.ForeignColumns))
-	for i, c := range config.ForeignColumns {
-		enum[i] = c
-	}
-	cols.Items.Enum = enum
-	cols.UniqueItems = true
-	exits := prop(f, "infra_exits")
-	exits.Items.Minimum = json.Number("1")
-	exits.Items.Maximum = json.Number("255")
 }
 
 // patchPoolSpec refines [[pool]], shared by heavyq.toml and the user config.

@@ -58,12 +58,14 @@ func (q *QueueConfig) normalize() error {
 }
 
 var (
-	baseRefPattern  = regexp.MustCompile(`^[A-Za-z0-9._-]+/[A-Za-z0-9._/-]+$`)
-	sshAliasPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._@-]*$`)
+	// BaseRefPattern is the shape of a --base-ref ("remote/branch"); ".." is refused on top of it.
+	BaseRefPattern = regexp.MustCompile(`^[A-Za-z0-9._-]+/[A-Za-z0-9._/-]+$`)
+	// SSHAliasPattern is a remote's ssh value: a plain host alias, options belong in ~/.ssh/config.
+	SSHAliasPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._@-]*$`)
 )
 
 func validBaseRef(s string) bool {
-	return baseRefPattern.MatchString(s) && !strings.Contains(s, "..")
+	return BaseRefPattern.MatchString(s) && !strings.Contains(s, "..")
 }
 
 // BaseRefNone is the value of --base-ref and queue.base_ref that means "no base ref": it also switches off

@@ -26,7 +26,7 @@ func normalizeHookBinary(b string) (string, error) {
 		b = filepath.Join(home, rest)
 	}
 	switch {
-	case strings.ContainsAny(b, "'\"`$\\;&|<>()") || strings.ContainsFunc(b, unicode.IsControl):
+	case strings.ContainsAny(b, HookBinaryUnsafe) || strings.ContainsFunc(b, unicode.IsControl):
 		return "", fmt.Errorf("hook.binary %q contains shell metacharacters or control characters", b)
 	case strings.HasPrefix(b, "~"):
 		return "", fmt.Errorf(`hook.binary %q: only a leading "~/" (your home) is expanded`, b)

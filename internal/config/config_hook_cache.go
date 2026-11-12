@@ -54,10 +54,16 @@ const (
 	defaultCacheEntryMB = 64
 )
 
+// The shapes the validators accept, exported so tools/schemagen puts the same rules in config.schema.json.
 var (
-	envNamePattern   = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
-	matchWordPattern = regexp.MustCompile(`^[A-Za-z0-9_./:@%+=,-]+$`)
+	// EnvNamePattern is a [cache] env variable name.
+	EnvNamePattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
+	// MatchWordPattern is one word of a [[hook.rule]] match prefix.
+	MatchWordPattern = regexp.MustCompile(`^[A-Za-z0-9_./:@%+=,-]+$`)
 )
+
+// HookBinaryUnsafe are the characters hook.binary may not contain: it is pasted into a shell command.
+const HookBinaryUnsafe = "'\"`$\\;&|<>()\n"
 
 // HookEnabled reports whether the hook may rewrite commands (default true).
 func (c *Config) HookEnabled() bool { return c.Hook.Enabled == nil || *c.Hook.Enabled }
@@ -102,7 +108,7 @@ func (r *HookRule) Normalize() error {
 			return errors.New("empty match pattern")
 		}
 		for _, w := range words {
-			if !matchWordPattern.MatchString(w) {
+			if !MatchWordPattern.MatchString(w) {
 				return fmt.Errorf("match %q: word %q has characters outside [A-Za-z0-9_./:@%%+=,-]", m, w)
 			}
 		}
@@ -136,7 +142,7 @@ func (c *CacheConfig) normalize() error {
 		c.MaxEntryMB = c.MaxSizeMB
 	}
 	for _, e := range c.Env {
-		if !envNamePattern.MatchString(e) {
+		if !EnvNamePattern.MatchString(e) {
 			return fmt.Errorf("cache.env: %q is not a valid variable name", e)
 		}
 	}
