@@ -22,6 +22,12 @@ import (
 // fdinfo and mountinfo, gives the same number /proc/locks prints. A file
 // with no lock line at all is free; a FLOCK line on it means busy; any other
 // lock on it (POSIX, OFD, NFS's emulated flock) is left to the probe.
+//
+// /proc/locks leaves out every lock whose owner is not visible in the pid
+// namespace of the /proc mount, so inside a container or sandbox that
+// shares the queue dir a slot held from outside has no line. A missing line
+// therefore means free only in the initial pid namespace; anywhere else the
+// answer is "unknown" and Busy probes. A FLOCK line is a holder anywhere.
 func heldByAnyone(path string) (busy, known bool) {
 	locks, err := os.ReadFile("/proc/locks")
 	if err != nil {
@@ -42,7 +48,7 @@ func heldByAnyone(path string) (busy, known bool) {
 	}
 	hits := locksOnInode(locks, st.Ino)
 	if len(hits) == 0 {
-		return false, true
+		return false, seesAllLocks()
 	}
 	devs := map[string]bool{devKey(uint64(st.Dev)): true}
 	if d, ok := mountDev(f); ok {
@@ -58,7 +64,20 @@ func heldByAnyone(path string) (busy, known bool) {
 		}
 		other = true
 	}
-	return false, !other
+	return false, !other && seesAllLocks()
+}
+
+// initPidNS is the inode of the initial pid namespace (PROC_PID_INIT_INO),
+// fixed by the kernel since namespaces got inode numbers.
+const initPidNS = "pid:[4026531836]"
+
+// seesAllLocks reports whether /proc/locks lists every holder: this process
+// is in the initial pid namespace and /proc is that namespace's. /proc/self
+// does not resolve through a /proc mounted for a namespace this process is
+// not in, so a readable link in the initial namespace settles both.
+func seesAllLocks() bool {
+	ns, err := os.Readlink("/proc/self/ns/pid")
+	return err == nil && ns == initPidNS
 }
 
 type lockHit struct {

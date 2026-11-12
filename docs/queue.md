@@ -34,7 +34,8 @@ heavyq 3 --lane api -- npm test
   running job, and a lock that lands on a file deleted meanwhile drops it and locks the file at the path.
   `status`, `why` and the dashboard see who holds a slot without taking it (Linux reads `/proc/locks`,
   macOS asks `fcntl(F_GETLK)`), so watching the queue never makes a free slot look busy to a run or to a
-  `flock -n` user.
+  `flock -n` user. In a pid namespace of its own (a container sharing the queue dir) `/proc/locks` misses
+  holders outside it, so there heavyq takes and releases the lock to look, as before.
 - **Resource gate.** A job starts only if available RAM covers its budget plus a reserve, and the 1-minute
   load is below `ratio x cores`. RAM for jobs that started in the last minute is held back (a new job
   hasn't grown yet). An idle machine always takes a job. A head ticket that has waited past
