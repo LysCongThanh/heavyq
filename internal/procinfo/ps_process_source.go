@@ -3,6 +3,7 @@ package procinfo
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
@@ -15,13 +16,16 @@ import (
 // with thousands of processes; a wedged one must not hang `heavyq status`.
 const psTimeout = 5 * time.Second
 
-// runPS runs ps with a fixed C locale (stable column and date formats, and
-// a start token that does not change with the caller's LANG).
+// runPS runs ps with a fixed C locale (stable column and date formats) and
+// a fixed zone. lstart is printed in the local time of ps, so without TZ two
+// heavyq processes in different zones (or one before and one after the
+// system zone changes) read different start tokens for the same process and
+// prune each other's live tickets. Later entries win over the caller's.
 func runPS(args ...string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), psTimeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "ps", args...)
-	cmd.Env = append(os.Environ(), "LC_ALL=C")
+	cmd.Env = append(os.Environ(), "LC_ALL=C", "TZ=UTC0")
 	return cmd.Output()
 }
 
@@ -51,26 +55,30 @@ func psWorks() bool {
 	return psProbeOK
 }
 
-// psStartTime is the start token from `ps -o lstart=`: the start date with
-// whitespace folded to underscores. It has one-second resolution, enough to
-// tell a recycled pid from the original in practice.
-func psStartTime(pid int) (string, error) {
-	out, err := runPS("-o", "lstart=", "-p", strconv.Itoa(pid))
-	token := strings.Join(strings.Fields(string(out)), "_")
-	if err != nil || token == "" {
-		return "", errors.New("process not found")
-	}
-	return token, nil
-}
-
-// psRunning reports whether pid exists and is not a zombie (state "Z").
-func psRunning(pid int) bool {
+// psIdentity reads pid's state and start token from
+// `ps -o stat= -o lstart=`. The token is the start date in UTC with
+// whitespace folded to underscores; one-second resolution is enough to tell
+// a recycled pid from the original in practice.
+//
+// It returns errGone only when ps ran to the end and listed nothing (exit 0,
+// or 1 for "no such pid", with empty output). A ps that could not start,
+// was killed by psTimeout or a signal, or failed otherwise gives another
+// error: that says nothing about pid, and Alive must not read it as dead.
+func psIdentity(pid int) (state, start string, err error) {
 	if pid <= 0 {
-		return false
+		return "", "", errGone
 	}
-	out, err := runPS("-o", "stat=", "-p", strconv.Itoa(pid))
-	state := strings.TrimSpace(string(out))
-	return err == nil && state != "" && state[0] != 'Z' && state[0] != 'X'
+	out, err := runPS("-o", "stat=", "-o", "lstart=", "-p", strconv.Itoa(pid))
+	f := strings.Fields(string(out))
+	var exit *exec.ExitError
+	answered := err == nil || (errors.As(err, &exit) && exit.ExitCode() == 1)
+	switch {
+	case answered && len(f) == 0:
+		return "", "", errGone
+	case err != nil:
+		return "", "", fmt.Errorf("ps cannot tell whether pid %d runs: %w", pid, err)
+	}
+	return f[0], strings.Join(f[1:], "_"), nil
 }
 
 // isKernelTask reports whether a process is the kernel itself rather than

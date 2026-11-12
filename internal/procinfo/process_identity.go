@@ -9,6 +9,7 @@ package procinfo
 
 import (
 	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -68,27 +69,50 @@ func (p ProcFS) stat(pid int) (string, []string, error) {
 	return s[j+1 : i], f, nil
 }
 
+// errGone means the process source answered and pid is not there. Any
+// other identity error means the source could not answer (a fork that
+// failed, a ps killed by its timeout): nothing is known about pid then.
+var errGone = errors.New("process not found")
+
+// identity returns pid's state letter ("R", "S", "Z", ...) and its start
+// token, read in one go from /proc/<pid>/stat or from one ps run.
+func (p ProcFS) identity(pid int) (state, start string, err error) {
+	if p.UsePS {
+		return psIdentity(pid)
+	}
+	f, err := p.statFields(pid)
+	switch {
+	case err == nil:
+		return f[0], f[19], nil // field 22: starttime in clock ticks since boot
+	case !p.Available():
+		return psIdentity(pid)
+	case errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ESRCH):
+		return "", "", errGone // /proc exists, process does not
+	}
+	return "", "", err
+}
+
 // StartTime returns an opaque, stable token for when pid started. Comparing
 // it guards against pid reuse: same pid + same token = same process.
 func (p ProcFS) StartTime(pid int) (string, error) {
 	if pid <= 0 {
 		return "", errors.New("invalid pid")
 	}
-	if p.UsePS {
-		return psStartTime(pid)
+	_, start, err := p.identity(pid)
+	if err == nil && start == "" {
+		err = errGone
 	}
-	f, err := p.statFields(pid)
-	if err == nil {
-		return f[19], nil // field 22: starttime in clock ticks since boot
-	}
-	if p.Available() {
-		return "", err // /proc exists, process does not
-	}
-	return psStartTime(pid)
+	return start, err
 }
 
 // Alive reports whether pid is running and is still the process that had
-// start token start (not a recycled pid).
+// start token start (not a recycled pid, not an exited zombie).
+//
+// Callers delete state when it says false (queue tickets, leases), so it
+// fails closed: once kill(2) has seen the pid, only a source that answered
+// "no such process", another start token or an exited state make it dead.
+// A source that could not answer (ps not runnable or killed, which is most
+// likely on an overloaded machine) leaves the process alive.
 func (p ProcFS) Alive(pid int, start string) bool {
 	if pid <= 0 || start == "" {
 		return false
@@ -96,18 +120,28 @@ func (p ProcFS) Alive(pid int, start string) bool {
 	if err := syscall.Kill(pid, 0); err != nil && !errors.Is(err, syscall.EPERM) {
 		return false
 	}
-	got, err := p.StartTime(pid)
-	return err == nil && got == start
+	state, got, err := p.identity(pid)
+	if err != nil {
+		return !errors.Is(err, errGone)
+	}
+	return got == start && !exited(state)
 }
 
 // Running reports whether pid exists and is not a zombie.
 func (p ProcFS) Running(pid int) bool {
 	if p.UsePS {
-		return psRunning(pid)
+		state, _, err := psIdentity(pid)
+		return err == nil && !exited(state)
 	}
 	f, err := p.statFields(pid)
 	if err != nil {
 		return syscall.Kill(pid, 0) == nil && !p.Available()
 	}
-	return f[0] != "Z" && f[0] != "X"
+	return !exited(f[0])
+}
+
+// exited reports whether a process state is zombie (Z) or dead (X): the
+// process has exited and only waits for its parent to reap it.
+func exited(state string) bool {
+	return state != "" && (state[0] == 'Z' || state[0] == 'X')
 }

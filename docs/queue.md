@@ -19,7 +19,9 @@ heavyq 3 --lane api -- npm test
 
 - **Priority tickets.** Priority 1-9 (lower runs first), FIFO within a priority. A ticket is a file in a
   queue directory. If its process dies, the ticket is pruned (pid plus start time, so a reused pid
-  doesn't keep it alive). Ctrl-C, SIGTERM and SIGHUP clean up. `--max-wait` gives up with exit 75.
+  doesn't keep it alive; an exited process its parent has not reaped yet counts as dead). When the
+  check cannot tell (on macOS, `ps` failed or timed out), the ticket is kept. Ctrl-C, SIGTERM and SIGHUP
+  clean up. `--max-wait` gives up with exit 75.
   A waiter suspended with Ctrl-Z keeps its ticket and place but holds nobody back: the tickets behind it
   run, `status` marks it `[stopped ...]`, and it takes its turn again once resumed (`fg`). A heavyq that
   is stopped or hangs while it holds the queue lock cannot hang the others either: they keep answering
