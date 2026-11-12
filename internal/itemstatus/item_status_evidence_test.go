@@ -1,6 +1,7 @@
 package itemstatus
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -91,4 +92,21 @@ func TestEvidenceForGate(t *testing.T) {
 			t.Fatalf("older = %+v", ev.Older)
 		}
 	})
+}
+
+// A reason that names a proof command is shown by item ls --json, item done
+// and recap: the command in it goes through the redactor, like proof.value.
+func TestEvidenceReasonRedactsTheCommand(t *testing.T) {
+	const cmd = "./check --token=hunter2hunter2"
+	subj := proof.Subject{Repo: "repo", Tree: "tree-now"}
+	for name, c := range map[string]proof.Command{
+		"not run yet": {Cmd: cmd, State: proof.Missing},
+		"failed":      {Cmd: cmd, State: proof.Failed, Class: proof.ClassFailed},
+		"flaky":       {Cmd: cmd, State: proof.Failed, Class: proof.ClassFlaky},
+	} {
+		ev := EvidenceFor(proof.Gate{Commands: []proof.Command{c}}, subj, nil)
+		if strings.Contains(ev.Reason, "hunter2") || !strings.Contains(ev.Reason, "./check --token=***") {
+			t.Errorf("%s: reason = %q", name, ev.Reason)
+		}
+	}
 }
