@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/LysCongThanh/heavyq/internal/procinfo"
+	"github.com/LysCongThanh/heavyq/internal/snapshot"
 )
 
 // The tests in this file hold on every platform with a process source
@@ -22,17 +24,34 @@ func TestStatusJSONHasMetricsAndCPUPerLane(t *testing.T) {
 		t.Skip("no process source (/proc or ps) on this platform")
 	}
 	h := newRig(t, baseConfig)
-	burn := h.start("5", "--lane", "burn", "--", "sh", "-c", "while :; do :; done")
+	burn := h.start("5", "--lane", "burn", "--", "sh", "-c", h.busyShellScript("burn"))
 	h.running(1)
-	time.Sleep(200 * time.Millisecond) // let the loop accumulate CPU time before the first sample
-	s := h.statusJSON()
+	shell := h.busyShellOf("burn")
+	// the shell reads its own CPU time before, all along and after the status run: the window status
+	// samples lies somewhere inside, and the readings bound what the shell used in any such window
+	samples := []cpuSample{shell.sample()}
+	from := time.Now()
+	st := h.start("status", "--json")
+	for !st.finished() {
+		time.Sleep(10 * time.Millisecond) // paces the readings: finer ones only cost the shell and this process CPU
+		samples = append(samples, shell.sample())
+	}
+	to := time.Now()
+	samples = append(samples, shell.sample())
+	if rc := st.wait(t, 30*time.Second); rc != 0 {
+		t.Fatalf("status --json rc=%d\n%s", rc, st.out)
+	}
+	var s snapshot.Snapshot
+	if err := json.Unmarshal([]byte(st.out.String()), &s); err != nil {
+		t.Fatalf("status --json is not JSON: %v\n%s", err, st.out)
+	}
 	if len(s.Machines) != 1 {
 		t.Fatalf("machines = %+v", s.Machines)
 	}
 	if m := s.Machines[0]; !m.MetricsKnown || m.Cores < 1 || m.TotalMB <= 0 || m.FreeMB <= 0 || m.FreeMB > m.TotalMB {
 		t.Fatalf("local metrics must be measured: %+v", m)
 	}
-	if !s.CPU.Available || len(s.CPU.Outside) == 0 {
+	if !s.CPU.Available || len(s.CPU.Outside) == 0 || s.CPU.IntervalMS <= 0 {
 		t.Fatalf("cpu = %+v: want available, with outside groups", s.CPU)
 	}
 	var lane *float64
@@ -44,9 +63,7 @@ func TestStatusJSONHasMetricsAndCPUPerLane(t *testing.T) {
 	if lane == nil {
 		t.Fatalf("lane burn missing from cpu.lanes: %+v", s.CPU.Lanes)
 	}
-	if *lane < 10 {
-		t.Fatalf("a spinning shell must show CPU in its lane, got %.1f%%", *lane)
-	}
+	checkLaneCPU(t, *lane, time.Duration(s.CPU.IntervalMS)*time.Millisecond, from, to, samples)
 	_ = syscall.Kill(burn.cmd.Process.Pid, syscall.SIGTERM)
 	burn.wait(t, 30*time.Second)
 }
