@@ -33,7 +33,9 @@ Open `http://127.0.0.1:PORT/#demo` from any `heavyq dash` to see the page with s
 
 ## Security model
 
-- Listens on loopback only (`127.0.0.1`, `::1`, `localhost`); other addresses are refused.
+- Listens on loopback only (`127.0.0.1`, `::1`, `localhost`); other addresses are refused. `localhost` always
+  means `127.0.0.1` (it is never looked up, so a hosts file or DNS cannot move it), and a listener that is not
+  bound to a loopback address is closed and refused.
 - Requests whose `Host` header is not the loopback address and port are refused (DNS rebinding).
 - Requests carrying an `Origin` other than the dashboard's own are refused (cross-site requests).
 - The page is served with `default-src 'none'` and `connect-src 'self'`: it loads nothing from the network.
