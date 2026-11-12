@@ -48,7 +48,7 @@ list of warnings (`path:line: message`) instead.
 
 ```toml
 [anchor]
-file  = ".heavyq/anchor.md"                      # optional; this is the default
+file  = ".heavyq/anchor.md"                      # optional; this is the default; one .md file, never a directory
 extra = ["plans/*/phase-*.md", "docs/**/*.md"]   # globs relative to the repository root
 ```
 

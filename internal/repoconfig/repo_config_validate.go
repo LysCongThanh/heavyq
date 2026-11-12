@@ -42,7 +42,7 @@ func (r *Repo) fill(raw rawFile) error {
 	}
 	r.Pools = ps
 	if raw.Anchor != nil {
-		a, err := raw.Anchor.validate()
+		a, err := raw.Anchor.validate(r.Root)
 		if err != nil {
 			return fmt.Errorf("[anchor]: %w", err)
 		}
@@ -153,9 +153,15 @@ func validRemote(v string) error {
 	return fmt.Errorf("remote %q must be %q, %q, a remote name (letters, digits, . _ -) or a list of names (a,b)", v, config.LocalName, remoteAuto)
 }
 
-func (ra rawAnchor) validate() (Anchor, error) {
-	if ra.File != "" && !filepath.IsLocal(ra.File) {
-		return Anchor{}, fmt.Errorf("file %q must be a relative path inside the repository", ra.File)
+// validate checks the [anchor] keys; root is the work tree the file sits in.
+func (ra rawAnchor) validate(root string) (Anchor, error) {
+	if ra.File != "" {
+		if err := CheckAnchorFile(ra.File); err != nil {
+			return Anchor{}, err
+		}
+		if root != "" && AnchorFileIsDirectory(root, ra.File) {
+			return Anchor{}, fmt.Errorf("file %q is a directory; it must be a .md file", ra.File)
+		}
 	}
 	for j, glob := range ra.Extra {
 		if !filepath.IsLocal(glob) {

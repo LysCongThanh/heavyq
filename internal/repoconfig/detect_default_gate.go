@@ -19,8 +19,8 @@ const DetectedGateName = "ready"
 //	go.mod                                  go vet ./..., go test ./...
 //	package.json                            "<pm> run <script>" for each of the
 //	                                        scripts typecheck, lint, test it has
-//	pytest.ini, pyproject.toml,             pytest
-//	setup.cfg with [tool:pytest]
+//	pytest.ini, pyproject.toml naming       pytest
+//	pytest, setup.cfg with [tool:pytest]
 //	Cargo.toml                              cargo test
 //
 // Detection only reads files, and a small bounded amount of them. It never
@@ -71,24 +71,37 @@ func isRegularFile(path string) bool {
 }
 
 // pytestSource names the file that says the repository uses pytest, or "".
-// pytest.ini and pyproject.toml are enough on their own; setup.cfg counts
-// only with a [tool:pytest] section, because it configures much else too.
+// pytest.ini is enough on its own. pyproject.toml and setup.cfg configure much
+// else too (ruff, mypy, packaging), and a pytest that collects nothing can
+// never pass, so they count only when they speak of pytest: setup.cfg with a
+// [tool:pytest] section, pyproject.toml with a [tool.pytest...] table or any
+// other line naming pytest (a dev dependency). Only that yes or no is used.
 func pytestSource(root string) string {
-	for _, name := range []string{"pytest.ini", "pyproject.toml"} {
-		if isRegularFile(filepath.Join(root, name)) {
-			return name
-		}
+	if isRegularFile(filepath.Join(root, "pytest.ini")) {
+		return "pytest.ini"
 	}
-	data, err := readBounded(filepath.Join(root, "setup.cfg"))
+	if anyLine(filepath.Join(root, "pyproject.toml"), func(l string) bool { return strings.Contains(l, "pytest") }) {
+		return "pyproject.toml"
+	}
+	if anyLine(filepath.Join(root, "setup.cfg"), func(l string) bool { return l == "[tool:pytest]" }) {
+		return "setup.cfg"
+	}
+	return ""
+}
+
+// anyLine reports whether a line of the bounded file at path, trimmed and not
+// a "#" comment, satisfies match. An unreadable file has none.
+func anyLine(path string, match func(string) bool) bool {
+	data, err := readBounded(path)
 	if err != nil {
-		return ""
+		return false
 	}
 	sc := bufio.NewScanner(bytes.NewReader(data))
 	sc.Buffer(nil, maxFileBytes)
 	for sc.Scan() {
-		if strings.TrimSpace(sc.Text()) == "[tool:pytest]" {
-			return "setup.cfg"
+		if l := strings.TrimSpace(sc.Text()); !strings.HasPrefix(l, "#") && match(l) {
+			return true
 		}
 	}
-	return ""
+	return false
 }

@@ -51,6 +51,9 @@ func FuzzParse(f *testing.F) {
 		if repo.Root != root || repo.Path != path {
 			t.Fatalf("repo location lost: %+v", repo)
 		}
+		if f := repo.Anchor.File; f != "" && CheckAnchorFile(f) != nil {
+			t.Fatalf("accepted anchor file %q", f)
+		}
 		seen := map[string]bool{}
 		for _, g := range repo.Gates {
 			if !gateName.MatchString(g.Name) || seen[g.Name] {
