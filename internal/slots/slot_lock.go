@@ -15,6 +15,14 @@ import (
 	"os"
 	"path/filepath"
 	"syscall"
+	"time"
+)
+
+// Test seams: beforeFlock runs between opening a lock file and flocking it,
+// refreshEvery is how often a held lock file is touched.
+var (
+	beforeFlock  = func(string) {}
+	refreshEvery = time.Hour
 )
 
 // Lock is a held slot.
@@ -37,6 +45,7 @@ func TryLock(path string) (*Lock, error) {
 			return nil, fmt.Errorf("open slot %s: %w", path, err)
 		}
 	}
+	beforeFlock(path)
 	if err := flockNB(f); err != nil {
 		f.Close()
 		if errors.Is(err, syscall.EWOULDBLOCK) {
