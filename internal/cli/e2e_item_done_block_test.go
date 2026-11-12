@@ -11,7 +11,8 @@ import (
 
 func TestE2EItemDoneRefusesThenSucceedsAndTicksOnlyThatBox(t *testing.T) {
 	h := newRig(t, baseConfig)
-	app, _ := itemRepo(t, h, itemAnchor, "", nil)
+	// Two work trees: [items] tick = "auto" would leave the box to `item sync` (e2e_item_tick_modes_test.go).
+	app, _ := itemRepo(t, h, itemAnchor, "\n[items]\ntick = \"always\"\n", nil)
 	anchorPath := filepath.Join(app, ".heavyq", "anchor.md")
 	orig := mustRead(t, anchorPath)
 

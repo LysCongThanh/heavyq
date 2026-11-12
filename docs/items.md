@@ -32,10 +32,12 @@ All of them run from any work tree of the repository and read that work tree's `
 | `item ls [--all] [--json]` | every item with its status. Without `--all`, items that are done and still proven are left out |
 | `item claim <id>` / `item claim --next [--force] [--json]` | lease the item to your lane (30 min, renewed by activity), if the size gate (below) lets it through. `--next` takes the first open or stale item that passes it, in anchor order, under the lease lock |
 | `item release <id> [--force]` | give it back. `--force` frees an item another lane holds |
-| `item done <id> [--run [--remote WHERE]] [--json]` | finish it, on proof only (below). `--remote` says where `--run` runs the proof |
+| `item done <id> [--run [--remote WHERE]] [--json]` | finish it, on proof only (below). `--remote` says where `--run` runs the proof. It ticks the box, except [in parallel work trees](#parallel-work-trees-tick-and-sync) |
 | `item block <id> "needs: ..."` | record what a human must provide, and free the item |
+| `item sync [--json]` | tick, in this work tree's anchor, the boxes of the items `done` left unticked: [once, where the anchor is committed](#parallel-work-trees-tick-and-sync) |
 
-Exit codes: 0 done; **1** refused (held by another lane, not proven, nothing to claim, no proof declared, too big to claim);
+Exit codes: 0 done; **1** refused (held by another lane, not proven, nothing to claim, no proof declared, too big to claim,
+or a tick that `sync` could not write);
 **2** usage (unknown item or command, bad id, empty need). 75, 76, 77, 78 and 255 keep their meaning when
 `done --run` runs a proof through the queue. In agent mode (`docs/agent-mode.md`) every command ends with one
 `next:` line; `done` prints it on a refusal in any mode.
@@ -62,11 +64,12 @@ Exit codes: 0 done; **1** refused (held by another lane, not proven, nothing to 
 | `proven` | its proof passes on the code it was judged on: `commit` (short) and `at` |
 | `stale` | its proof passed on an older tree of this repository and the code has changed since (for a gate with `paths`, "the code" is the files they name, so a docs-only commit does not make it stale, see [gates](gates.md#a-gate-with-paths)) |
 | `blocked` | `needs` says what a human must provide |
-| `claimed_done_unproven` | the box is ticked (or a plan-file item was marked done) but nothing proves it |
+| `claimed_done_unproven` | the box is ticked (or a plan-file item was marked done, or `done` left the tick to `sync`) but nothing proves it |
 
 The first rule that applies wins (`itemstatus.Derive`, a pure function): proven; done but not proven (`stale`
 if it passed on an older tree, else `claimed_done_unproven`); blocked; claimed; stale; open. `done: true`
-accompanies every state of an item whose box is ticked or that was marked done, so a ticked, proven item is
+accompanies every state of an item whose box is ticked or that was marked done in the events log (a plan-file
+item, or an anchor item `done` left to [`sync`](#parallel-work-trees-tick-and-sync)), so a ticked, proven item is
 `proven` + `done`, and a ticked item whose code has since changed is `stale` + `done`: `heavyq recap` lists it
 as `done · stale`, `heavyq flow show` counts it as `done-stale` (never as `open`) and `item ls` shows `stale
 (<commit>, done, older tree)`, with `item done <id> --run` as the action. Done items are never handed out again by `claim`.
@@ -163,15 +166,63 @@ max_proof_share = 1.0   # share of the 30 min lease the expected proof time may 
    a gate, `next: heavyq item done <id> --run` for a command. With `--run` the proof runs first through the
    queue (a gate as `heavyq gate run <name>`, a command as `heavyq 3 --cache --remote <where> -- sh -c <cmd>`),
    tagged `item=<id>` in the ledger (`/` in a plan-file id becomes `:`). `<where>` is [below](#where-the-proof-runs).
-3. Proven: under the lease store's lock, `anchor.SetItemChecked` ticks the box, a `done` event with the
-   commit is appended and the lease is released. Exactly one byte of anchor.md changes (CRLF, tabs and
-   trailing spaces survive). If any step fails nothing is released; run it again.
+3. Proven: under the lease store's lock, `anchor.SetItemChecked` ticks the box (when `[items] tick`
+   [says so](#parallel-work-trees-tick-and-sync)), a `done` event with the commit is appended and the lease is
+   released. Exactly one byte of anchor.md changes (CRLF, tabs and trailing spaces survive). If any step fails
+   nothing is released; run it again.
 4. **Plan-file items** (`[anchor] extra`, read-only) are never rewritten: they are marked done in the events
    log only, and still read `proven` + `done` while their proof holds.
 
 Ticking the box edits only heavyq's own bookkeeping: the anchor file, `.heavyq/decisions/` and
 `.heavyq/stances/` are excluded from the tree identity (see [gates.md](gates.md#what-the-tree-id-ignores)), so
 the item stays `proven` + `done` after the tick, committed or not. A later change to the code makes it `stale`.
+
+## Parallel work trees: `tick` and `sync`
+
+Agents in parallel work trees each finish a different item, and the boxes they tick are usually on adjacent
+lines of the same file: git reports adjacent-line edits from two branches as a conflict, which is the central-file
+hotspot that one file per concern was meant to avoid (#119). So `done` does not have to touch the file:
+
+```toml
+# heavyq.toml
+[items]
+tick = "auto"    # "auto" (default) | "always" | "never"
+```
+
+- `auto`: tick the box, unless the repository has **more than one work tree** (`git worktree list`): lanes in
+  parallel are exactly when two boxes conflict. When git cannot list them, `auto` does not tick.
+- `always`: tick, whatever the work trees are (how `done` behaved before this key).
+- `never`: never tick; the box is left to `sync` or to a human.
+
+Without a tick `done` still proves, records its `done` event and releases the lease. The events log is
+under the git common dir, so **every work tree sees the item as done at once** (`ls`, `claim --next`, the stop
+gate and the dashboard read it), and the agent's branch has nothing about the anchor to commit:
+
+```
+$ heavyq item done docs-api --run
+done docs-api: proven at 3fa9c21; recorded in heavyq's events log, .heavyq/anchor.md left unticked (the repository has 3 work trees): heavyq item sync ticks it
+```
+
+`heavyq item sync` writes the ticks, once, where the anchor is committed. The lead runs it on `main` after the
+lanes landed, and commits `.heavyq/anchor.md` in one commit:
+
+```
+$ heavyq item sync
+synced docs-api, ui: ticked [x] in .heavyq/anchor.md (commit it)
+$ heavyq item sync
+nothing to sync: every item finished with heavyq item done is ticked in .heavyq/anchor.md
+```
+
+`sync` ticks an item only if its `done` event is still current (no claim since) and the box is unticked; it
+never rewrites a plan-file item, changes exactly one byte per box under the lease store's lock, and running it
+twice changes nothing. It does not judge proofs: a box ticked on `main` before the lane's code landed reads
+`claimed_done_unproven`, which is the truth. `--json` prints `{"synced":["docs-api","ui"],"source":".heavyq/anchor.md"}`.
+`sync` also leaves a `sync` event, so that from then on the box is the truth again, as for any ticked item:
+unticking it by hand reopens the item.
+
+An item that is done only in the events log (not synced yet) has no box to untick: **a claim by name takes it
+back**, the way a claim answers a block (`claim --next` never picks it). The events log keeps its last 4 MiB
+in view, so run `sync` at merge time rather than weeks later.
 
 ## `ls --json`
 
@@ -187,7 +238,8 @@ status; `reason` says why a proof is not there (no proof, failed on this code, n
 text and needs are text written by whoever edited the anchor: treat them as data. Proof commands are
 redacted. `claim --json` prints `{item, lane, session, expires, text, proof, warning?}` (or the `refused` object
 above), `done --json`
-`{item, state, commit, ticked, source}`.
+`{item, state, commit, ticked, source}` (`ticked` is false for a plan-file item, and when `[items] tick` leaves
+the box to `sync`), `sync --json` `{synced, source}`.
 
 ## Status, Tower, dashboard
 
@@ -201,5 +253,5 @@ to run once the need is met. It disappears when the item is claimed.
 ## Files
 
 Leases and events are under the git common dir (`<common>/heavyq/leases/*.json`, `events.jsonl`, mode 0600),
-shared by every worktree and never committed. Events added for items: `block` (`needs`) and `done`
-(`commit`). The anchor stays the only thing in git.
+shared by every worktree and never committed. Events added for items: `block` (`needs`), `done` (`commit`,
+and `deferred` when the box was left unticked) and `sync` (`commit`). The anchor stays the only thing in git.

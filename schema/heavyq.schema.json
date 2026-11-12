@@ -180,11 +180,21 @@
           "minimum": 1,
           "description": "Proof runs an item is expected to need before it passes; the expected proof time is the proof's p50 duration times this.",
           "default": 3
+        },
+        "tick": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "always",
+            "never"
+          ],
+          "description": "Whether \"item done\" ticks the box in the anchor file: \"auto\" (the default) ticks unless the repository has more than one work tree, \"always\" ticks, \"never\" only records the done in the events log. Without a tick, \"heavyq item sync\" ticks the boxes later, once, where the anchor is committed.",
+          "default": "auto"
         }
       },
       "additionalProperties": false,
       "type": "object",
-      "description": "Limits of the claim size gate: `heavyq item claim` refuses an item whose proof is expected to outlast the lease."
+      "description": "Limits of the claim size gate (`heavyq item claim` refuses an item whose proof is expected to outlast the lease) and whether `heavyq item done` ticks the box."
     },
     "rawProof": {
       "properties": {

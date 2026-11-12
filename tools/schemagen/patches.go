@@ -85,7 +85,11 @@ func patchRepoFile(root *jsonschema.Schema) {
 	prop(anchor, "extra").Description = "Extra read-only sources, as globs relative to the repository root."
 
 	items := def(root, "rawItems")
-	items.Description = "Limits of the claim size gate: `heavyq item claim` refuses an item whose proof is expected to outlast the lease."
+	items.Description = "Limits of the claim size gate (`heavyq item claim` refuses an item whose proof is expected to outlast the lease) and whether `heavyq item done` ticks the box."
+	tick := prop(items, "tick")
+	tick.Description = `Whether "item done" ticks the box in the anchor file: "auto" (the default) ticks unless the repository has more than one work tree, "always" ticks, "never" only records the done in the events log. Without a tick, "heavyq item sync" ticks the boxes later, once, where the anchor is committed.`
+	tick.Enum = []any{repoconfig.TickAuto, repoconfig.TickAlways, repoconfig.TickNever}
+	tick.Default = repoconfig.TickAuto
 	share := prop(items, "max_proof_share")
 	share.Description = "Share of the 30 minute lease budget the expected proof time (p50 x iterations) may use."
 	share.ExclusiveMinimum = json.Number("0")

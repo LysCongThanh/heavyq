@@ -21,25 +21,27 @@ const itemUsage = `usage:
   heavyq [--config FILE] item release <id> [--force]
   heavyq [--config FILE] item done <id> [--run [--remote WHERE]] [--json]
   heavyq [--config FILE] item block <id> "needs: <what a human must provide>"
+  heavyq [--config FILE] item sync [--json]
 
 Items are the checklist lines of .heavyq/anchor.md (and the read-only extra sources of heavyq.toml [anchor]).
 claim leases an item to this lane (TTL 30 min, renewed by every heavyq run in the lane); done refuses until the
-item's proof passes on this exact code, then ticks its box; block records what is missing and frees the item.
+item's proof passes on this exact code, then ticks its box (not in a repository with several work trees, see
+[items] tick: it is only recorded, and sync ticks it); block records what is missing and frees the item.
 claim refuses an item with no runnable proof or a proof too long for one lease (--force overrides; --next skips it).
 Exit: 0 ok, 1 refused (held, unproven, nothing to claim), 2 usage. See docs/items.md.
 `
 
-// itemCommand implements `heavyq item ls|claim|release|done|block`.
+// itemCommand implements `heavyq item ls|claim|release|done|block|sync`.
 func itemCommand(cfg *config.Config, args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
 		fmt.Fprint(stderr, itemUsage)
 		return ExitUsage
 	}
 	run := map[string]func(*itemCtx, []string) int{
-		"ls": itemLs, "claim": itemClaim, "release": itemRelease, "done": itemDone, "block": itemBlock,
+		"ls": itemLs, "claim": itemClaim, "release": itemRelease, "done": itemDone, "block": itemBlock, "sync": itemSync,
 	}[args[0]]
 	if run == nil {
-		fmt.Fprintf(stderr, "heavyq: unknown item command %q (ls, claim, release, done, block)\n\n%s", args[0], itemUsage)
+		fmt.Fprintf(stderr, "heavyq: unknown item command %q (ls, claim, release, done, block, sync)\n\n%s", args[0], itemUsage)
 		return ExitUsage
 	}
 	wd, err := os.Getwd()

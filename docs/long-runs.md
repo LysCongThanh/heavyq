@@ -130,7 +130,7 @@ Each agent works one item at a time:
 heavyq item ls                        # open, claimed, blocked, proven
 heavyq item claim --next              # lease the first open item that fits one lease (30 min, renewed by runs)
 # ... the agent does the work and commits it ...
-heavyq item done login-api --run      # run its proof through the queue; tick the box only on a pass
+heavyq item done login-api --run      # run its proof through the queue; finish (and tick the box) only on a pass
 ```
 
 Put the proof on a dev box so the laptop stays light. In `~/.config/heavyq/config.toml`:
@@ -156,9 +156,12 @@ next: split api into ≤3 items, each with a faster proof
 Split the item. `--force` claims anyway; avoid it. A proof that never passed here has no known duration, so it
 is claimed with a warning.
 
-**Parallel worktrees.** `item done` ticks a box in the anchor, and two agents ticking adjacent lines conflict in
-git (#119). Until that is fixed, restore `.heavyq/anchor.md` before committing, and let the lead tick the boxes on
-`main`. The proof still counts: it is judged on the tree, not on the box.
+**Parallel worktrees.** Two agents ticking adjacent boxes of the anchor conflict in git, so in a repository with
+more than one work tree `item done` proves, records the done in the events log (shared by every work tree) and
+leaves `.heavyq/anchor.md` alone: nothing about the anchor to restore or commit in a lane. Once the lanes have
+landed, the lead runs `heavyq item sync` on `main` and commits the ticks in one commit. `[items] tick` changes
+this ([items.md](items.md#parallel-work-trees-tick-and-sync)). The proof still counts: it is judged on the tree,
+not on the box.
 
 ## 6. While it runs
 
@@ -224,7 +227,6 @@ Checked against the open issues at release time. Items fixed before the release 
 
 | Issue | Limit | Workaround |
 |---|---|---|
-| [#119](https://github.com/LysCongThanh/heavyq/issues/119) | `item done` ticks the anchor in the agent's worktree; parallel ticks conflict | restore `.heavyq/anchor.md` before committing; the lead ticks on `main` |
 | [#120](https://github.com/LysCongThanh/heavyq/issues/120) | a rate-limit `needs you` can outlive the pause; lanes of removed worktrees linger in `flow show` | ignore a stale line after the window resets; it drops after 24 h |
 | [#127](https://github.com/LysCongThanh/heavyq/issues/127) | agents in `.claude/worktrees/` make the main checkout's tree unprovable | add `.claude/worktrees/` to `.git/info/exclude` |
 | [#128](https://github.com/LysCongThanh/heavyq/issues/128) | an unknown key in the **user** config makes an older binary refuse every command | upgrade the binary before adding a new user-config key; `heavyq doctor` lists unknown keys |

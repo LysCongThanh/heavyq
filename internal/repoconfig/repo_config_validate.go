@@ -186,5 +186,13 @@ func (ri *rawItems) validate() (Items, error) {
 		}
 		out.Iterations = *v
 	}
+	if v := ri.Tick; v != nil {
+		switch *v {
+		case TickAuto, TickAlways, TickNever:
+			out.Tick = *v
+		default:
+			return Items{}, fmt.Errorf("tick %q must be %q, %q or %q", *v, TickAuto, TickAlways, TickNever)
+		}
+	}
 	return out, nil
 }

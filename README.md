@@ -54,7 +54,7 @@ heavyq gate run       # run what is not proven yet, through the queue, cached
 ```
 
 **Steer.** When the caller is an agent, heavyq says little and ends with a digest the agent can act on.
-Work items (`heavyq item ls|claim|release|done|block`: claim, prove, finish) are in [docs/items.md](docs/items.md).
+Work items (`heavyq item ls|claim|release|done|block|sync`: claim, prove, finish) are in [docs/items.md](docs/items.md).
 `heavyq brief` is the thread of the work in 300 tokens, injected after every compaction; `heavyq steer guard` adds a
 Stop gate that will not let an agent stop while the item it holds is unproven ([docs/steer.md](docs/steer.md)).
 

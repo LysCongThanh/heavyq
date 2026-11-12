@@ -118,8 +118,9 @@ Next: heavyq item done login-api --run
 Cannot finish it? heavyq item block login-api "needs: <what>" or heavyq item release login-api. Stop blocks left: 2.
 ```
 
-`item done --run` runs the proof through the queue and ticks the box on success; it is the one command that
-turns the block off for a proof the agent has not run yet.
+`item done --run` runs the proof through the queue and finishes the item on success (it ticks the box, unless the
+repository has parallel work trees, see [items](items.md#parallel-work-trees-tick-and-sync)); it is the one command
+that turns the block off for a proof the agent has not run yet.
 
 ### Guard: caps and loop safety
 
