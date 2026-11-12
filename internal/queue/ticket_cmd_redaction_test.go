@@ -18,6 +18,9 @@ func TestTruncateCmdHidesWholeArgvValues(t *testing.T) {
 		{[]string{"sshpass", "-p", "correct horse", "ssh", "host"}, "sshpass -p *** ssh host"},
 		{[]string{"mysql", "-pcorrect horse", "app"}, "mysql -p*** app"},
 		{[]string{"curl", "-H", "Authorization: token abc def", "u"}, "curl -H Authorization: token *** u"},
+		// no scheme: the raw value is hidden, the URL after it stays readable
+		{[]string{"curl", "-H", "Authorization: abc123secretvalue", "https://api.example.com/x"}, "curl -H Authorization: *** https://api.example.com/x"},
+		{[]string{"curl", "-H", "Authorization:abc123secretvalue", "https://x"}, "curl -H Authorization:*** https://x"},
 		// a Bearer/Basic value outside an Authorization header
 		{[]string{"curl", "-H", "X-Upstream: Bearer abcdefghijklmnop", "u"}, "curl -H X-Upstream: Bearer *** u"},
 		{[]string{"myclient", "--auth-header", "Bearer abcdefghijklmnop"}, "myclient --auth-header Bearer ***"},

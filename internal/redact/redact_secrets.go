@@ -16,6 +16,12 @@ const (
 	plainWord = `(?:[^\s"'-]|` + quoted + `)` + `(?:[^\s"']+|` + quoted + `)*`
 	// a name that looks like it holds a secret
 	secretKey = `(?:token|secret|passw(?:or)?d|api[_-]?key|access[_-]?key|private[_-]?key|credential|auth|_pwd)`
+	// "Authorization:" and a known scheme (the IANA registry plus token,
+	// NTLM, Kerberos and AWS SigV4) that stays readable before the value. Any
+	// other first word is the value itself: taking it for a scheme would show
+	// the value and hide the next argument instead.
+	authScheme = `(?:basic|bearer|digest|token|negotiate|ntlm|kerberos|hoba|mutual|oauth|dpop|gnap|vapid|concealed|privatetoken|scram-sha-(?:1|256)|aws4-hmac-sha256)`
+	authPrefix = `authorization` + sep + `*:` + sep + `*(?:` + authScheme + sep + `+)?`
 )
 
 // Patterns of secrets that commonly appear in command lines, in order.
@@ -36,8 +42,13 @@ var secretPatterns = []struct {
 	{regexp.MustCompile(`(?i)(\b(?:docker|podman|nerdctl|buildah)` + sep + `+login\b[^|;&\n]*?` + sep + `(?-i:-p)(?:=|` + sep + `+)?)` + word), "${1}***"},
 	// sshpass -p value (its own -p, not the -p of the ssh it runs)
 	{regexp.MustCompile(`(\bsshpass(?:` + sep + `+-[^p\s\x00][^\s\x00]*)*` + sep + `+-p` + sep + `*)` + word), "${1}***"},
-	// Authorization headers of any scheme: "Authorization: token v", "Authorization: v"
-	{regexp.MustCompile(`(?i)\b(authorization` + sep + `*:` + sep + `*(?:[A-Za-z][A-Za-z0-9._-]*` + sep + `+)?)[^\s'"]+`), "${1}***"},
+	// a quoted Authorization header hides everything up to its closing quote,
+	// so an unknown scheme ('Authorization: ApiKey v') or Digest parameters
+	// cannot leak; an unterminated quote runs to the end
+	{regexp.MustCompile(`(?i)('` + authPrefix + `)[^']*`), "${1}***"},
+	{regexp.MustCompile(`(?i)("` + authPrefix + `)(?:[^"\\]|\\.)*`), "${1}***"},
+	// any other Authorization header: "Authorization: token v", "Authorization: v"
+	{regexp.MustCompile(`(?i)\b(` + authPrefix + `)[^\s'"]+`), "${1}***"},
 	// header-style values: "X-Api-Key: v", "token: v"
 	{regexp.MustCompile(`(?i)\b((?:x-)?(?:api[-_]?key|auth[-_]?token|token|secret)` + sep + `*:` + sep + `*)[^\s'"]+`), "${1}***"},
 	// Authorization values outside a header: "Bearer xxx", "Basic xxx"; sep,
