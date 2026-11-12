@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/LysCongThanh/heavyq/internal/config"
@@ -90,12 +91,17 @@ func claudePreToolUse(cfgPath string, explicit bool, stdin io.Reader, stdout io.
 	}
 	out, why, err := hook.Decide(in, hook.Options{Rules: rules, Permission: cfg.Hook.Permission,
 		MaxWait: cfg.Hook.MaxWait.Duration, Binary: bin, Lane: os.Getenv("HEAVYQ_LANE"),
-		Active: os.Getenv("HEAVYQ_ACTIVE") != "", LaneFor: worktreeLane, SessionSink: recordHookSession})
+		Active: os.Getenv("HEAVYQ_ACTIVE") != "", LaneFor: worktreeLane, SessionSink: recordHookSession,
+		ToolTimeouts: hook.ToolTimeouts{Default: os.Getenv("BASH_DEFAULT_TIMEOUT_MS"), Max: os.Getenv("BASH_MAX_TIMEOUT_MS")},
+		CacheEnv:     cfg.Cache.Env, LookPath: exec.LookPath})
 	if err != nil {
 		hookLog("error: %v", err)
 		return 0
 	}
 	if out == nil {
+		if strings.HasPrefix(why, hook.LeftMatched) {
+			hookLog("%s", why) // a rule matched, so the user expects a rewrite: say why there was none
+		}
 		return 0
 	}
 	if _, err := fmt.Fprintf(stdout, "%s\n", out); err != nil {

@@ -11,10 +11,8 @@ import (
 	"github.com/LysCongThanh/heavyq/internal/config"
 	"github.com/LysCongThanh/heavyq/internal/history"
 	"github.com/LysCongThanh/heavyq/internal/queue"
+	"github.com/LysCongThanh/heavyq/internal/redact"
 )
-
-// defaultToolTimeoutMS is the Bash tool timeout when the call sets none.
-const defaultToolTimeoutMS = 120000
 
 // Options configure Decide. Everything environment-dependent is injected so
 // the decision is a pure function of its inputs.
@@ -31,6 +29,16 @@ type Options struct {
 	// The id travels out of band so the rewritten command stays the same in
 	// every session, which keeps exact permission rules matching.
 	SessionSink func(lane, sessionID string)
+	// ToolTimeouts are Claude Code's Bash tool timeout settings, so the
+	// rewritten timeout follows its default and cap.
+	ToolTimeouts ToolTimeouts
+	// CacheEnv is cache.env: a rule's --cache is kept only when every typed
+	// assignment is one of these (the cache key sees no other variable).
+	CacheEnv []string
+	// LookPath, when set, must find the program word on PATH; a word it
+	// cannot find (an alias or a function in the agent's shell) stays with
+	// the shell, since heavyq runs programs without one.
+	LookPath func(file string) (string, error)
 }
 
 // claudeInput is the part of the PreToolUse stdin JSON the hook reads.
@@ -55,6 +63,11 @@ type specificOutput struct {
 	UpdatedInput      map[string]json.RawMessage `json:"updatedInput"`
 	AdditionalContext string                     `json:"additionalContext,omitempty"`
 }
+
+// LeftMatched starts the reason for a command a rule matched that the hook
+// still leaves unchanged; the caller logs those, since the user expected a
+// rewrite.
+const LeftMatched = "matched a rule, left unchanged: "
 
 // Decide returns the JSON to print, or nil plus the reason the command is
 // left unchanged. An error means the input itself was unusable.
@@ -89,6 +102,14 @@ func Decide(stdin []byte, o Options) ([]byte, string, error) {
 	if !ok {
 		return nil, "no rule matches", nil
 	}
+	if name := heavyqEnvConflict(p.Env); name != "" {
+		return nil, LeftMatched + "assignment to " + name + " would change heavyq itself", nil
+	}
+	if prog := p.Words[0]; o.LookPath != nil && !strings.Contains(prog, "/") {
+		if _, err := o.LookPath(prog); err != nil {
+			return nil, fmt.Sprintf("%sprogram %q is not on PATH (an alias or a shell function?)", LeftMatched, prog), nil
+		}
+	}
 	lane := rule.Lane
 	if lane == "" {
 		lane = o.Lane
@@ -105,10 +126,14 @@ func Decide(stdin []byte, o Options) ([]byte, string, error) {
 	if len(p.Env) > 0 {
 		prefix = append(prefix, "--remote", "local") // assignments do not travel to remotes
 	}
-	if rule.Cache {
+	if rule.Cache && cacheSeesEnv(p.Env, o.CacheEnv) {
 		prefix = append(prefix, "--cache")
 	}
-	wait := o.MaxWait.Round(time.Second)
+	// --max-wait counts whole seconds and 0 means forever: round up, at least 1s.
+	wait := max(o.MaxWait.Truncate(time.Second), time.Second)
+	if wait < o.MaxWait {
+		wait += time.Second
+	}
 	prefix = append(prefix, "--max-wait", fmt.Sprintf("%ds", int(wait.Seconds())))
 	prefix = append(prefix, "--")
 	if sid := sessionID(in.SessionID); sid != "" && o.SessionSink != nil {
@@ -121,20 +146,18 @@ func Decide(stdin []byte, o Options) ([]byte, string, error) {
 		upd[k] = v
 	}
 	upd["command"], _ = marshal(newCmd)
-	timeout := int64(defaultToolTimeoutMS)
-	if raw, ok := in.ToolInput["timeout"]; ok {
-		var t float64
-		if json.Unmarshal(raw, &t) == nil && t > 0 {
-			timeout = int64(t)
-		}
-	}
-	upd["timeout"], _ = marshal(timeout + wait.Milliseconds())
+	timeout, capMS, capped := toolTimeout(in.ToolInput["timeout"], wait, o.ToolTimeouts)
+	upd["timeout"], _ = marshal(timeout)
 
-	out := claudeOutput{Specific: specificOutput{Event: "PreToolUse", UpdatedInput: upd,
-		AdditionalContext: fmt.Sprintf("heavyq: %q matched hook rule %q, so it ran through the shared heavyq queue "+
-			"(prio %d, lane %s). Exit 75 means the queue stayed busy for %s: retry later, do not bypass heavyq.",
-			strings.Join(p.Words, " "), pat, rule.Priority, lane, wait)}}
-	if o.Permission == "allow" {
+	note := fmt.Sprintf("heavyq: %q matched hook rule %q, so it ran through the shared heavyq queue "+
+		"(prio %d, lane %s). Exit 75 means the queue stayed busy for %s: retry later, do not bypass heavyq.",
+		queue.TruncateCmd(p.Words), pat, rule.Priority, lane, wait)
+	if capped {
+		note += fmt.Sprintf(" The tool timeout is capped at %ds, so time spent queued comes out of the command's own time.",
+			capMS/1000)
+	}
+	out := claudeOutput{Specific: specificOutput{Event: "PreToolUse", UpdatedInput: upd, AdditionalContext: note}}
+	if o.Permission == "allow" && allowScopeOK(p, in.Cwd) {
 		out.Specific.Decision = "allow"
 		out.Specific.DecisionReason = "heavyq hook: wrapped in the heavyq queue (hook.permission = allow)"
 	}
@@ -142,7 +165,7 @@ func Decide(stdin []byte, o Options) ([]byte, string, error) {
 	if err != nil {
 		return nil, "", err
 	}
-	return b, "rewritten: " + newCmd, nil
+	return b, "rewritten: " + redact.Command(newCmd), nil
 }
 
 // sessionID returns the Claude session id for the ledger, or "" when it is

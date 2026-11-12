@@ -18,7 +18,8 @@ type HookConfig struct {
 	// Permission is "" (the rewritten command goes through Claude Code's
 	// normal permission flow) or "allow" (auto-approve rewritten commands).
 	Permission string `toml:"permission"`
-	// MaxWait is passed as --max-wait and added to the Bash tool timeout.
+	// MaxWait is passed as --max-wait (whole seconds, rounded up; at least 1s)
+	// and added to the Bash tool timeout, up to Claude Code's cap.
 	MaxWait Duration `toml:"max_wait"`
 	// Binary is how the rewritten command calls heavyq ("" = "heavyq" when it
 	// is on PATH, else the absolute path of the running binary).
@@ -67,6 +68,11 @@ func (c *Config) HookDefaultRules() bool { return c.Hook.DefaultRules == nil || 
 func (h *HookConfig) normalize() error {
 	if err := setDur(&h.MaxWait, defaultHookMaxWait, "hook.max_wait"); err != nil {
 		return err
+	}
+	if h.MaxWait.Duration < time.Second {
+		// --max-wait counts whole seconds and 0 means "wait forever", so a
+		// sub-second wait would silently become the opposite of fail-fast.
+		return fmt.Errorf("hook.max_wait %s is under 1s: use \"1s\" or more", h.MaxWait.Duration)
 	}
 	if h.Permission != "" && h.Permission != "allow" {
 		return fmt.Errorf("hook.permission %q must be \"\" or \"allow\"", h.Permission)

@@ -92,6 +92,12 @@ func TestDecideCommandTable(t *testing.T) {
 		{"/usr/local/bin/heavyq 2 --light -- npm run lint", ""},
 		{"cd api && heavyq 3 -- go test ./...", ""},
 		{"HEAVYQ_ACTIVE=1 npm test", ""},
+		// left unchanged: the assignment would apply to heavyq itself
+		{"PATH=/usr/bin:/bin go test ./...", ""},
+		{"HOME=/tmp/h npm test", ""},
+		{"TMPDIR=/tmp/t go test ./...", ""},
+		{"XDG_RUNTIME_DIR=/tmp/r npm test", ""},
+		{"HEAVYQ_DIR=/tmp/q npm test", ""},
 		// left unchanged: unsafe or unparsable shapes
 		{"npm test; echo done", ""},
 		{"npm test && npm run build", ""},

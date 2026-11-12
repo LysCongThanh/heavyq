@@ -41,7 +41,7 @@ The remote-only keys (`ssh`, `transport`, `work_dir`, `git_url`, `cache_hook`, `
 | `pool.port` | by name | `true` = TCP ports (probed, never in the ephemeral range); default: the pool is called `port` or ends in `_port` |
 | `hook.enabled` | `true` | `false` = the Claude Code hook never rewrites |
 | `hook.permission` | `""` | `""` = rewritten commands go through Claude Code's permission flow; `"allow"` = approve them |
-| `hook.max_wait` | `"5m"` | `--max-wait` added to rewritten commands (and to the Bash tool timeout) |
+| `hook.max_wait` | `"5m"` | `--max-wait` added to rewritten commands (and to the Bash tool timeout, up to Claude Code's cap); at least `"1s"`, whole seconds rounded up |
 | `hook.binary` | `""` | how rewritten commands call heavyq (default `heavyq` if on PATH, else the absolute path): a command name on PATH or an absolute path, no arguments; a leading `~/` is your home |
 | `hook.default_rules` | `true` | apply the built-in rules after yours |
 | `hook.rule.match` | required | word prefixes, e.g. `["bun test", "deno task check"]` |
