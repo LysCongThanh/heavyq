@@ -14,9 +14,10 @@ prio = 3
 
 # The gate of the fast CI tier (every pull request, `heavyq gate run fast`): the same commands without the race
 # detector, and the end-to-end tests drive a heavyq binary built without it (HEAVYQ_TEST_NORACE=1), which takes
-# the suite from about 9 minutes to under 3. The two latency budgets are timing tests that only mean something on
-# a quiet machine: CI runs them alone in an earlier step, so the parallel packages here skip them. `ready` stays
-# the full proof; CI runs it on main and nightly.
+# the suite from about 9 minutes to under 3. The latency budgets (hook path, ledger tail, flow-state read) are timing
+# tests that only mean something on a quiet machine: CI runs them alone in an earlier step, so the parallel packages
+# here skip them, and they skip themselves under -race. A drift test (internal/history/historytest) fails when a test
+# this skip pattern hides is missing from that step. `ready` stays the full proof; CI runs it on main and nightly.
 [[gate]]
 name = "fast"
 run  = [

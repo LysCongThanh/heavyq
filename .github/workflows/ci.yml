@@ -46,7 +46,7 @@ jobs:
           PR: ${{ github.event.pull_request.number }}
         run: .github/scripts/ci-plan.sh
 
-  # REQUIRED. gofmt, vet, build, the ledger latency gate, then every unit and end-to-end test (real processes,
+  # REQUIRED. gofmt, vet, build, the hot-path latency gate, then every unit and end-to-end test (real processes,
   # real locks, an sh -c "remote") without -race: the gate "fast" in heavyq.toml, run through the binary just
   # built. The same suite under -race runs in ci-full.yml (gate "ready"). It decides for itself whether the pull
   # request is documentation only, so it never waits for another job and always reports.
@@ -72,11 +72,13 @@ jobs:
           go-version: stable
       - if: steps.plan.outputs.go == 'true'
         run: go build -o heavyq .
-      # Latency gate for hooks: on a generated 100,000-record ledger, the tail read of 2,000 records and the
-      # hook path through the ledger index must stay inside their budgets (skipped under -race, so run here).
-      - name: ledger latency (tail reader, hook path under 20 ms)
+      # Latency gate for hot paths: on a generated 100,000-record ledger, the tail read of 2,000 records and the
+      # hook path through the ledger index, and the flow-state read behind the status line, top and the brief, must
+      # stay inside their budgets (skipped under -race and by gate fast, so run here; a drift test in
+      # internal/history/historytest keeps this list in step with the tests the fast gate skips).
+      - name: hot-path latency (tail reader, hook path under 20 ms, flow-state read under 5 ms)
         if: steps.plan.outputs.go == 'true'
-        run: go test -count=1 -run 'Latency|HookPathUnder20ms' ./internal/history ./internal/ledgerindex
+        run: go test -count=1 -run 'Latency|HookPathUnder20ms' ./internal/history ./internal/ledgerindex ./internal/flowstate
       - name: gate fast (heavyq gate run fast)
         if: steps.plan.outputs.go == 'true'
         run: ./heavyq gate run fast

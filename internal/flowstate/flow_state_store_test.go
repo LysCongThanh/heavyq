@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/LysCongThanh/heavyq/internal/flow"
+	"github.com/LysCongThanh/heavyq/internal/history/historytest"
 )
 
 var base = time.Date(2026, 11, 2, 10, 0, 0, 0, time.UTC)
@@ -174,8 +175,12 @@ func TestReadRefusesACorruptFileInsteadOfGuessing(t *testing.T) {
 }
 
 // Readers are on hot paths (the status line, top, the brief): reading a realistic state, 40 lanes and 25 needs-you
-// entries, must take far under 5 ms.
+// entries, must take far under 5 ms. A timing test: the fast gate skips it and CI runs it alone (ci.yml, the latency
+// step); skipped under -short and the race detector, which make timings meaningless.
 func TestReaderLatencyUnderFiveMilliseconds(t *testing.T) {
+	if testing.Short() || historytest.RaceEnabled {
+		t.Skip("timing test: needs a full run without -race")
+	}
 	c := &clock{t: base}
 	s := Store{Common: t.TempDir(), Now: c.now}
 	snap := flow.Build(flow.Input{Now: base, Repo: "/r"})
