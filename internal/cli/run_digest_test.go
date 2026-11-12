@@ -38,7 +38,8 @@ func digestRun(t *testing.T, mode agentmode.Mode, argv ...string) (*run, *bytes.
 	t.Helper()
 	t.Setenv("HEAVYQ_HISTORY", filepath.Join(t.TempDir(), "history.jsonl")) // logs go next to it
 	var buf bytes.Buffer
-	r := &run{opts: runOptions{Argv: argv}, stderr: &buf, t0: time.Now().Add(-3 * time.Second),
+	// pl: a run always has a placement; a failure on a remote reads it for the base-ref hint (baseRefNext).
+	r := &run{opts: runOptions{Argv: argv}, stderr: &buf, t0: time.Now().Add(-3 * time.Second), pl: &placement{},
 		me: &queue.Ticket{Cmd: queue.TruncateCmd(argv), Lane: "wt-a", Prio: 3}}
 	r.out = newRunOutput(mode, false, &buf, r.t0, "wt-a")
 	return r, &buf
