@@ -136,6 +136,9 @@ func printLocal(w io.Writer, cfg *config.Config, snap queue.Snapshot) {
 }
 
 func printRemote(w io.Writer, cfg *config.Config, m config.MachineConfig, snap queue.Snapshot, probes *probeCache) {
+	if note := untrustedNote(m); note != "" {
+		defer fmt.Fprintf(w, "  %-10s %s (runs there prove nothing)\n", "", note)
+	}
 	res, ok := probes.get(m.Name)
 	if !ok {
 		fmt.Fprintf(w, "  %-10s unreachable via %s\n", m.Name, strings.Join(m.Transport, " "))

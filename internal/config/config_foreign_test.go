@@ -44,6 +44,7 @@ func TestObserveOnlyRefusesRunKeys(t *testing.T) {
 	for key, line := range map[string]string{
 		"heavy_slots": "heavy_slots = 2", "light_slots": "light_slots = 1", "git_url": `git_url = "x:y"`,
 		"cache_hook": `cache_hook = "true"`, "env_path": `env_path = "~/bin"`, "job_mb": "job_mb = 10",
+		"allow_untrusted_exit": "allow_untrusted_exit = true",
 	} {
 		_, err := Load(writeConfig(t, "[[remote]]\nname = \"watch\"\nssh = \"watch\"\nobserve_only = true\n"+line+"\n"), true)
 		if err == nil || !strings.Contains(err.Error(), key) {

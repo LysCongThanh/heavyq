@@ -258,6 +258,39 @@ This machine is not checked: a local run uses your own PATH, where a missing com
 
 Remote requirements: `bash`, `git`, `base64`, `awk`, and either Linux with `flock` and `setsid` (util-linux) or
 macOS (below). Nothing is installed. Everything lives under `work_dir` (default `.heavyq`, relative to the remote home; a leading `~/` means the same).
+A program named `setsid` that is not util-linux's (its `--version` does not say so) is never used: the job script
+takes the Perl path instead, or refuses with "need util-linux setsid or perl" when there is no Perl.
+
+## The exit canary: a remote that loses exit codes proves nothing
+
+A remote whose job path does not hand back the command's exit code would turn every failure into a pass. That
+happened: a wrapper named `setsid`, first on a remote's non-login PATH, forked and exited 0, so every run there
+"passed" (`false` included) and its worktree was removed while the real command still ran. So before a remote
+may prove anything, heavyq checks it:
+
+- **What.** Right before a run, on the run's own commit and slot, heavyq runs the canary `exit 3` through the
+  same job script, PATH, `env_path` and process-group isolation as the run. The machine is trusted when the job
+  returns exactly 3 *and* a file the canary writes just before it exits is there once the job has returned (so
+  the job really waited for its command).
+- **Cached.** The answer is kept per machine in the state directory (`$XDG_STATE_HOME/heavyq/exit-canary/`,
+  beside the ledger), keyed by the job script heavyq ships, the transport, `work_dir` and `env_path`: a new
+  heavyq or a changed setup asks again. A pass holds for 24 hours, a failure for one hour, after which the
+  next run checks again, so a fixed remote is trusted again on its own (delete the machine's file there to check
+  at once). A canary that cannot run at all (unreachable, slot busy, commit missing) gives no verdict, and the
+  run ends with exit 77 like any other failed remote preparation.
+- **When a remote fails it.** A proof (a gate, `item done --run`, `--cache`, `--strict`) is refused there with
+  exit 77 and `heavyq: exit codes not trustworthy on <machine>: <why>; the command did not run ...`; nothing is
+  recorded as proof. Any other run is refused the same way unless the remote sets `allow_untrusted_exit = true`:
+  then it runs, says so, and its ledger line is `result: "suspect"`, which never proves a gate or an item.
+- **Seen.** `heavyq why`, `heavyq status` (and the dashboard and `status --json`, field `exit_untrusted` of the
+  machine) and `heavyq doctor` say `exit codes not trustworthy on <machine>` while the last verdict is a failure.
+
+```toml
+[[remote]]
+name = "old-box"
+ssh = "old-box"
+allow_untrusted_exit = true   # still run plain commands there; they prove nothing
+```
 
 ## A spare Mac as a remote
 
@@ -283,7 +316,7 @@ How each Linux-only piece is replaced:
 | Needed | Linux | macOS |
 | --- | --- | --- |
 | Slot lock | `flock -w 5` | Perl `flock()`: the same `flock(2)` on the same lock file, so a held slot looks busy to the probe and to the next job exactly as on Linux, and the kernel drops it when the job dies. A mkdir lock with a pid file would need stale-lock recovery; this does not. |
-| Own process group | `setsid` | Perl `POSIX::setsid()` then `exec bash -c`: same pid, so the whole group is still stopped on teardown. |
+| Own process group | util-linux `setsid` | Perl `POSIX::setsid()` then `exec bash -c`: same pid, so the whole group is still stopped on teardown. |
 | Teardown on lost connection | stdin lifeline | unchanged: EOF on stdin stops the group and removes the worktree. |
 | Probe metrics | `/proc/meminfo`, `/proc/loadavg` | `sysctl` and `vm_stat`, parsed by the same code and formulas as the local macOS sampler (available = free + inactive + purgeable + speculative pages, capped at installed RAM). |
 

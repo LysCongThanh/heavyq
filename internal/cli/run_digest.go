@@ -79,9 +79,13 @@ func (r *run) digestRan(rc int, machine string, co gitutil.Checkout, ran, waited
 	case r.interrupted:
 		res.Verdict, res.Why = agentmode.Interrupted, fmt.Sprintf("stopped by signal %d", rc-128)
 		res.Next = "run it again if you still need the result"
+	case rc == ExitRemoteSetup && r.distrust != "":
+		res.Verdict, res.Why, res.Next = agentmode.NotRun, r.distrust+"; the command did not run", nextUntrusted
 	case rc == ExitRemoteSetup:
 		res.Verdict, res.Why = agentmode.NotRun, "remote setup on "+machine+" failed; the command did not run"
 		res.Next = nextRemoteDown
+	case r.distrust != "":
+		res.Verdict, res.Why, res.Next = agentmode.Suspect, r.distrust+"; this result proves nothing", nextUntrusted
 	case r.suspect != "":
 		res.Why, res.Next = r.suspectWhy(rc != 0), nextSuspect
 		if rc != 0 { // strict: it is a proof, so a failure

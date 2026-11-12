@@ -464,6 +464,11 @@
               "required": [
                 "work_dir"
               ]
+            },
+            {
+              "required": [
+                "allow_untrusted_exit"
+              ]
             }
           ]
         }
@@ -547,6 +552,10 @@
         "observe_only": {
           "type": "boolean",
           "description": "ObserveOnly: heavyq never runs anything there; `heavyq fleet` only probes it (load, RAM, processes,\nforeign slots). Such a remote takes only name and ssh (or transport)."
+        },
+        "allow_untrusted_exit": {
+          "type": "boolean",
+          "description": "when the exit canary finds this remote loses exit codes, commands that prove nothing still run there\n(recorded as suspect); proofs (gates, item proofs, --cache, --strict) are refused anyway"
         }
       },
       "additionalProperties": false,

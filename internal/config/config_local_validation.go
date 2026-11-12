@@ -57,7 +57,8 @@ func (m *MachineConfig) refuseRemoteOnlyKeys() error {
 		{"git_url", m.GitURL != ""},
 		{"cache_hook", m.CacheHook != ""},
 		{"env_path", m.EnvPath != ""},
-		{"observe_only", m.ObserveOnly}, // [local] is the machine heavyq runs on
+		{"observe_only", m.ObserveOnly},                // [local] is the machine heavyq runs on
+		{"allow_untrusted_exit", m.AllowUntrustedExit}, // the exit canary checks remotes only
 	} {
 		if k.set {
 			return fmt.Errorf("%s is only valid in [[remote]]", k.key)

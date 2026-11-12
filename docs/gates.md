@@ -162,7 +162,10 @@ is a run of the command when all of these hold:
   `sh -c '<command>'` (under pipefail, see above) from the repository root, with the same values of the `cache.env` variables and the
   same base ref;
 - it ran to its end: runs that gave up, were cancelled or were interrupted are inconclusive and neither prove
-  nor fail anything. Exit 0 passes; any other exit code is a failure. A `--cache` hit or a run that reused an
+  nor fail anything. Exit 0 passes; any other exit code is a failure. A run on a remote must also have passed
+  that remote's exit canary: a remote that loses exit codes is refused for proofs, and a plain run allowed there
+  (`allow_untrusted_exit`) is recorded as suspect, which proves nothing (see
+  [the exit canary](remote.md#the-exit-canary-a-remote-that-loses-exit-codes-proves-nothing)). A `--cache` hit or a run that reused an
   identical in-flight run counts, because the ledger only gives those the tree they proved.
 
 ### What the tree id ignores

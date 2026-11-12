@@ -63,6 +63,9 @@ type run struct {
 	// waits for it (run_wait_round_guards.go).
 	inRound   sync.Mutex
 	stopAsked atomic.Bool
+	// distrust is set when the remote the run went to failed the exit canary (run_exit_canary.go): its
+	// exit code proves nothing.
+	distrust string
 }
 
 func runCommand(cfg *config.Config, args []string, stderr io.Writer) int {

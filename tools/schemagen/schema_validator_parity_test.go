@@ -71,6 +71,8 @@ func TestUserConfigSchemaRefusesWhatTheLoaderRefuses(t *testing.T) {
 		"local observe_only":         "[local]\nobserve_only = true\n",
 		"observe-only with slots":    "[[remote]]\nname = \"watch\"\nssh = \"watch\"\nobserve_only = true\nheavy_slots = 2\n",
 		"observe-only with git_url":  "[[remote]]\nname = \"watch\"\nssh = \"watch\"\nobserve_only = true\ngit_url = \"watch:x\"\n",
+		"local untrusted exit":       "[local]\nallow_untrusted_exit = true\n",
+		"observe-only untrusted":     "[[remote]]\nname = \"watch\"\nssh = \"watch\"\nobserve_only = true\nallow_untrusted_exit = true\n",
 	} {
 		if err := loadConfig(t, doc); err == nil {
 			t.Errorf("%s: heavyq accepts it; this case belongs in the valid list", name)
@@ -98,6 +100,7 @@ func TestUserConfigSchemaRefusesWhatTheLoaderRefuses(t *testing.T) {
 		"transport and git_url":  "[[remote]]\nname = \"box\"\ntransport = [\"ssh\", \"box\"]\ngit_url = \"box:.heavyq/git\"\n",
 		"user at host alias":     "[[remote]]\nname = \"box.2\"\nssh = \"me@box-2\"\nwork_dir = \"cache/heavyq\"\nenv_path = \"~/go/bin:/usr/local/bin\"\n",
 		"legacy locks locally":   "[local]\nlegacy_lock_files = [\"/tmp/build-1.lock\"]\n",
+		"untrusted exit allowed": box + "allow_untrusted_exit = true\n",
 		"need_gh repos":          "[run]\nneed_gh_repos = [\"app\", \"infra.tools\"]\n",
 		"list target for proofs": box + "[[remote]]\nname = \"spare\"\nssh = \"spare\"\n[proof]\nremote = \"box,local,spare\"\n",
 		"examples/config.toml":   readFile(t, "examples/config.toml"),

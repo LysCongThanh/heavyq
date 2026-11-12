@@ -50,6 +50,8 @@ func (r *run) execute(c *claim) int {
 		rec.Result = history.OutcomeSuspect // exit 0 (127 under --strict), but the shell lost a command: no proof
 	case rc == ExitRemoteSetup || rc == 126 || rc == 127:
 		rec.Result = history.OutcomeGaveUp // the command never started
+	case r.distrust != "":
+		rec.Result = history.OutcomeSuspect // the remote loses exit codes (allow_untrusted_exit): no proof
 	}
 	if r.cache != nil {
 		rec.Cache, rec.CacheNote = r.cache.status, r.cache.note
@@ -129,6 +131,9 @@ func (r *run) runRemote(c *claim) int {
 		}
 	}
 	sibs := siblingIDs(r.pl.siblings)
+	if rc := r.checkExitTrust(m, name, c.slot, timeout); rc != 0 {
+		return rc
+	}
 	select {
 	case s := <-r.sigs:
 		return signalExit(s)

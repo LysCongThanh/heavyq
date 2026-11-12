@@ -69,6 +69,9 @@ type Machine struct {
 	Slots        []Slot  `json:"slots"`
 	// Admits is "" when a heavy job could start here now, else why not.
 	Admits string `json:"admits"`
+	// ExitUntrusted is why the exit canary found that this remote loses exit codes, "" when it did not (or
+	// never ran). Runs there prove nothing until the canary passes again (docs/remote.md).
+	ExitUntrusted string `json:"exit_untrusted,omitempty"`
 }
 
 // Slot states.

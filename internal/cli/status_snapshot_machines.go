@@ -23,7 +23,7 @@ func machineSnapshot(cfg *config.Config, m config.MachineConfig, qs queue.Snapsh
 		Name: m.Name, Reachable: v.state.Reachable, Paused: controlBox().Paused(m.Name),
 		MetricsKnown: met.Known, Cores: met.Cores, Load1: met.Load1, FreeMB: met.FreeMB, TotalMB: met.TotalMB,
 		ReservedMB: v.state.ReservedMB, JobMB: m.JobMB, LightMB: m.LightMB, ReserveMB: m.ReserveMB,
-		Slots: []snapshot.Slot{},
+		Slots: []snapshot.Slot{}, ExitUntrusted: untrustedReason(m),
 	}
 	if met.Known {
 		out.MaxLoad = m.MaxLoadRatio * float64(met.Cores)
