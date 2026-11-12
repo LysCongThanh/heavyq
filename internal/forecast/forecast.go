@@ -98,14 +98,14 @@ func Compute(in Input) Result {
 		return Result{Status: OnTrack, Confidence: conf, Done: true, ETA: in.Now}
 	}
 	if in.N < MinSamples {
-		return Result{Status: Unknown, Confidence: conf, Reason: fmt.Sprintf("%d of %d proofs measured", max(in.N, 0), MinSamples)}
+		return Result{Status: Unknown, Confidence: conf, Reason: fmt.Sprintf("%d of %d finishes measured", max(in.N, 0), MinSamples)}
 	}
 	per, lanes := in.P50, max(in.Running, 1)
 	if per <= 0 && in.PerHour >= minPerHour {
 		per, lanes = time.Duration(float64(time.Hour)/in.PerHour), 1
 	}
 	if per <= 0 {
-		return Result{Status: Unknown, Confidence: conf, Reason: fmt.Sprintf("%d proofs counted, no rate measured yet", in.N)}
+		return Result{Status: Unknown, Confidence: conf, Reason: fmt.Sprintf("%d finishes counted, no rate measured yet", in.N)}
 	}
 	left := time.Duration(int64(in.Remaining) * int64(per) / int64(lanes))
 	res := Result{Status: OnTrack, Confidence: conf, Left: left, ETA: in.Now.Add(left)}

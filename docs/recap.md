@@ -9,7 +9,7 @@ heavyq recap [--since 2h] [--session S] [--run ID] [--json] [--verbose] [--ascii
 ```
 
 ```
-◆ 5/10 proven  ✓ on track · ~16:30 (medium confidence, 9 proofs)  ▲ CI wait  ⚑ 2 needs you
+◆ 5/10 proven  ✓ on track · ~16:30 (medium confidence, 9 finishes)  ▲ CI wait  ⚑ 2 needs you
 next: heavyq item claim doc-7   (doc-7  needs: a Stripe test key)
 
 merged into main (2)
@@ -56,7 +56,7 @@ Empty buckets are left out; every line ends with the command that acts on it.
 | merged into main | proven in the window, and the proven commit is reachable from the default branch | `git show --stat <commit>`, or `heavyq item done <id>` if the box is not ticked |
 | proven, not on main | proven in the window, the commit is not on the default branch | `heavyq item done <id>` (ticks the box), then merge |
 | claimed, unproven | ticked, and nothing ever proved it: no proof declared, it never ran, or it fails now | `heavyq item done <id> --run` |
-| done · stale | ticked, and its proof passed on older code: the code changed since (any commit does it, a docs-only one too), so it needs one more proof run, not starting over | `heavyq item done <id> --run` |
+| done · stale | ticked, and its proof passed on older code: the code changed since (any commit does it, a docs-only one too, unless the gate declares [`paths`](gates.md#a-gate-with-paths)), so it needs one more proof run, not starting over | `heavyq item done <id> --run` |
 | blocked | an item blocked on a need, and what the flow state says waits for you (a permission prompt has no item) | `heavyq item claim <id>` once answered; `heavyq top` for a prompt |
 | wasted | the same failing run repeated, with the count and the time it cost | `heavyq why <lane>` |
 | in flight | items a lane holds, and until when the lease runs | `heavyq item done <id> --run` |

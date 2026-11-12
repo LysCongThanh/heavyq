@@ -36,7 +36,7 @@ func TestCompute(t *testing.T) {
 		{"exactly 2x p50 is not yet a stall", Input{Now: t0, Remaining: 1, Running: 1, N: 9, P50: 30 * min,
 			LastProof: t0.Add(-60 * min)}, OnTrack, ConfMedium, 30 * min, false, ""},
 		{"unknown last proof switches the stall check off", Input{Now: t0, Remaining: 1, Running: 1, N: 9, P50: 30 * min}, OnTrack, ConfMedium, 30 * min, false, ""},
-		{"zero p50 and no rate cannot forecast", Input{Now: t0, Remaining: 2, N: 9}, Unknown, ConfMedium, 0, false, "9 proofs counted, no rate measured"},
+		{"zero p50 and no rate cannot forecast", Input{Now: t0, Remaining: 2, N: 9}, Unknown, ConfMedium, 0, false, "9 finishes counted, no rate measured"},
 		{"no p50 but a rate: remaining over the fleet rate, lanes not divided again", Input{Now: t0, Remaining: 3, Running: 3, N: 9, PerHour: 3}, OnTrack, ConfMedium, 60 * min, false, ""},
 		{"the p50 wins over the rate", Input{Now: t0, Remaining: 2, Running: 1, N: 9, P50: 30 * min, PerHour: 1}, OnTrack, ConfMedium, 60 * min, false, ""},
 		{"a rate below the floor is no rate", Input{Now: t0, Remaining: 2, N: 9, PerHour: 0.001}, Unknown, ConfMedium, 0, false, "no rate measured"},

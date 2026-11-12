@@ -68,7 +68,7 @@ Nothing is written in a repository where heavyq has no flow state.
 `ETA = now + remaining items × the recent p50 claim-to-proof ÷ running lanes` (at least one lane), from the flow
 state's `throughput` (the same numbers `heavyq recap` shows). When no item was ever claimed and then proven there is
 no p50 (proofs by a lead who never claimed): the measured rate stands in, `ETA = now + remaining items ÷
-proven_per_hour`, and the rate already counts the lanes. It is `unknown` (nothing is shown) until three proofs have
+proven_per_hour`, and the rate already counts the lanes. It is `unknown` (nothing is shown) until three finishes have
 been counted (every finished item counts, claimed or not: see [flow.md](flow.md#the-aggregates)) and, without a p50,
 a rate has been measured (at least a minute of active time). It is `at risk` when
 
@@ -76,7 +76,7 @@ a rate has been measured (at least a minute of active time). It is `at risk` whe
 - nothing has been proven for over twice the p50 (twice the typical gap, 1 ÷ the rate, without a p50) while lanes
   are working (needs `throughput.last_proof` in the state; the recap derives it from the items instead).
 
-Otherwise it is `on track`. Confidence is labelled by the number of proofs: 3 to 5 low, 6 to 11 medium, 12 or more
+Otherwise it is `on track`. Confidence is labelled by the number of finishes: 3 to 5 low, 6 to 11 medium, 12 or more
 high (`heavyq recap` prints it). The code is `internal/forecast`, a pure function with a table test.
 
 ## Notifications

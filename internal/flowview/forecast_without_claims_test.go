@@ -25,7 +25,7 @@ func TestForecastFromThroughputWhenThereIsNoClaimMedian(t *testing.T) {
 	if f := Forecast(readSample(t, stalled), now); f.Status != forecast.AtRisk || !strings.Contains(f.Reason, "no proof for") {
 		t.Errorf("50 minutes without a proof at 3 an hour: %+v", f)
 	}
-	// Enough proofs but no measured rate (no active time) is unknown, and does not claim "9 of 3 proofs measured".
+	// Enough proofs but no measured rate (no active time) is unknown, and does not claim "9 of 3 finishes measured".
 	none := strings.Replace(body, `"proven_per_hour":3`, `"proven_per_hour":0`, 1)
 	f = Forecast(readSample(t, none), now)
 	if f.Status != forecast.Unknown || strings.Contains(f.Reason, "9 of 3") {

@@ -81,7 +81,7 @@ func forecastText(r Recap, th statusline.Theme) string {
 	f, dot := r.Forecast, " "+statusline.Pick(th, statusline.GlyphDot)+" "
 	conf := ""
 	if f.Confidence != "none" {
-		conf = fmt.Sprintf(" (%s confidence, %d proofs)", f.Confidence, f.Samples)
+		conf = fmt.Sprintf(" (%s confidence, %d finishes)", f.Confidence, f.Samples)
 	}
 	switch {
 	case f.Done:

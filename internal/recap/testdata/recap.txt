@@ -1,4 +1,4 @@
-◆ 5/10 proven  ✓ on track · ~16:30 (medium confidence, 9 proofs)  ▲ CI wait  ⚑ 2 needs you
+◆ 5/10 proven  ✓ on track · ~16:30 (medium confidence, 9 finishes)  ▲ CI wait  ⚑ 2 needs you
 next: heavyq item claim doc-7   (doc-7  needs: a Stripe test key)
 
 merged into main (2)
