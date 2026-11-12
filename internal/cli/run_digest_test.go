@@ -78,6 +78,8 @@ func TestDigestRanClassification(t *testing.T) {
 			want: []string{"heavyq: NOT RUN", "exit codes not trustworthy on box"}, next: "next: " + nextUntrusted},
 		{name: "ran on a remote that loses exit codes", rc: 0, machine: "box", distrust: "exit codes not trustworthy on box: x",
 			want: []string{"PASS?", "proves nothing"}, next: "next: " + nextUntrusted},
+		{name: "connection lost on a remote that loses exit codes", rc: ExitConnLost, machine: "box", distrust: "exit codes not trustworthy on box: x",
+			want: []string{"heavyq: INTERRUPTED", "connection to box was lost"}, next: "next: the connection to box was lost; retry, or add --remote local"},
 		{name: "a command's own 77 is its failure", rc: ExitRemoteSetup, machine: "box", want: []string{"heavyq: FAIL", "exit 77"},
 			next: "next: fix the failure above, then re-run this command"},
 		{name: "77 locally is the command's own failure", rc: ExitRemoteSetup, machine: "local", want: []string{"heavyq: FAIL", "exit 77"},
