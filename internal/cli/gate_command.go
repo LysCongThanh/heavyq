@@ -160,7 +160,7 @@ func subjectOfWith(cfg *config.Config, root string, sibs []string) proof.Subject
 	s := proof.Subject{Repo: co.Repo, Tree: co.Tree, Commit: co.Commit, Dirty: co.Dirty,
 		EnvFree: len(cfg.Cache.Env) == 0}
 	if co.Tree != "" {
-		baseSHA := runident.BaseSHA(root, cfg.Queue.BaseRef)
+		baseSHA := runident.BaseSHA(root, effectiveBaseRef(root, cfg.Queue.BaseRef))
 		s.RunID = func(argv []string) string {
 			return runident.ID(runident.Input{Tree: co.Tree, Argv: argv, EnvNames: cfg.Cache.Env,
 				Getenv: os.LookupEnv, BaseSHA: baseSHA, Siblings: sibs})

@@ -50,6 +50,7 @@ func preparePlacement(cfg *config.Config, o *runOptions, stderr io.Writer) (*pla
 	if err != nil {
 		return nil, err
 	}
+	o.BaseRef = effectiveBaseRef(mainRepo, o.BaseRef)
 	if err := o.pinToThisMachineForGH(cfg, mainRepo, stderr); err != nil {
 		return nil, err
 	}

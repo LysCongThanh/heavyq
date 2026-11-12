@@ -107,8 +107,8 @@ func (c *Config) normalize() error {
 	if q.LoadWeightMB <= 0 {
 		q.LoadWeightMB = defaultLoadWeightMB
 	}
-	if q.BaseRef != "" && !validBaseRef(q.BaseRef) {
-		return fmt.Errorf("queue.base_ref %q must look like remote/branch", q.BaseRef)
+	if q.BaseRef != "" && q.BaseRef != BaseRefNone && !validBaseRef(q.BaseRef) {
+		return fmt.Errorf("queue.base_ref %q must look like remote/branch (e.g. origin/main) or %q", q.BaseRef, BaseRefNone)
 	}
 
 	c.Local.Name = LocalName

@@ -7,7 +7,8 @@ heavyq 4 --cache -- npm test
 ```
 
 - **Key.** sha256 of the run id (the HEAD tree, the exact argv, the cwd relative to the repo root, the values
-  of the variables listed in `cache.env` and the `--base-ref` commit, if any; the same id the ledger records
+  of the variables listed in `cache.env` and the base ref commit, if any (`--base-ref`, `queue.base_ref`, else
+  origin's default branch; `--base-ref none` for none: a `git fetch` that moves it is a miss); the same id the ledger records
   as `run_id`) and the heavyq version. A new commit
   with the same tree (an empty commit, a rebase that changes nothing) still hits.
 - **Only clean trees.** If anything tracked is modified, or any untracked file isn't ignored, the run

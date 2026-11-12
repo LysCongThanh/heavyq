@@ -27,7 +27,9 @@ heavyq 3 --remote local -- npm test           # never leave this machine
 heavyq 3 --remote fast,local,buildbox -- npm test   # the first of these with room, in this order
 heavyq item done login-api --run --remote auto   # a proof placed like any other run; or set [proof] remote once
 heavyq 3 --needs-ram -- npm run e2e           # place by free RAM only
-heavyq 3 --remote buildbox --base-ref origin/main -- npm run lint:changed   # recreate origin/main there
+heavyq 3 --remote buildbox -- npm run lint:changed                          # origin's default branch (origin/main) is there too
+heavyq 3 --remote buildbox --base-ref origin/develop -- npm run lint:changed   # another base ref instead
+heavyq 3 --remote buildbox --base-ref none -- npm test                      # no base ref at all
 heavyq 3 --remote buildbox --with ../shared-lib@v2.1.0 -- npm test          # sibling repo pinned to a commit
 ```
 
@@ -52,6 +54,16 @@ What a remote run sees, and what it doesn't:
   `init.templateDir` that carries hooks) do not run in it either: not on the receiving side of the push, not in
   the `git worktree add` of the job. A hook that declines or prints can therefore neither fail a ship (exit
   77) nor add lines to a run's output.
+- **The base ref travels too.** A command that diffs against `origin/main` (`git diff origin/main...`, a lint of
+  the changed files) needs that ref, and a remote worktree has no remote called origin. So unless you say
+  otherwise, heavyq recreates `refs/remotes/<base ref>` there, pointing at the same commit as here: the base ref
+  is, in order, `--base-ref`, `queue.base_ref`, or origin's default branch (`refs/remotes/origin/HEAD`, else
+  `origin/main`) when this repository has one. `--base-ref none` (or `queue.base_ref = "none"`) ships none. The
+  commit is part of the [run id](gates.md#run-identity), so a cached result or a proof never outlives the base it
+  saw, and a run here and a run there have the same id. A ref this repository does not have is skipped with a
+  note, not an error. If a command still fails on a remote saying `origin/<branch>` is missing, the agent
+  digest ends with `next: the remote has no origin/<branch>; re-run with --base-ref origin/<branch>` (for a gate
+  command: set `queue.base_ref`), when this repository has that ref.
 - **Environment variables don't travel.** `FOO=1 heavyq ... -- npm test` sets `FOO` only locally. Put them
   inside the command: `heavyq 3 -- env FOO=1 npm test`.
 - **The same subdirectory.** If you run from `repo/packages/web`, the command runs in `packages/web` of the

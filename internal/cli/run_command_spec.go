@@ -19,7 +19,7 @@ func init() {
 			{Long: "needs-ram", Help: "place by free RAM only (ignore load)"},
 			{Long: "repo", Value: "DIR", Path: "dir", Help: "repository to ship for remote runs (default: git root of cwd)"},
 			{Long: "ref", Value: "REF", Help: "commit to run remotely (default: HEAD)"},
-			{Long: "base-ref", Value: "R/B", Help: "also recreate refs/remotes/R/B remotely (e.g. origin/main)"},
+			{Long: "base-ref", Value: "R/B", Help: "recreate refs/remotes/R/B remotely (default: origin's default branch; \"none\" = no base ref)"},
 			{Long: "with", Value: "REPO[@REF]", Path: "dir", Help: "sibling repo next to the main one, pinned to REF (default HEAD); remote runs get ../REPO (repeatable)"},
 			{Long: "need-gh", Help: "the command uses the GitHub CLI login of this machine: run here only"},
 			{Long: "needs", Value: "POOL[:N],..", Help: "hold N values of named pools while it runs (local only)"},

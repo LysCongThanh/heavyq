@@ -110,7 +110,13 @@ func (r *run) failNext(rc int, machine string) string {
 		return "command is not executable; check its permissions, then re-run"
 	case rc == ExitConnLost && machine != config.LocalName:
 		return "the connection to " + machine + " was lost; retry, or add --remote local"
-	case r.opts.Gate != "":
+	}
+	if machine != config.LocalName {
+		if next := r.baseRefNext(); next != "" {
+			return next
+		}
+	}
+	if r.opts.Gate != "" {
 		return "fix the failure above, then run: heavyq gate run " + r.opts.Gate
 	}
 	return "fix the failure above, then re-run this command"

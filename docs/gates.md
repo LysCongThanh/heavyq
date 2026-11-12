@@ -200,7 +200,7 @@ flaky detection and the Tower's loop detection share (`internal/runident`). It i
 | exact argv | NUL-joined, before redaction and truncation (this is `cmd_hash`) |
 | subdirectory | relative to the repository root; gate commands run from the root |
 | `cache.env` | for each listed variable its value, or "unset" (set-but-empty differs from unset) |
-| base ref | the commit of `--base-ref` / `queue.base_ref`; a ref that does not resolve counts as none |
+| base ref | the commit of `--base-ref` / `queue.base_ref`, else of origin's default branch (`refs/remotes/origin/HEAD`, else `origin/main`) when the repository has one; `none`, and a ref that does not resolve, count as no base ref |
 | `--with` siblings | name and full pinned commit of each, in any order |
 
 Where the run executed (local or a remote) is not part of it, nor is the lane, the priority or the heavyq
@@ -210,8 +210,9 @@ Matching rules for a gate command, in order:
 
 1. The record has a `run_id` and so does the gate command: they match if and only if the ids are equal.
    `gate status` computes the gate's id from the tree it identified, the repository root, the `cache.env`
-   allowlist read from **its own environment**, and `queue.base_ref`: the same inputs `gate run` gives the
-   run. So `FEATURE_X=1 heavyq gate run` proves the gate only for a shell where `FEATURE_X=1`, and
+   allowlist read from **its own environment**, and the base ref (`queue.base_ref`, else origin's default
+   branch): the same inputs `gate run` gives the run. So a `git fetch` that moves `origin/main` makes a gate
+   `missing` again (a command may diff against it); `queue.base_ref = "none"` keeps proofs independent of it. So `FEATURE_X=1 heavyq gate run` proves the gate only for a shell where `FEATURE_X=1`, and
    `heavyq gate status` without it says `missing` (`ran on this tree with a different environment
    (cache.env) or base ref: run it again`).
 2. Otherwise (a record from an older heavyq without `run_id`): it matches by `cmd_hash`, or on the oldest
