@@ -1,11 +1,9 @@
 package remote
 
 import (
-	"bytes"
+	"context"
 	"fmt"
-	"os/exec"
 	"regexp"
-	"strings"
 	"time"
 
 	"github.com/LysCongThanh/heavyq/internal/config"
@@ -39,18 +37,30 @@ touch "$B/heavyq-used"
 // No hook of the local repo runs: --no-verify skips pre-push, the only hook a push to a URL calls on this
 // side. The receiving side is covered by ensureBareScript.
 func Push(m config.MachineConfig, repoPath, name, sha, ref string, timeout time.Duration) error {
+	return PushContext(context.Background(), m, repoPath, name, sha, ref, timeout)
+}
+
+// PushContext is Push that stops when ctx ends: the ensure step and git push
+// (with its ssh) run in a session of their own and are killed with it.
+//
+// Two runs that ship the same new commit to one remote at once race on its
+// ref: receive-pack creates refs/heavyq/<ref> against the value the push saw
+// advertised (none), so the slower push is refused with "reference already
+// exists" although the commit is there. One more attempt finds the ref in
+// place and has nothing to send; it also covers two runs creating the bare
+// repo at the same moment.
+func PushContext(ctx context.Context, m config.MachineConfig, repoPath, name, sha, ref string, timeout time.Duration) error {
 	if !config.SafeName.MatchString(name) || !fullSHA.MatchString(sha) {
 		return fmt.Errorf("unsafe repo name %q or sha %q", name, sha)
 	}
-	if _, err := Transport(m.Transport).Output(timeout, ensureBareScript, m.WorkDir, name); err != nil {
-		return fmt.Errorf("prepare bare repo on %s: %w", m.Name, err)
+	err := shipOnce(ctx, m, repoPath, name, sha, ref, timeout)
+	if err == nil || ctx.Err() != nil {
+		return err
 	}
-	url := strings.TrimSuffix(m.GitURL, "/") + "/" + name + ".git"
-	cmd := exec.Command("git", "-C", repoPath, "push", "-q", "--force", "--no-verify", url, sha+":refs/heavyq/"+ref)
-	var errb bytes.Buffer
-	cmd.Stderr = &errb
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("git push %s@%.12s to %s: %s", name, sha, m.Name, strings.TrimSpace(errb.String()))
+	select {
+	case <-ctx.Done():
+		return err
+	case <-time.After(shipRetryPause):
 	}
-	return nil
+	return shipOnce(ctx, m, repoPath, name, sha, ref, timeout)
 }

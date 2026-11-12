@@ -54,6 +54,7 @@ func TestDigestRanClassification(t *testing.T) {
 		cancelled bool
 		interrupt bool
 		distrust  string
+		setupFail bool     // heavyq itself could not prepare the remote
 		want      []string // substrings, in order
 		next      string   // the final line, "" = none
 	}{
@@ -70,12 +71,14 @@ func TestDigestRanClassification(t *testing.T) {
 			next: "next: the connection to box was lost; retry, or add --remote local"},
 		{name: "255 locally is just a failure", rc: ExitConnLost, machine: "local", want: []string{"FAIL"},
 			next: "next: fix the failure above, then re-run this command"},
-		{name: "remote setup", rc: ExitRemoteSetup, machine: "box", want: []string{"heavyq: NOT RUN", "remote setup on box failed"},
+		{name: "remote setup", rc: ExitRemoteSetup, machine: "box", setupFail: true, want: []string{"heavyq: NOT RUN", "remote setup on box failed"},
 			next: "next: " + nextRemoteDown},
-		{name: "refused on a remote that loses exit codes", rc: ExitRemoteSetup, machine: "box", distrust: "exit codes not trustworthy on box: x",
+		{name: "refused on a remote that loses exit codes", rc: ExitRemoteSetup, machine: "box", setupFail: true, distrust: "exit codes not trustworthy on box: x",
 			want: []string{"heavyq: NOT RUN", "exit codes not trustworthy on box"}, next: "next: " + nextUntrusted},
 		{name: "ran on a remote that loses exit codes", rc: 0, machine: "box", distrust: "exit codes not trustworthy on box: x",
 			want: []string{"PASS?", "proves nothing"}, next: "next: " + nextUntrusted},
+		{name: "a command's own 77 is its failure", rc: ExitRemoteSetup, machine: "box", want: []string{"heavyq: FAIL", "exit 77"},
+			next: "next: fix the failure above, then re-run this command"},
 		{name: "cancelled", rc: ExitCancelled, machine: "local", cancelled: true, want: []string{"heavyq: CANCELLED", "an operator cancelled it"},
 			next: "next: cancelled by operator; ask before re-running"},
 		{name: "interrupted", rc: 143, machine: "local", interrupt: true, want: []string{"heavyq: INTERRUPTED", "stopped by signal 15"},
@@ -83,7 +86,7 @@ func TestDigestRanClassification(t *testing.T) {
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			r, buf := digestRun(t, agentmode.Agent, "go", "test", "./...")
-			r.opts.Gate, r.cancelled, r.interrupted, r.distrust = c.gate, c.cancelled, c.interrupt, c.distrust
+			r.opts.Gate, r.cancelled, r.interrupted, r.distrust, r.remoteSetupFailed = c.gate, c.cancelled, c.interrupt, c.distrust, c.setupFail
 			r.digestRan(c.rc, c.machine, tree, 2*time.Second, 0)
 			got := buf.String()
 			pos := 0

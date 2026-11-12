@@ -10,6 +10,7 @@ package remote
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -66,21 +67,39 @@ func (t Transport) Command(ctx context.Context, env []string, script string, arg
 
 // Output runs script remotely with a timeout and returns stdout.
 func (t Transport) Output(timeout time.Duration, script string, args ...string) (string, error) {
-	return t.outputEnv(timeout, nil, script, args...)
+	return t.output(context.Background(), timeout, false, nil, script, args...)
 }
 
 // outputEnv is Output with env (K=V) set for the script on the remote side.
 func (t Transport) outputEnv(timeout time.Duration, env []string, script string, args ...string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	return t.output(context.Background(), timeout, false, env, script, args...)
+}
+
+// OutputContext is Output that also ends with ctx. The transport runs in a
+// session of its own (see isolate): a terminal's ^C reaches heavyq only, which
+// ends ctx and reports the signal, and the end of ctx stops the transport
+// with everything it started.
+func (t Transport) OutputContext(ctx context.Context, timeout time.Duration, script string, args ...string) (string, error) {
+	return t.output(ctx, timeout, true, nil, script, args...)
+}
+
+func (t Transport) output(parent context.Context, timeout time.Duration, own bool, env []string, script string, args ...string) (string, error) {
+	ctx, cancel := context.WithTimeout(parent, timeout)
 	defer cancel()
 	cmd, err := t.Command(ctx, env, script, args...)
 	if err != nil {
 		return "", err
 	}
 	cmd.WaitDelay = time.Second
+	if own {
+		isolate(cmd)
+	}
 	var out, errb bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &errb
 	if err := cmd.Run(); err != nil {
+		if parent.Err() != nil {
+			return "", errors.New("stopped")
+		}
 		if ctx.Err() != nil {
 			return "", fmt.Errorf("timed out after %s", timeout)
 		}

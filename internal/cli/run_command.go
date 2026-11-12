@@ -42,6 +42,9 @@ type run struct {
 	// moved: heavyq retarget moved the ticket to other machines in the last
 	// round; waitForTurn then starts its remote-down clock over (run_retarget.go).
 	moved bool
+	// remoteSetupFailed: heavyq itself returned ExitRemoteSetup (the command
+	// did not run). A command's own exit 77 leaves it false.
+	remoteSetupFailed bool
 	// tree is the local command's process tree (nil for remote runs); an
 	// operator cancel signals all of it, not just the direct child.
 	tree *processTree
