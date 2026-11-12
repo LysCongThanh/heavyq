@@ -70,7 +70,9 @@ next: fix the failure above, then re-run this command
 ![heavyq dashboard: machines, running and waiting jobs with reasons, usage outside the queue](docs/dashboard.png)
 
 `heavyq dash` is read-only; `heavyq dash --control` lets the page cancel jobs, change priorities and pause
-machines. It listens on loopback only. See [docs/dashboard.md](docs/dashboard.md).
+machines. It listens on loopback only. See [docs/dashboard.md](docs/dashboard.md). From a terminal,
+`heavyq retarget <pid> --remote WHERE` moves a waiting job to other machines without cancelling it
+([docs/remote.md](docs/remote.md#moving-a-waiting-ticket-heavyq-retarget)).
 
 ## Documentation
 

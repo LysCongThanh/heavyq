@@ -37,6 +37,9 @@ type run struct {
 	interrupted bool
 	// cancelled: an operator stopped the ticket (heavyq cancel / dashboard).
 	cancelled bool
+	// moved: heavyq retarget moved the ticket to other machines in the last
+	// round; waitForTurn then starts its remote-down clock over (run_retarget.go).
+	moved bool
 	// tree is the local command's process tree (nil for remote runs); an
 	// operator cancel signals all of it, not just the direct child.
 	tree *processTree
@@ -95,10 +98,12 @@ func runCommand(cfg *config.Config, args []string, stderr io.Writer) int {
 	// Probe remotes once before enqueuing, outside the mutex, so a hanging
 	// ssh never delays anyone else's scheduling round.
 	r.probes.refresh(cfg, pl.candidates)
+	repo, commit := pl.shipped() // what a later move to a remote (heavyq retarget) would ship
 	r.me = &queue.Ticket{
 		Pid: os.Getpid(), Start: start, Lane: o.Lane, Prio: o.Prio, Light: o.Light,
 		Target: pl.target, Candidates: pl.candidates, Since: r.t0, Cmd: queue.TruncateCmd(o.Argv), With: siblingLabels(pl.siblings),
 		ConfigSum: cfg.Origin.Sum,
+		Repo:      repo, Commit: commit,
 	}
 	if err := r.preparePools(); err != nil {
 		return usageFail(stderr, mode, err)
