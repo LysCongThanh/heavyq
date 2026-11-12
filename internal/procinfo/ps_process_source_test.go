@@ -71,33 +71,25 @@ func TestPSRunningIgnoresZombies(t *testing.T) {
 	}
 }
 
+// The busy child is charged to the lane of its ancestor (this test process), with the CPU it really
+// got: the witness is its own CPU time, read from its rusage at reap (see runBusyChild).
 func TestPSBreakdownAttributesBusyChildToItsLane(t *testing.T) {
 	p := psSource(t)
-	cmd := exec.Command("sh", "-c", "while :; do :; done")
-	if err := cmd.Start(); err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = cmd.Process.Kill(); _ = cmd.Wait() }()
-	time.Sleep(100 * time.Millisecond)
-	roots := map[int]string{os.Getpid(): "lane test"}
-	byRoot, outside := p.Breakdown(roots, 500*time.Millisecond)
-	if len(byRoot) != 1 || byRoot[0].Procs < 2 || byRoot[0].RSSMB <= 0 || len(outside) == 0 {
+	var byRoot, outside []GroupUsage
+	w := runBusyChild(t, "Breakdown", func(roots map[int]string) { byRoot, outside = p.Breakdown(roots, cpuWindow) })
+	if len(byRoot) != 1 || byRoot[0].Group != "lane test" || byRoot[0].Procs < 2 || byRoot[0].RSSMB <= 0 || len(outside) == 0 {
 		t.Fatalf("byRoot=%+v outside=%d groups", byRoot, len(outside))
 	}
 	if runtime.GOOS != "darwin" {
 		// procps prints whole seconds: a 500 ms window cannot show CPU%. macOS ps has centiseconds.
 		return
 	}
-	if byRoot[0].CPUPct < 20 {
-		t.Fatalf("busy child under-reported: %+v", byRoot[0])
-	}
-	groups := p.Attribute(roots, "outside", 500*time.Millisecond)
-	for _, g := range groups {
-		if g.Group == "lane test" && g.Percent > 20 {
-			return
-		}
-	}
-	t.Fatalf("busy child not attributed to its ancestor's lane: %+v", groups)
+	t.Run("Breakdown", func(t *testing.T) { w.check(t, byRoot[0].CPUPct) })
+	t.Run("Attribute", func(t *testing.T) {
+		var groups []GroupCPU
+		w := runBusyChild(t, "Attribute", func(roots map[int]string) { groups = p.Attribute(roots, "outside", cpuWindow) })
+		w.check(t, lanePercent(groups, "lane test"))
+	})
 }
 
 func TestPSDescendantsReachGrandchildren(t *testing.T) {

@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"syscall"
 	"testing"
@@ -36,7 +37,8 @@ func TestProbeAttributesRealProcesses(t *testing.T) {
 		}
 	}
 	// a ticket's own process with a CPU-bound child (bounded by timeout(1) should the cleanup not run; --foreground keeps it in our process group)
-	owner := exec.Command("sh", "-c", "timeout --foreground 30 sh -c 'while :; do :; done' & wait")
+	busyPid := filepath.Join(t.TempDir(), "busy.pid")
+	owner := exec.Command("sh", "-c", "timeout --foreground 30 sh -c 'echo $$ > \""+busyPid+"\"; while :; do :; done' & wait")
 	// a run that holds slot s2 the way `flock <file> cmd` does
 	holder := exec.Command("flock", filepath.Join(slots, "s2.lock"), "sleep", "30")
 	// a process working in a heavyq remote worktree
@@ -49,13 +51,24 @@ func TestProbeAttributesRealProcesses(t *testing.T) {
 		}
 		t.Cleanup(func() { _ = syscall.Kill(-c.Process.Pid, syscall.SIGKILL); _ = c.Wait() })
 	}
-	time.Sleep(300 * time.Millisecond) // let flock take the lock and the loop accumulate CPU
+	time.Sleep(300 * time.Millisecond) // let flock take the lock
+	loop := 0
+	for deadline := time.Now().Add(10 * time.Second); loop == 0; time.Sleep(20 * time.Millisecond) {
+		if time.Now().After(deadline) {
+			t.Fatal("the busy loop never published its pid")
+		}
+		if b, err := os.ReadFile(busyPid); err == nil && strings.HasSuffix(string(b), "\n") {
+			loop, _ = strconv.Atoi(strings.TrimSpace(string(b)))
+		}
+	}
 
+	busy0, owner0, t0 := statCPU(t, loop), statCPU(t, owner.Process.Pid), time.Now()
 	p, err := RunProbe(ProbeRequest{Transport: localTransport, WorkDir: work, Slots: []SlotDir{{Owner: "bashq", Dir: slots}},
 		Timeout: 20 * time.Second, TopArgs: 8})
 	if err != nil {
 		t.Fatal(err)
 	}
+	outer, busyUsed, ownerUsed := time.Since(t0), statCPU(t, loop)-busy0, statCPU(t, owner.Process.Pid)-owner0
 	if p.Cores < 1 || p.TotalMB <= 0 || p.FreeMB <= 0 || len(p.Procs) < 3 || p.WorkDir != work {
 		t.Fatalf("metrics: %+v", p)
 	}
@@ -77,7 +90,8 @@ func TestProbeAttributesRealProcesses(t *testing.T) {
 		}
 		return nil
 	}
-	if g := find("bashq", "api", "sh"); g == nil || g.Procs < 2 || g.CPUPct <= 1 {
+	api := find("bashq", "api", "sh") // the owner sh and the busy sh; timeout(1) is a group of its own
+	if api == nil || api.Procs < 2 {
 		t.Fatalf("the busy loop belongs to lane api: %+v", groups)
 	}
 	if g := find("bashq", "web", "sleep"); g == nil {
@@ -94,6 +108,8 @@ func TestProbeAttributesRealProcesses(t *testing.T) {
 			t.Fatalf("groups are sorted by CPU: %+v", groups)
 		}
 	}
+	// last: it may skip when the machine starved the loop
+	checkGroupCPU(t, api.CPUPct, time.Second, outer, busyUsed, ownerUsed)
 }
 
 // A dead or hanging machine shows as unreachable after its timeout; it never holds the report.

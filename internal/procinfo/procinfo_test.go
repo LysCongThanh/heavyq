@@ -70,23 +70,25 @@ func TestAttributeWalksAncestry(t *testing.T) {
 	}
 }
 
+// The platform's own source (/proc on Linux, ps on macOS) charges a busy child to its ancestor's lane
+// with the CPU the child really got, in both Attribute and Breakdown (see runBusyChild).
 func TestAttributeRealBusyChild(t *testing.T) {
 	if !Default.Available() {
 		t.Skip("no /proc")
 	}
-	cmd := exec.Command("sh", "-c", "while :; do :; done")
-	if err := cmd.Start(); err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = cmd.Process.Kill(); _ = cmd.Wait() }()
-	time.Sleep(100 * time.Millisecond)
-	groups := Default.Attribute(map[int]string{os.Getpid(): "lane test"}, "outside", 300*time.Millisecond)
-	for _, g := range groups {
-		if g.Group == "lane test" && g.Percent > 5 {
-			return
+	t.Run("Attribute", func(t *testing.T) {
+		var groups []GroupCPU
+		w := runBusyChild(t, "Attribute", func(roots map[int]string) { groups = Default.Attribute(roots, "outside", cpuWindow) })
+		w.check(t, lanePercent(groups, "lane test"))
+	})
+	t.Run("Breakdown", func(t *testing.T) {
+		var byRoot []GroupUsage
+		w := runBusyChild(t, "Breakdown", func(roots map[int]string) { byRoot, _ = Default.Breakdown(roots, cpuWindow) })
+		if len(byRoot) != 1 || byRoot[0].Group != "lane test" || byRoot[0].Procs < 2 {
+			t.Fatalf("the busy child belongs to its ancestor's lane: %+v", byRoot)
 		}
-	}
-	t.Fatalf("busy child not attributed to its ancestor's lane: %+v", groups)
+		w.check(t, byRoot[0].CPUPct)
+	})
 }
 
 func TestBreakdownGroupsOutsideByCommand(t *testing.T) {
