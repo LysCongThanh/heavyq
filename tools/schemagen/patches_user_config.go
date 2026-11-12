@@ -19,7 +19,7 @@ import (
 func patchUserConfig(root *jsonschema.Schema) {
 	queue := def(root, "QueueConfig")
 	baseRef := prop(queue, "base_ref")
-	baseRef.Pattern = orEmpty(config.BaseRefPattern)
+	baseRef.Pattern = `^$|^` + regexp.QuoteMeta(config.BaseRefNone) + `$|` + config.BaseRefPattern.String()
 	baseRef.Not = containing(`\.\.`)
 
 	patchHookConfig(root)

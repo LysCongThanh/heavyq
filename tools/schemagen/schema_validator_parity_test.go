@@ -75,6 +75,7 @@ func TestUserConfigSchemaRefusesWhatTheLoaderRefuses(t *testing.T) {
 		"edges":                  "[local]\nheavy_slots = 64\n[mentor]\nholdout_pct = 100\nmin_lift_pp = 0.0\n",
 		"empty lane and ref":     "[queue]\nbase_ref = \"\"\n[[hook.rule]]\nmatch = [\" bun  test \", \"make\"]\nlane = \"\"\n",
 		"base ref":               "[queue]\nbase_ref = \"origin/release/1.2\"\n",
+		"no base ref":            "[queue]\nbase_ref = \"none\"\n",
 		"binary path":            "[hook]\nbinary = \"/opt/heavy q/bin/heavyq\"\n",
 		"cache env":              "[cache]\nenv = [\"CI\", \"NODE_ENV\", \"_X1\"]\n",
 		"transport and git_url":  "[[remote]]\nname = \"box\"\ntransport = [\"ssh\", \"box\"]\ngit_url = \"box:.heavyq/git\"\n",

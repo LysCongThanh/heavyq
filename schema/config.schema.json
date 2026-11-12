@@ -357,7 +357,7 @@
             "pattern": "\\.\\."
           },
           "type": "string",
-          "pattern": "^$|^[A-Za-z0-9._-]+/[A-Za-z0-9._/-]+$",
+          "pattern": "^$|^none$|^[A-Za-z0-9._-]+/[A-Za-z0-9._/-]+$",
           "description": "BaseRef is the default --base-ref: \"\" = origin's default branch when the repository has one,\n\"none\" = no base ref at all, else remote/branch."
         }
       },
