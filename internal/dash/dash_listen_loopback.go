@@ -44,10 +44,11 @@ func (s *Server) listen(addr string, listenTCP listenFunc) (net.Listener, error)
 }
 
 // hostAllowed is the DNS-rebinding check: the Host header must name the
-// loopback listener itself.
+// loopback listener itself. On port 80 browsers send the name without the
+// port (http://127.0.0.1:80/ is http://127.0.0.1/), so the bare name passes too.
 func (s *Server) hostAllowed(host string) bool {
 	for _, name := range loopbackHostNames {
-		if host == name+":"+s.port {
+		if host == name+":"+s.port || (s.port == "80" && host == name) {
 			return true
 		}
 	}

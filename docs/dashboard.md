@@ -36,7 +36,8 @@ Open `http://127.0.0.1:PORT/#demo` from any `heavyq dash` to see the page with s
 - Listens on loopback only (`127.0.0.1`, `::1`, `localhost`); other addresses are refused. `localhost` always
   means `127.0.0.1` (it is never looked up, so a hosts file or DNS cannot move it), and a listener that is not
   bound to a loopback address is closed and refused.
-- Requests whose `Host` header is not the loopback address and port are refused (DNS rebinding).
+- Requests whose `Host` header is not the loopback address and port are refused (DNS rebinding). On port 80,
+  where browsers leave the port out, the bare `127.0.0.1`, `localhost` and `[::1]` are accepted too.
 - Requests carrying an `Origin` other than the dashboard's own are refused (cross-site requests).
 - The page is served with `default-src 'none'` and `connect-src 'self'`: it loads nothing from the network.
 - Read-only by default. State-changing endpoints answer 403 unless the server runs with `--control`.
