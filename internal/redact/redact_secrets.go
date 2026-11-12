@@ -40,8 +40,9 @@ var secretPatterns = []struct {
 	{regexp.MustCompile(`(?i)\b(authorization` + sep + `*:` + sep + `*(?:[A-Za-z][A-Za-z0-9._-]*` + sep + `+)?)[^\s'"]+`), "${1}***"},
 	// header-style values: "X-Api-Key: v", "token: v"
 	{regexp.MustCompile(`(?i)\b((?:x-)?(?:api[-_]?key|auth[-_]?token|token|secret)` + sep + `*:` + sep + `*)[^\s'"]+`), "${1}***"},
-	// Authorization values outside a header: "Bearer xxx", "Basic xxx"
-	{regexp.MustCompile(`(?i)\b(bearer|basic) [A-Za-z0-9._~+/=-]{8,}`), "${1} ***"},
+	// Authorization values outside a header: "Bearer xxx", "Basic xxx"; sep,
+	// as Argv stands NUL in for the space inside one argv element
+	{regexp.MustCompile(`(?i)\b((?:bearer|basic)` + sep + `+)[A-Za-z0-9._~+/=-]{8,}`), "${1}***"},
 	// well-known token shapes
 	{regexp.MustCompile(`\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{20,}|xox[abpr]-[A-Za-z0-9-]{10,}|AKIA[0-9A-Z]{16})\b`), "***"},
 }

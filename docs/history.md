@@ -22,10 +22,11 @@ Each run appends one JSON line. These fields say what it ran on and who asked:
 - **`cmd` is redacted** (the same form tickets, `status --json`, `why`, the dashboard and recap show). Hidden:
   `NAME=value` and `--password`/`--token`/`--secret`/`--api-key` values for secret-looking names (quoted
   values whole), `user:password@` in URLs (up to the last `@` before the host), `-u`/`--user user:password`
-  (not a numeric `uid:gid`), any `Authorization:` header value, `X-Api-Key:`-style headers, mysql `-pPASSWORD`,
-  `sshpass -p`, `docker login -p`, `set <secret-looking key> <value>` and well-known token shapes. An argv
-  element with spaces after such a key is hidden as a whole: the shell already removed its quotes. Redaction
-  is a best-effort filter, so pass secrets through the environment or files rather than the command line.
+  (not a numeric `uid:gid`), any `Authorization:` header value, `X-Api-Key:`-style headers, `Bearer`/`Basic`
+  values in any header or flag, mysql `-pPASSWORD`, `sshpass -p`, `docker login -p`, `set <secret-looking key>
+  <value>` and well-known token shapes. An argv element with spaces after such a key is hidden as a whole: the
+  shell already removed its quotes. Redaction is a best-effort filter, so pass secrets through the environment
+  or files rather than the command line.
 - **Dirty trees are identified, never cached.** `--cache` still skips them. Hashing the edits of a
   10,000-file repository takes about 35 ms (20 ms when clean).
 - **A tree that isn't certain isn't claimed.** The line keeps `commit` and `dirty` but records no `tree`

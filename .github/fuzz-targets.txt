@@ -3,7 +3,7 @@
 # A new parser that reads untrusted input gets a Fuzz target and a line here (see CONTRIBUTING.md, "Fuzzing").
 hook FuzzParse FuzzDecideRewrite FuzzDecideStdin FuzzParseInput FuzzMergeEntries
 steer FuzzClaimsDone
-redact FuzzCommand
+redact FuzzCommand FuzzArgv
 anchor FuzzParse FuzzSetChecked
 repoconfig FuzzParse
 toolcheck FuzzFromArgv

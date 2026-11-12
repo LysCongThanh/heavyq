@@ -61,6 +61,9 @@ func FuzzArgv(f *testing.F) {
 		"curl\x1f-u\x1fadmin:a b\x1f-H\x1fAuthorization: token c d",
 		"mysql\x1f-pa b\x1fsshpass\x1f-p\x1fc d",
 		"a b\x1f\x00c d",
+		"curl\x1f-H\x1fX-Upstream: Bearer abcdefghijklmnop\x1fu",
+		"myclient\x1f--auth-header\x1fBearer abcdefghijklmnop",
+		"curl\x1f-H\x1fX-Upstream: Basic dXNlcjpwYXNzd29yZA==\x1fu", // gitleaks:allow (fake test fixture)
 	} {
 		f.Add(s)
 	}

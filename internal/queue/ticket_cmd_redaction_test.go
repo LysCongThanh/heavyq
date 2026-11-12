@@ -18,6 +18,10 @@ func TestTruncateCmdHidesWholeArgvValues(t *testing.T) {
 		{[]string{"sshpass", "-p", "correct horse", "ssh", "host"}, "sshpass -p *** ssh host"},
 		{[]string{"mysql", "-pcorrect horse", "app"}, "mysql -p*** app"},
 		{[]string{"curl", "-H", "Authorization: token abc def", "u"}, "curl -H Authorization: token *** u"},
+		// a Bearer/Basic value outside an Authorization header
+		{[]string{"curl", "-H", "X-Upstream: Bearer abcdefghijklmnop", "u"}, "curl -H X-Upstream: Bearer *** u"},
+		{[]string{"myclient", "--auth-header", "Bearer abcdefghijklmnop"}, "myclient --auth-header Bearer ***"},
+		{[]string{"curl", "-H", "X-Upstream: Basic dXNlcjpwYXNzd29yZA==", "u"}, "curl -H X-Upstream: Basic *** u"}, // gitleaks:allow (fake test fixture)
 		// a shell script is shell text: only its secret value is hidden
 		{[]string{"sh", "-c", "GITHUB_TOKEN=abc123 make release"}, "sh -c GITHUB_TOKEN=*** make release"},
 		{[]string{"bash", "-lc", "PASSWORD='correct horse' ./run.sh"}, "bash -lc PASSWORD=*** ./run.sh"},
