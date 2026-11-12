@@ -2,7 +2,8 @@
   `flock`: a run stopped with Ctrl-Z (or SIGSTOP, or a debugger) inside a scheduling round kept it, and every other
   waiter blocked deaf to Ctrl-C, SIGTERM, `heavyq cancel` and `--max-wait`. Waiters now poll the lock and keep
   answering all four; a Ctrl-Z that lands in a round takes effect right after the lock is released; and pruning
-  runs outside the lock.
+  runs outside the lock. A round skipped on a busy lock still restarts the anti-starvation clock of a ticket that
+  `heavyq retarget` just moved.
 - **A waiter suspended with Ctrl-Z no longer holds back the queue.** It runs no rounds, so it never claims, yet it
   stayed head of line for every machine it could use. It now keeps its ticket and place but does not count as a
   ticket ahead; `heavyq status` marks it `[stopped ...]`.

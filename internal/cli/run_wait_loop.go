@@ -79,6 +79,11 @@ func (r *run) waitForTurn() (*claim, int) {
 // round runs one scheduling decision under the queue mutex. It gives up with
 // queue.ErrMutexBusy when another heavyq keeps the mutex, or when stopWaiting.
 func (r *run) round(headSince *time.Time) (*claim, int, int, []*queue.Ticket, error) {
+	// Before the mutex: a round that skips on a busy mutex must not keep the
+	// old machines' clock, as waitForTurn clears moved after any round.
+	if r.moved { // heavyq retarget moved it right before this round (applyRetarget)
+		*headSince = time.Time{} // the anti-starvation clock restarts on the new machines
+	}
 	// Outside the mutex: on macOS the survey runs ps, and nobody else's round waits for it.
 	owners := r.q.Prune(procinfo.Default)
 	r.inRound.Lock() // a Ctrl-Z waits until the mutex is released (catchStops)
@@ -94,9 +99,6 @@ func (r *run) round(headSince *time.Time) (*claim, int, int, []*queue.Ticket, er
 		} else {
 			fmt.Fprintf(r.stderr, "heavyq: priority changed to %d by an operator\n", p)
 		}
-	}
-	if r.moved { // heavyq retarget moved it right before this round (applyRetarget)
-		*headSince = time.Time{} // the anti-starvation clock restarts on the new machines
 	}
 	snap, err := r.q.List()
 	if err != nil {
