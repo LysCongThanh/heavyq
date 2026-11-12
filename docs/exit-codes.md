@@ -10,7 +10,10 @@
 | 77 | remote preparation failed (push, checkout, cache hook, a slot taken outside the queue, or the remote failed its [exit canary](remote.md#the-exit-canary-a-remote-that-loses-exit-codes-proves-nothing) and the run was refused there); the command did not run |
 | 78 | cancelled by an operator (`heavyq cancel` or the dashboard) |
 | 127 / 126 | command not found / not executable. Also 127 under `--strict`, in gates and in item proofs when a run exited 0 but its output has a shell "command not found" line (see below). A 127 on a remote adds a line naming the remote and its `env_path` |
-| 255 | connection to the remote lost mid-run (the remote side stops the command) |
+| 255 | connection to the remote lost mid-run (the remote side stops the command). The ledger line is `result: "interrupted"`: it neither fails nor proves a gate |
+
+On this machine every code is the command's own: a local command that exits 77, 78 or 255 itself is a failure of the
+command, not a remote or queue event.
 
 The control commands exit 2 when they refuse a request, and nothing changes then: `heavyq cancel` and `reprio` for no
 such ticket (or a running one, for `reprio`), `heavyq retarget` for a move it cannot make safely (a running ticket, an
@@ -31,7 +34,8 @@ log that only mentions "not found" does not count), heavyq does not call it a pa
   because they produce proofs: the ledger line is exit 127, `result: "suspect"`.
 
 The check sees what the command printed to a pipe or a file; a stream that is a terminal is left to the person
-reading it. A `sh -c`/`bash -c` string with a `|` also draws one warning: the exit status is the last stage's.
-Use `bash -o pipefail -c '...'` or avoid the pipe (heavyq keeps the full log).
+reading it. A `sh -c`/`bash -c` string with a `|` also draws one warning (in agent mode, a line of the digest):
+the exit status is the last stage's. Use `bash -o pipefail -c '...'` or avoid the pipe (heavyq quotes the
+failure lines and keeps the log of a failed run).
 
 `heavyq hook ...` commands are called by Claude Code, whose own contract applies: they exit 0 and print nothing on any doubt. The one exception is exit 2 from `heavyq hook claude-stop` for `TaskCompleted` and `TeammateIdle` in `destroy` mode, which is how Claude Code blocks those events (the reason is on stderr); see [steer.md](steer.md).

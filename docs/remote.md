@@ -76,20 +76,26 @@ What a remote run sees, and what it doesn't:
   keep such a run on this machine; a remote-only target is refused with exit 2.
 - **Submodules are not checked out.** Only the superproject's commit travels, so a submodule's directory is
   empty on the remote. A command that needs one: `--remote local`.
-- **Environment variables don't travel.** `FOO=1 heavyq ... -- npm test` sets `FOO` only locally. Put them
-  inside the command: `heavyq 3 -- env FOO=1 npm test`.
-- **The same subdirectory.** If you run from `repo/packages/web`, the command runs in `packages/web` of the
-  remote checkout.
+- **Environment variables don't travel,** except the `cache.env` allowlist. `FOO=1 heavyq ... -- npm test` sets
+  `FOO` only locally. Put them inside the command: `heavyq 3 -- env FOO=1 npm test`. The `cache.env` variables
+  are part of the run's identity (its run id and cache key), so the remote command gets exactly the values they
+  have here, and loses those that are unset here, whatever the remote's own environment says.
+- **The same subdirectory.** If you run from `repo/packages/web` (or pass `--repo repo/packages/web`), the command
+  runs in `packages/web` of the remote checkout. A directory that is not in the commit (an ignored `build/`)
+  cannot be used remotely: a named remote refuses with exit 2, and default placement keeps the run here.
 - **A checkout of its own.** Each run gets a temporary repository of its own that borrows the objects of the
   bare repo, so `--base-ref origin/main` is that run's `origin/main` only: a run started after a `git fetch`
   cannot move it under a run already going, and a run without `--base-ref` has no `origin/main` at all.
+- **The base it got.** The ledger records the base commit the job was given (none when it could not be pushed),
+  not the local ref as it is when the run ends.
 - **The command as you typed it.** Its first word is a command name, as it is locally: `time` is
   `/usr/bin/time`, not the shell keyword, and `FOO=1 env` is not an assignment (use `env FOO=1 ...`). The
   command line travels on the job's stdin, so an argv as long as a local one (`lint $(git ls-files)`) fits.
 - **Clean teardown.** The remote side holds a lifeline on stdin. If heavyq dies, even by SIGKILL, or the
   connection drops, the remote stops the process group of the command (or of the `cache_hook` running before
-  it), frees the slot and removes the checkout. Exit 255 means the connection was lost; a command that exits
-  255 (or 97, 98) itself is reported as 96. A job whose remote side dies without its cleanup (a reboot, a
+  it), frees the slot and removes the checkout. Exit 255 means the connection was lost: the run proves nothing
+  either way (its ledger line is `interrupted`). A command that exits 255 (or 97, 98) itself is reported as 96,
+  so 255 from a remote is never the command's. A job whose remote side dies without its cleanup (a reboot, a
   SIGKILL there) is reclaimed by the next job on that machine. The bare repo keeps refs to the 100 most
   recently committed shipped commits, which keeps later pushes small; older ones are dropped. A link that
   dies silently (a VPN drops, a NAT mapping expires, the remote loses power) sends no close to either side. The default transport sets
@@ -209,7 +215,9 @@ repository, or two `--with` land on the same name.
   that is off; `--remote auto` and default placement use the remotes only (one stderr line says why).
 - **Identity:** each sibling's name and full commit are part of the run id, so the cache and `gate status` never
   take a result for one sibling commit as a result for another. `--cache` works with `--with`. A local result is
-  not stored (and records no tree) if a sibling changed while the command ran.
+  not stored (and records no tree) if a sibling changed while the command ran. A gate's `with` sibling pinned to
+  its `HEAD` proves nothing while it has uncommitted edits next to the repository: the proof names its commit, and
+  a local run would read the edits instead, so `gate status`, `why` and item proofs say to commit them first.
 - **Placement:** with `--with`, `../<name>` in the command does not by itself keep default placement local; any other
   path outside the repository still does.
 - `heavyq status` shows `with: name@sha12` under the ticket, `heavyq history -v` under the run, and the ledger

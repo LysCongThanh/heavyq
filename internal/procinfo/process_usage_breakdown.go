@@ -75,22 +75,31 @@ func sortedUsage(m map[string]*GroupUsage) []GroupUsage {
 	return out
 }
 
-// Descendants returns the pids of every process below pid (children,
-// grandchildren, ...), parents before children. Empty without /proc.
-func (p ProcFS) Descendants(pid int) []int {
-	tree := p.snapshot()
+// Descendants returns the pids of every process below any of roots
+// (children, grandchildren, ...), parents before children, each once, from a
+// single snapshot. A root is listed only when it is below another root.
+// Empty without /proc.
+func (p ProcFS) Descendants(roots ...int) []int {
+	return descendantsIn(p.snapshot(), roots)
+}
+
+func descendantsIn(tree map[int]procSample, roots []int) []int {
 	kids := map[int][]int{}
 	for c, s := range tree {
 		kids[s.ppid] = append(kids[s.ppid], c)
 	}
 	var out []int
-	queue := []int{pid}
+	seen := map[int]bool{}
+	queue := append([]int(nil), roots...)
 	for len(queue) > 0 && len(out) < 4096 {
 		cur := queue[0]
 		queue = queue[1:]
 		for _, c := range kids[cur] {
-			out = append(out, c)
-			queue = append(queue, c)
+			if !seen[c] {
+				seen[c] = true
+				out = append(out, c)
+				queue = append(queue, c)
+			}
 		}
 	}
 	return out

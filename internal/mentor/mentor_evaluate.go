@@ -49,38 +49,85 @@ type Decision struct {
 //  4. the event is logged, whichever arm, and only then returned.
 //
 // Any error means "say nothing": the caller fails open. A nil Decision is the
-// normal answer.
+// normal answer. Evaluate is Plan then Commit; a caller under a deadline runs
+// Plan under it and Commits only when the answer came in time.
 func (s *Store) Evaluate(in Input, c Config) (*Decision, error) {
-	st := s.LoadLane(in.Lane)
-	dirty, err := s.resolvePending(st, in, c)
+	p, err := s.Plan(in, c)
 	if err != nil {
 		return nil, err
 	}
-	d, fresh, err := s.consider(st, in, c)
-	if err != nil {
+	if err := s.Commit(p, in.Now); err != nil {
 		return nil, err
 	}
-	if dirty || fresh {
-		if err := s.SaveLane(in.Lane, st); err != nil {
-			return nil, err
-		}
-	}
-	if d != nil {
-		if err := s.AppendEntry(d.Entry); err != nil {
-			return nil, err
-		}
-	}
-	return d, nil
+	return p.Decision, nil
 }
 
-// resolvePending settles the pending events of the lane that the records can
-// settle, appending the resolved entries to the log.
-func (s *Store) resolvePending(st *LaneState, in Input, c Config) (changed bool, err error) {
-	if len(st.Pending) == 0 {
-		return false, nil
+// Plan is what one call of the mentor decided, before anything is written:
+// a note that missed its deadline is never shown, so none of it may be
+// recorded either (an inject event the agent never saw would bias the lift,
+// and a record taken as looked at would never be said).
+type Plan struct {
+	Decision *Decision
+	lane     string
+	state    *LaneState
+	save     bool
+	resolved []Entry    // pending events the records settled
+	mutes    []autoMute // rules the settled events auto-mute
+}
+
+// Plan decides steps 1-3 of Evaluate without writing anything (except, once
+// ever, the seed: it is stable).
+func (s *Store) Plan(in Input, c Config) (*Plan, error) {
+	p := &Plan{lane: in.Lane, state: s.LoadLane(in.Lane)}
+	p.resolved = settlePending(p.state, in)
+	mutes := s.Mutes()
+	if len(p.resolved) > 0 && c.AutoMute.Enabled {
+		entries, err := s.ReadEntries()
+		if err != nil {
+			return nil, err
+		}
+		p.mutes = autoMutes(c.AutoMute, append(entries, p.resolved...), mutes)
+		for _, m := range p.mutes {
+			mutes[m.rule] = MuteEntry{Muted: true, By: MutedByAuto}
+		}
 	}
+	d, fresh, err := s.consider(p.state, in, c, mutes)
+	if err != nil {
+		return nil, err
+	}
+	p.Decision, p.save = d, fresh || len(p.resolved) > 0
+	return p, nil
+}
+
+// Commit writes what p decided: the settled events, the auto-mutes, the lane
+// state and the new event.
+func (s *Store) Commit(p *Plan, now time.Time) error {
+	for _, e := range p.resolved {
+		if err := s.AppendEntry(e); err != nil {
+			return err
+		}
+	}
+	for _, m := range p.mutes {
+		if err := s.SetMute(m.rule, true, MutedByAuto, m.why, now); err != nil {
+			return err
+		}
+	}
+	if p.save {
+		if err := s.SaveLane(p.lane, p.state); err != nil {
+			return err
+		}
+	}
+	if p.Decision != nil {
+		return s.AppendEntry(p.Decision.Entry)
+	}
+	return nil
+}
+
+// settlePending takes the pending events of the lane that the records settle
+// out of st and returns them, resolved.
+func settlePending(st *LaneState, in Input) []Entry {
 	var keep []Pending
-	resolved := 0
+	var resolved []Entry
 	for _, p := range st.Pending {
 		out := ResolveOutcome(p.Entry, in.Records)
 		if out == OutcomePending {
@@ -89,24 +136,16 @@ func (s *Store) resolvePending(st *LaneState, in Input, c Config) (changed bool,
 		}
 		e := p.Entry
 		e.Outcome, e.OutcomeAt = out, in.Now.UTC()
-		if err := s.AppendEntry(e); err != nil {
-			return changed, err
-		}
-		resolved++
-		changed = true
+		resolved = append(resolved, e)
 	}
 	st.Pending = keep
-	if resolved > 0 {
-		if _, err := s.EvaluateAutoMute(c.AutoMute, in.Now); err != nil {
-			return changed, err
-		}
-	}
-	return changed, nil
+	return resolved
 }
 
 // consider runs the rules on the newest record. fresh says that the state
-// moved (the record was taken as looked at), so the caller saves it.
-func (s *Store) consider(st *LaneState, in Input, c Config) (d *Decision, fresh bool, err error) {
+// moved (the record was taken as looked at), so the caller saves it. mutes is
+// the mute state to judge by (including auto-mutes not yet written).
+func (s *Store) consider(st *LaneState, in Input, c Config, mutes map[string]MuteEntry) (d *Decision, fresh bool, err error) {
 	if len(in.Records) == 0 {
 		return nil, false, nil
 	}
@@ -116,7 +155,7 @@ func (s *Store) consider(st *LaneState, in Input, c Config) (d *Decision, fresh 
 	}
 	st.LastRecord = newest.ID
 	sig, ok := DetectRepeatFailure(in.Records)
-	if !ok || sig.Event != newest.ID || s.IsMuted(sig.Rule) || !st.Admit(sig, in.Session, c.Limits) {
+	if !ok || sig.Event != newest.ID || mutes[sig.Rule].Muted || !st.Admit(sig, in.Session, c.Limits) {
 		return nil, true, nil
 	}
 	seed, err := s.Seed()
@@ -133,42 +172,4 @@ func (s *Store) consider(st *LaneState, in Input, c Config) (d *Decision, fresh 
 		d.Message = RenderMessage(sig)
 	}
 	return d, true, nil
-}
-
-// SweepPending settles pending events across every lane's records, for
-// `heavyq mentor stats`: an event whose lane has not run since would show as
-// pending for good. laneRecords returns the records of a lane (oldest first).
-// It returns how many events it settled.
-func (s *Store) SweepPending(laneRecords func(lane string) ([]history.Record, error), c Config, now time.Time) (int, error) {
-	entries, err := s.ReadEntries()
-	if err != nil {
-		return 0, err
-	}
-	cache := map[string][]history.Record{}
-	n := 0
-	for _, e := range entries {
-		if e.Outcome != OutcomePending {
-			continue
-		}
-		recs, ok := cache[e.Lane]
-		if !ok {
-			if recs, err = laneRecords(e.Lane); err != nil {
-				return n, err
-			}
-			cache[e.Lane] = recs
-		}
-		out := ResolveOutcome(e, recs)
-		if out == OutcomePending {
-			continue
-		}
-		e.Outcome, e.OutcomeAt = out, now.UTC()
-		if err := s.AppendEntry(e); err != nil {
-			return n, err
-		}
-		n++
-	}
-	if n > 0 {
-		_, err = s.EvaluateAutoMute(c.AutoMute, now)
-	}
-	return n, err
 }

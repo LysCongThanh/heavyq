@@ -110,6 +110,9 @@ func TestRemoteJobReservedCodesAndBusySlot(t *testing.T) {
 	if rc, _, _ := runJob(t, JobSpec{Machine: m, Repo: "app", SHA: sha, Lane: "x", Slot: "h1", Argv: []string{"sh", "-c", "exit 97"}}); rc != 96 {
 		t.Fatalf("command's own 97 must become 96, got %d", rc)
 	}
+	if rc, _, _ := runJob(t, JobSpec{Machine: m, Repo: "app", SHA: sha, Lane: "x", Slot: "h1", Argv: []string{"sh", "-c", "exit 255"}}); rc != 96 {
+		t.Fatalf("command's own 255 must become 96 (255 is the transport's connection lost), got %d", rc)
+	}
 	l, err := slots.TryLock(filepath.Join(m.WorkDir, "slots", "h1.lock"))
 	if err != nil || l == nil {
 		t.Fatal("cannot hold remote slot", err)

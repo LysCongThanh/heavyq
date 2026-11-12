@@ -59,8 +59,11 @@ heavyq: PASS go test ./... · tree 3f2a9c1d7b0e · 41s (waited 2m5s)
   within 2 s says nothing but the running line. The heartbeat starts at 5 minutes, not 60 s: a 60 s one makes a
   2-minute wait print four lines, over the budget below.
 - **No ANSI, ever.** heavyq never colours its own output (so `NO_COLOR` has nothing to switch off) and
-  strips escape sequences from every line it quotes. A command's own colours pass through untouched, as
-  before.
+  strips escape sequences from every line it quotes, the command line included: a newline, carriage return,
+  tab or escape byte in argv (a multi-line `sh -c` script) becomes a space, so each line stays one line. A
+  command's own colours pass through untouched, as before.
+- **Nothing else.** Notes a person gets as lines of their own (a `sh -c` pipe hides a failing first stage, a
+  remote job's banner, a remote's setup error in full) are in the digest for an agent, or left out.
 - A cache hit or a coalesced result replaces the "cached result from ..." sentences with the digest.
 
 ## The digest

@@ -399,14 +399,18 @@ ledger with `gate = <name>`. The lane is `--lane`, else `$HEAVYQ_LANE`, else the
   implies `--keep-going`. Each command runs as its own child `heavyq` process (the same invocation as above,
   with the same `--config`), so every ticket has its own pid: `heavyq cancel <pid>` stops exactly one command.
   Their output is streamed line by line with a `[cmd N]` prefix (N is the command's number in the gate, as in
-  `[N/total]`). The children get no stdin; a SIGINT, SIGTERM or SIGHUP sent to `gate run` is relayed to all of
-  them. Without `--parallel` the commands run one at a time inside the `gate run` process.
+  `[N/total]`). The children get no stdin and no terminal (a command that prompts on `/dev/tty` fails instead of
+  waiting for an answer nobody can give); a SIGINT, SIGTERM or SIGHUP sent to `gate run` is relayed to all of
+  them, and each stops its command's whole process tree. Without `--parallel` the commands run one at a time
+  inside the `gate run` process.
 - Dirty trees are never cached, so on uncommitted edits every unproven command really runs. The dirty tree is
   proven all the same, and stays proven until the next edit.
 - It ends by printing the status table. **Exit 0** only if the ledger now proves the whole gate on the code
   that is checked out at that moment. **1** otherwise: a command failed, the work tree changed while the
   gate ran (the results belong to the earlier code; heavyq says so), or the tree cannot be identified. A stop
-  by a signal (128+n) or an operator cancel (78) is passed through. Usage errors are 2.
+  of heavyq by a signal (128+n) or an operator cancel (78) is passed through. A command that ends with such a
+  code by itself (a crash, the OOM killer's 137, its own `exit 78`) simply failed: `--keep-going` goes on and the
+  exit is 1. Usage errors are 2.
 - A `remote` that heavyq's own config does not define fails the command when it runs, not when the file is
   read.
 - Commands that write into the work tree (a build output that is not git-ignored) change the tree under

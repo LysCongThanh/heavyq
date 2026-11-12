@@ -110,10 +110,13 @@ git_url = "/nonexistent"
 	}
 }
 
+// force_after is 8 s, not 2: `status` must read the head ticket inside that
+// window (a race binary's start plus a 500 ms CPU sample), which 2 s does not
+// leave on a loaded runner. The lower bound below still checks the bypass waits.
 func TestStatusExplainsWaitAndAntiStarvation(t *testing.T) {
 	h := newRig(t, `[queue]
 poll = "50ms"
-force_after = "2s"
+force_after = "8s"
 [local]
 heavy_slots = 2
 light_slots = 0
@@ -134,7 +137,7 @@ max_load_ratio = 0.5
 			t.Fatalf("status missing %q (rc=%d):\n%s", want, rc, out)
 		}
 	}
-	if rc := starved.wait(t, 20*time.Second); rc != 0 || time.Since(start) < 2*time.Second {
+	if rc := starved.wait(t, 20*time.Second); rc != 0 || time.Since(start) < 8*time.Second {
 		t.Fatalf("anti-starvation: rc=%d after %s", rc, time.Since(start))
 	}
 	h.touch("go")
@@ -191,11 +194,11 @@ func newExternal(t *testing.T, h *rig, name string, args ...string) *proc {
 	cmd.Dir, cmd.Env = h.root, h.env
 	p := &proc{cmd: cmd, out: &lockedBuf{}, done: make(chan int, 1)}
 	cmd.Stdout, cmd.Stderr = p.out, p.out
+	ownGroup(t, cmd) // flock(1) forks its command: the cleanup kills both
 	if err := cmd.Start(); err != nil {
 		t.Skipf("%s unavailable: %v", name, err)
 	}
 	go func() { p.done <- processExit(cmd.Wait()) }()
-	t.Cleanup(func() { _ = cmd.Process.Kill() })
 	return p
 }
 

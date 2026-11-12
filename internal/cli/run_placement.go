@@ -105,23 +105,17 @@ func (p *placement) resolveRemoteSource(mainRepo string, o *runOptions, stderr i
 	if !config.SafeName.MatchString(filepath.Base(mainRepo)) {
 		return fmt.Errorf("repo directory name %q has unsafe characters for a remote run", filepath.Base(mainRepo))
 	}
-	wd := p.wd
-	if real, err := filepath.EvalSymlinks(wd); err == nil {
-		wd = real // git reports resolved paths
-	}
 	if real, err := filepath.EvalSymlinks(mainRepo); err == nil {
-		mainRepo = real
+		mainRepo = real // git reports resolved paths
 	}
 	sha, err := gitutil.ResolveCommit(mainRepo, o.Ref)
 	if err != nil {
 		return err
 	}
 	p.repo, p.sha = mainRepo, sha
-	if rel, err := filepath.Rel(mainRepo, wd); err == nil && rel != "." && !strings.HasPrefix(rel, "..") {
-		if !subdirRe.MatchString(rel) {
-			return fmt.Errorf("current subdirectory %q has unsafe characters for a remote run", rel)
-		}
-		p.subdir = rel
+	// The directory a local run would use (--repo, or the cwd inside it).
+	if p.subdir, err = remoteSubdir(runDir(p.wd, o.Repo), mainRepo, sha); err != nil {
+		return err
 	}
 	if o.BaseRef != "" {
 		if b, err := gitutil.ResolveCommit(mainRepo, "refs/remotes/"+o.BaseRef); err == nil {
@@ -210,6 +204,11 @@ func autoEligible(wd string, o *runOptions, sibs []gitutil.Sibling) (string, str
 	}
 	if why := schedule.OutsideRepoReference(argvWithoutSiblingPaths(o.Argv, sibs), top); why != "" {
 		return "", "command " + why
+	}
+	// The run would happen in the same subdirectory remotely: it must be one the
+	// remote can use (otherwise the run would fail, where local works).
+	if _, err := remoteSubdir(runDir(wd, top), top, "HEAD"); err != nil {
+		return "", err.Error()
 	}
 	return top, ""
 }

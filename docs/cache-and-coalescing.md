@@ -13,7 +13,8 @@ heavyq 4 --cache -- npm test
   with the same tree (an empty commit, a rebase that changes nothing) still hits.
 - **Only clean trees.** If anything tracked is modified, or any untracked file isn't ignored, the run
   goes ahead normally and nothing is cached. `-v` says why, and history records `skip` with the
-  reason. The tree is checked again after the run. If it changed meanwhile, the result is not stored.
+  reason. The tree is checked again after the run. If it changed meanwhile, the result is not stored. Nor is
+  it when the command did not get the base the key names (a remote run whose base could not be pushed).
 - **Coalescing.** If an identical key is running right now, the second caller doesn't queue a duplicate
   ticket. It waits for that run and replays its output and exit code. `status` shows
   `3 waiting on lane api's run`. This works for failures too: the callers that waited get the same

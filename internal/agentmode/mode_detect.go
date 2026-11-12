@@ -109,12 +109,24 @@ func Resolve(lookup func(string) (string, bool)) (mode Mode, warn string) {
 	default:
 		warn = joinWarn(warn, "ignoring $HEAVYQ_AGENT="+quoteShort(v)+" (want 1 or 0)")
 	}
-	for _, e := range AgentEnv {
-		if v := get(e.Name); v != "" && v != "0" && v != "false" {
-			return Agent, warn
-		}
+	if UnderAgent(lookup) {
+		return Agent, warn
 	}
 	return Human, warn
+}
+
+// UnderAgent reports whether a coding agent's own variables (AgentEnv) are
+// set, whatever HEAVYQ_OUTPUT or HEAVYQ_AGENT say: those choose how heavyq
+// words its output, not who runs it, so a guard that keeps an agent from doing
+// something must ask this, never Resolve.
+func UnderAgent(lookup func(string) (string, bool)) bool {
+	for _, e := range AgentEnv {
+		v, _ := lookup(e.Name)
+		if v = strings.ToLower(strings.TrimSpace(v)); v != "" && v != "0" && v != "false" {
+			return true
+		}
+	}
+	return false
 }
 
 func joinWarn(a, b string) string {

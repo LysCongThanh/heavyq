@@ -197,7 +197,7 @@ heavyq reads `cwd` (to name the lane after the git work tree), `hook_event_name`
 heavyq always exits 0. It prints JSON only when it rewrites a command. For anything else (a command it
 doesn't recognise, a shape it can't parse safely, unreadable input, a broken config, a panic) it prints
 nothing. The original command then runs unchanged, and the problem is logged to
-`$XDG_STATE_HOME/heavyq/hook.log`. `heavyq hook install` sets `"timeout": 30` for the hook. The hook only
+`$XDG_STATE_HOME/heavyq/hook.log` (where command lines are redacted, like everywhere heavyq shows them). `heavyq hook install` sets `"timeout": 30` for the hook. The hook only
 parses a string and may call `git rev-parse` once, so a stall is unlikely, and per the docs a timeout
 wouldn't block the call anyway.
 

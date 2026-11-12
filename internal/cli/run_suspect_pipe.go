@@ -11,12 +11,20 @@ import (
 // the shell's exit status is the last stage's, so a failing or missing first
 // stage still gives exit 0.
 func warnShellPipe(w io.Writer, argv []string) {
+	if note := shellPipeNote(argv); note != "" {
+		fmt.Fprintln(w, "heavyq: warning: "+note)
+	}
+}
+
+// shellPipeNote is that warning's text ("" when it does not apply). In agent
+// mode it goes into the digest instead of a line of its own.
+func shellPipeNote(argv []string) string {
 	script, ok := shellScript(argv)
 	if !ok || !hasPipe(script) || strings.Contains(strings.Join(argv, " "), "pipefail") {
-		return
+		return ""
 	}
-	fmt.Fprintln(w, "heavyq: warning: this shell command has a pipe, so its exit status is the last stage's and a failing first stage is not seen; "+
-		"use `bash -o pipefail -c`, or no pipe (heavyq keeps the full log)")
+	return "this shell command has a pipe, so its exit status is the last stage's and a failing first stage is not seen; " +
+		"use `bash -o pipefail -c`, or no pipe (heavyq quotes the failure lines and keeps the log of a failed run)"
 }
 
 // shellScript returns the string of `<shell> [-flags] -c <string>`.

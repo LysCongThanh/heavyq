@@ -15,7 +15,7 @@ func TestHookRewriterIsTheRealHookDecision(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("HEAVYQ_LANE", "")
-	rewrite := hookRewriter(&config.Config{}, root)
+	rewrite := hookRewriter(&config.Config{Hook: config.HookConfig{Binary: "heavyq"}}, root) // the binary as on PATH
 	got, approved, wrapped := rewrite("go test ./...")
 	if !wrapped || approved || !strings.HasPrefix(got, "heavyq 4 --lane api --max-wait ") || !strings.HasSuffix(got, " -- go test ./...") {
 		t.Errorf("rewrite = %q approved=%v wrapped=%v", got, approved, wrapped)
@@ -26,7 +26,7 @@ func TestHookRewriterIsTheRealHookDecision(t *testing.T) {
 	if _, _, wrapped := rewrite("heavyq 4 -- go test ./..."); wrapped {
 		t.Error("an already wrapped command is left alone")
 	}
-	allow := hookRewriter(&config.Config{Hook: config.HookConfig{Permission: "allow"}}, root)
+	allow := hookRewriter(&config.Config{Hook: config.HookConfig{Binary: "heavyq", Permission: "allow"}}, root)
 	if _, approved, wrapped := allow("go test ./..."); !wrapped || !approved {
 		t.Errorf("hook.permission = allow approves what it rewrites: approved=%v wrapped=%v", approved, wrapped)
 	}
@@ -45,7 +45,7 @@ func TestPermissionResults(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	cfg := &config.Config{}
+	cfg := &config.Config{Hook: config.HookConfig{Binary: "heavyq"}} // the binary as on PATH (see the test below)
 
 	if res := permissionResults(cfg, root, []string{"go test ./..."}); res.Skipped == "" || len(res.Found) != 0 {
 		t.Errorf("no sign of Claude Code: skipped, not nagged: %+v", res)
@@ -68,14 +68,14 @@ func TestPermissionResults(t *testing.T) {
 		t.Errorf("exact wrapped prefix: %+v", res.Found)
 	}
 	settings(`{"permissions":{"allow":["Bash(heavyq item:*)"]},` + hook + `}`)
-	approving := &config.Config{Hook: config.HookConfig{Permission: "allow"}}
+	approving := &config.Config{Hook: config.HookConfig{Binary: "heavyq", Permission: "allow"}}
 	if res := permissionResults(approving, root, []string{"go test ./..."}); len(res.Found) != 0 {
 		t.Errorf("hook.permission = allow: %+v", res.Found)
 	}
 	// A hook the config disables rewrites nothing, so the plain rule is enough.
 	off := false
 	settings(`{"permissions":{"allow":["Bash(go test:*)","Bash(heavyq item:*)"]},` + hook + `}`)
-	if res := permissionResults(&config.Config{Hook: config.HookConfig{Enabled: &off}}, root, []string{"go test ./..."}); len(res.Found) != 0 {
+	if res := permissionResults(&config.Config{Hook: config.HookConfig{Binary: "heavyq", Enabled: &off}}, root, []string{"go test ./..."}); len(res.Found) != 0 {
 		t.Errorf("hook disabled: %+v", res.Found)
 	}
 
@@ -85,4 +85,36 @@ func TestPermissionResults(t *testing.T) {
 	if len(res.Found) == 0 || !strings.Contains(res.Found[0].Text, "could not read") {
 		t.Errorf("%+v", res.Found)
 	}
+}
+
+// When PATH does not find this binary (as for this test binary), the hook
+// writes its absolute path into the rewrite: preflight judges that rewrite, so
+// a rule for `heavyq` alone does not count as covering it.
+func TestPermissionCheckJudgesTheBinaryTheHookWrites(t *testing.T) {
+	cfg := &config.Config{}
+	bin, err := resolveBinary(cfg)
+	if err != nil || bin == "heavyq" {
+		t.Skipf("PATH finds this binary as heavyq (%v)", err)
+	}
+	t.Setenv("CLAUDECODE", "")
+	t.Setenv("CLAUDE_CONFIG_DIR", filepath.Join(t.TempDir(), "none"))
+	t.Setenv("HEAVYQ_LANE", "api")
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".claude"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	hook := `"hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"heavyq hook claude-pretooluse"}]}]}`
+	body := `{"permissions":{"allow":["Bash(heavyq:*)","Bash(go test:*)"]},` + hook + `}`
+	if err := os.WriteFile(filepath.Join(root, ".claude", "settings.json"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	res := permissionResults(cfg, root, []string{"go test ./..."})
+	// Text clips the command (a long test-binary path ends in "~" there); the
+	// rule Fix proposes carries the binary's full path.
+	for _, f := range res.Found {
+		if strings.Contains(f.Fix, `"Bash(`+bin+" 4") {
+			return
+		}
+	}
+	t.Fatalf("the rewrite to %s may prompt, as it starts with the binary's path: %+v", bin, res.Found)
 }

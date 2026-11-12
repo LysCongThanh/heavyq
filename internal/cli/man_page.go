@@ -97,7 +97,7 @@ func writeManCommand(b *strings.Builder, c commandSpec) {
 
 var manEnvironment = [][2]string{
 	{"HEAVYQ_CONFIG", "Config file (default $XDG_CONFIG_HOME/heavyq/config.toml); --config wins."},
-	{"HEAVYQ_DIR", "Queue directory (default $XDG_RUNTIME_DIR/heavyq, else /tmp/heavyq-<uid>)."},
+	{"HEAVYQ_DIR", "Queue directory (default $XDG_RUNTIME_DIR/heavyq, else /run/user/<uid>/heavyq when it is yours, else heavyq-<uid> in the per-user temp directory)."},
 	{"HEAVYQ_LANE", "Default --lane."},
 	{"HEAVYQ_REMOTE", "Default --remote."},
 	{"HEAVYQ_AUTO", "0 means never auto-place a run on another machine."},

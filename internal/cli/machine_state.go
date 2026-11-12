@@ -120,7 +120,9 @@ func buildView(cfg *config.Config, name string, s queue.Snapshot, probes *probeC
 		if t.Slot != "" {
 			v.busy[t.Slot] = true
 		}
-		if time.Since(t.ClaimedAt) < hold {
+		// ClaimedAt is wall-clock time read back from the ticket file: after the
+		// clock stepped back it lies in the future, which is not "just started".
+		if age := time.Since(t.ClaimedAt); age >= 0 && age < hold {
 			if t.Light {
 				v.state.ReservedMB += m.LightMB
 			} else {

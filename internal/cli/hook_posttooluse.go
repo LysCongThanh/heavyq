@@ -43,20 +43,42 @@ func claudePostToolUse(cfgPath string, explicit bool, stdin io.Reader, stdout io
 		hookLog("error: mentor: read stdin: %v", err)
 		return 0
 	}
-	out, err := deadline.RunWithin(mentorBudget(), func(context.Context) ([]byte, error) {
+	// Only the decision runs under the deadline. What it writes (the event, the
+	// lane state, auto-mutes) is written after it came back in time: a decision
+	// abandoned at the deadline must leave no trace (RunWithin's contract).
+	n, err := deadline.RunWithin(mentorBudget(), func(context.Context) (mentorNote, error) {
 		return postToolUseNote(cfgPath, explicit, in)
 	})
 	if err != nil {
 		hookLog("error: mentor: %v", err)
 		return 0
 	}
-	if len(out) == 0 {
+	if n.plan == nil {
 		return 0
 	}
-	if _, err := fmt.Fprintf(stdout, "%s\n", out); err != nil {
+	if err := n.store.Commit(n.plan, time.Now()); err != nil {
+		hookLog("error: mentor: %v", err)
+		return 0
+	}
+	if d := n.plan.Decision; d != nil {
+		hookLog("mentor: %s level %d arm %s lane %s event %s", d.Entry.Rule, d.Entry.Level, d.Entry.Arm, n.lane, d.Entry.Event)
+	}
+	if len(n.out) == 0 {
+		return 0 // nothing to say, or held out: logged, silent
+	}
+	if _, err := fmt.Fprintf(stdout, "%s\n", n.out); err != nil {
 		hookLog("error: mentor: write stdout: %v", err)
 	}
 	return 0
+}
+
+// mentorNote is what the mentor decided for one call: the plan to commit (nil
+// when there is nothing to record), the lane, and the hook JSON to print.
+type mentorNote struct {
+	store *mentor.Store
+	plan  *mentor.Plan
+	lane  string
+	out   []byte
 }
 
 // mentorBudget is the hook's time budget. The test-only switch HEAVYQ_TEST=1
@@ -64,40 +86,57 @@ func claudePostToolUse(cfgPath string, explicit bool, stdin io.Reader, stdout io
 // machines of any load, and a missed deadline would only make a test flaky.
 func mentorBudget() time.Duration {
 	if os.Getenv("HEAVYQ_TEST") == "1" {
+		if d, err := time.ParseDuration(os.Getenv("HEAVYQ_TEST_MENTOR_BUDGET")); err == nil {
+			return d
+		}
 		return 10 * time.Second
 	}
 	return deadline.HookBudget
 }
 
-// postToolUseNote runs the mentor for one payload and returns the hook JSON to
-// print, nil for "say nothing" (not our call, no event, or a held-out event).
-func postToolUseNote(cfgPath string, explicit bool, payload []byte) ([]byte, error) {
+// testMentorDelay is a test-only pause after the mentor decided (HEAVYQ_TEST=1
+// and HEAVYQ_TEST_MENTOR_DELAY): it makes "the decision came too late" happen
+// on purpose.
+func testMentorDelay() {
+	if os.Getenv("HEAVYQ_TEST") != "1" {
+		return
+	}
+	if d, err := time.ParseDuration(os.Getenv("HEAVYQ_TEST_MENTOR_DELAY")); err == nil {
+		time.Sleep(d)
+	}
+}
+
+// postToolUseNote decides what the mentor does for one payload, writing
+// nothing: the plan to commit and the hook JSON to print (nil for "say
+// nothing": not our call, no event, or a held-out event).
+func postToolUseNote(cfgPath string, explicit bool, payload []byte) (mentorNote, error) {
 	call, _, err := hook.ParsePostToolUse(payload)
 	if err != nil || call == nil {
-		return nil, err
+		return mentorNote{}, err
 	}
 	cfg, err := config.Load(cfgPath, explicit)
 	if err != nil {
-		return nil, err
+		return mentorNote{}, err
 	}
 	store, ledger, err := mentorStore()
 	if err != nil {
-		return nil, err
+		return mentorNote{}, err
 	}
 	mc := mentorConfig(cfg)
 	lane, recs, err := mentorLane(ledger, call, time.Now(), mc.Window)
 	if err != nil || lane == "" {
-		return nil, err
+		return mentorNote{}, err
 	}
-	d, err := store.Evaluate(mentor.Input{Lane: lane, Session: call.Session, Records: recs, Now: time.Now()}, mc)
-	if err != nil || d == nil {
-		return nil, err
+	plan, err := store.Plan(mentor.Input{Lane: lane, Session: call.Session, Records: recs, Now: time.Now()}, mc)
+	testMentorDelay()
+	if err != nil {
+		return mentorNote{}, err
 	}
-	hookLog("mentor: %s level %d arm %s lane %s event %s", d.Entry.Rule, d.Entry.Level, d.Entry.Arm, lane, d.Entry.Event)
-	if d.Message == "" {
-		return nil, nil // held out: logged, silent
+	n := mentorNote{store: store, plan: plan, lane: lane}
+	if d := plan.Decision; d != nil && d.Message != "" {
+		n.out, err = hook.PostContext(call.Event, d.Message)
 	}
-	return hook.PostContext(call.Event, d.Message)
+	return n, err
 }
 
 // mentorLane finds the lane this tool call ran on and its records. The

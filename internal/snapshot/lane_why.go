@@ -58,7 +58,7 @@ func LaneLines(s Snapshot, lane string, last *history.Record, now time.Time) []s
 
 func runningLine(t Running, elapsed float64) string {
 	line := fmt.Sprintf("  running on %s/%s for %s (p%d, pid %d): %s",
-		t.Machine, t.Slot, dur(t.RunS+elapsed), t.Prio, t.Pid, redact.Command(t.Cmd))
+		t.Machine, t.Slot, dur(t.RunS+elapsed), t.Prio, t.Pid, redact.OneLine(redact.Command(t.Cmd)))
 	if t.Forced {
 		line += " [admitted by the anti-starvation bypass]"
 	}
@@ -71,7 +71,7 @@ func runningLine(t Running, elapsed float64) string {
 // waitingLines is the ticket, then one indented line per candidate machine
 // with the reason it cannot start there, then the bypass countdown if any.
 func waitingLines(s Snapshot, t Waiting, elapsed float64) []string {
-	line := fmt.Sprintf("  waiting #%d for %s (p%d, pid %d): %s", t.Position, dur(t.WaitS+elapsed), t.Prio, t.Pid, redact.Command(t.Cmd))
+	line := fmt.Sprintf("  waiting #%d for %s (p%d, pid %d): %s", t.Position, dur(t.WaitS+elapsed), t.Prio, t.Pid, redact.OneLine(redact.Command(t.Cmd)))
 	if t.CancelRequested {
 		line += " [cancel requested]"
 	}
@@ -112,5 +112,5 @@ func describeRun(r history.Record, now time.Time) string {
 	if r.Machine != "" {
 		where = " on " + r.Machine
 	}
-	return fmt.Sprintf("last run %s%s, %s ago: %s", what, where, dur(now.Sub(r.End).Seconds()), redact.Command(r.Cmd))
+	return fmt.Sprintf("last run %s%s, %s ago: %s", what, where, dur(now.Sub(r.End).Seconds()), redact.OneLine(redact.Command(r.Cmd)))
 }

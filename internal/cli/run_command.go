@@ -59,9 +59,18 @@ type run struct {
 	// that line when the command nevertheless exited 0 (see run_suspect_judge.go).
 	scan    *suspectScan
 	suspect string
+	// candidatesMoved: the machines the ticket may use changed while it waited
+	// and the ticket file does not say so yet (round rewrites it).
+	candidatesMoved bool
 	// scope is the `paths` of the gate this run proves, read once (see gatePaths).
 	scope     []string
 	scopeRead bool
+	// base is the --base-ref commit the command ran against, fixed when it
+	// started (remote: the one its job was given, "" when it got none), so a
+	// fetch during the run does not change what the ledger says. baseFixed
+	// tells it apart from "not started": then the ref is resolved when recorded.
+	base      string
+	baseFixed bool
 	// inRound is held for a scheduling round, and stopAsked set while a Ctrl-Z
 	// waits for it (run_wait_round_guards.go).
 	inRound   sync.Mutex
@@ -72,6 +81,13 @@ type run struct {
 }
 
 func runCommand(cfg *config.Config, args []string, stderr io.Writer) int {
+	var r *run
+	return runCommandWith(cfg, args, stderr, &r)
+}
+
+// runCommandWith is runCommand that also hands back the run (nil when it
+// failed before one existed), for a caller that needs to know how it ended.
+func runCommandWith(cfg *config.Config, args []string, stderr io.Writer, got **run) int {
 	mode := outputMode(stderr)
 	o, err := parseRunArgs(args, cfg)
 	if err != nil {
@@ -101,9 +117,11 @@ func runCommand(cfg *config.Config, args []string, stderr io.Writer) int {
 	r := &run{cfg: cfg, opts: o, pl: pl, q: q, stderr: stderr, t0: time.Now(), start: start,
 		probes: newProbeCache(cfg.Queue.ProbeTimeout.Duration), cfgWatch: config.NewWatch(cfg),
 		sigs: make(chan os.Signal, 4), scan: &suspectScan{}}
+	*got = r
 	r.out = newRunOutput(mode, o.Digest, stderr, r.t0, o.Lane)
 	defer r.out.discardLog()
-	signal.Notify(r.sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+	signal.Notify(r.sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGQUIT)
+	survivePipeReaderGone()
 	defer signal.Stop(r.sigs)
 	defer r.catchStops()()
 	defer r.cacheRelease()

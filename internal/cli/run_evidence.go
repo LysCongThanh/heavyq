@@ -23,6 +23,11 @@ import (
 // A directory outside git, or a git failure, gives an empty Checkout: the
 // ledger line is still written, just without code identity.
 func (r *run) checkoutFor(machine string) gitutil.Checkout {
+	return r.checkoutOn(machine, r.gatePaths())
+}
+
+// checkoutOn is checkoutFor identified on paths (nil: the whole tree).
+func (r *run) checkoutOn(machine string, paths []string) gitutil.Checkout {
 	if machine == "" && !config.TargetMayRunLocally(r.pl.target) {
 		machine = r.pl.target // not local: the shipped commit is what would have run
 	}
@@ -31,9 +36,9 @@ func (r *run) checkoutFor(machine string) gitutil.Checkout {
 		err error
 	)
 	if machine != "" && machine != config.LocalName && r.pl.sha != "" {
-		co, err = gitutil.PinnedScoped(r.localDir(), r.pl.sha, r.gatePaths())
+		co, err = gitutil.PinnedScoped(r.localDir(), r.pl.sha, paths)
 	} else {
-		co, err = gitutil.IdentifyScoped(r.localDir(), r.gatePaths())
+		co, err = gitutil.IdentifyScoped(r.localDir(), paths)
 	}
 	if err != nil {
 		r.verbosef("ledger: code identity incomplete: %v", err)
@@ -66,8 +71,27 @@ func (r *run) settled(before gitutil.Checkout) gitutil.Checkout {
 // runID is the run_id of this run on the code co: the same computation the
 // cache key and `gate status` use, with the environment this process has.
 func (r *run) runID(co gitutil.Checkout) string {
+	base := r.base
+	if !r.baseFixed {
+		base = runident.BaseSHA(r.localDir(), r.opts.BaseRef)
+	}
 	return runident.ID(runident.Input{Tree: co.Tree, Argv: r.opts.Argv, Subdir: co.Subdir, EnvNames: r.cfg.Cache.Env,
-		Getenv: os.LookupEnv, BaseSHA: runident.BaseSHA(r.localDir(), r.opts.BaseRef), Siblings: siblingIDs(r.pl.siblings)})
+		Getenv: os.LookupEnv, BaseSHA: base, Siblings: siblingIDs(r.pl.siblings)})
+}
+
+// identityEnv splits the cache.env allowlist by this process's environment:
+// set holds NAME=value of the variables that are set, unset the names of the
+// others. They are part of the run_id, so a remote job gets exactly these
+// (and loses the unset ones), whatever its own environment says.
+func identityEnv(names []string) (set, unset []string) {
+	for _, n := range names {
+		if v, ok := os.LookupEnv(n); ok {
+			set = append(set, n+"="+v)
+		} else {
+			unset = append(unset, n)
+		}
+	}
+	return set, unset
 }
 
 // tag stamps who ran it, what exactly it ran (the argv hash, taken before the

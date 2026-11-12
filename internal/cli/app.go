@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/debug"
-	"strconv"
 	"strings"
 
 	"github.com/LysCongThanh/heavyq/internal/config"
@@ -69,16 +68,8 @@ func version() string {
 	return Version
 }
 
-// QueueDir is $HEAVYQ_DIR, else $XDG_RUNTIME_DIR/heavyq, else <tmp>/heavyq-<uid>.
-func QueueDir() string {
-	if d := os.Getenv("HEAVYQ_DIR"); d != "" {
-		return d
-	}
-	if d := os.Getenv("XDG_RUNTIME_DIR"); d != "" {
-		return filepath.Join(d, "heavyq")
-	}
-	return filepath.Join(os.TempDir(), "heavyq-"+strconv.Itoa(os.Getuid()))
-}
+// QueueDir is where the queue, slots and pools live (see queue_dir_location.go).
+func QueueDir() string { return queueDirFrom(os.Getenv, userRuntimeDir(), userTempDir()) }
 
 // localSlotPaths returns the lock files of the local heavy or light slots.
 func localSlotPaths(cfg *config.Config, light bool) []string {

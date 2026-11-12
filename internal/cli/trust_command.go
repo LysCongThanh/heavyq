@@ -69,8 +69,10 @@ func trustCommand(args []string, stdout, stderr io.Writer) int {
 
 func trustGrant(env stance.Env, common string, stdout, stderr io.Writer) int {
 	// Trust is a human decision: a stance file may be written to talk an agent
-	// into running this very command. Refuse under a coding agent.
-	if mode, _ := agentmode.Resolve(os.LookupEnv); mode.Terse() {
+	// into running this very command. Refuse under a coding agent: its own
+	// variables decide, not HEAVYQ_OUTPUT / HEAVYQ_AGENT, which only shape output
+	// (an agent can set them, and a person may export them for every shell).
+	if mode, _ := agentmode.Resolve(os.LookupEnv); mode.Terse() || agentmode.UnderAgent(os.LookupEnv) {
 		fmt.Fprintln(stderr, "heavyq: trust is for a person: read .heavyq/stances and run heavyq trust from your own terminal")
 		return 1
 	}

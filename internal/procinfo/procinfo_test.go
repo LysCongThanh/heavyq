@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"syscall"
 	"testing"
 	"time"
@@ -143,5 +144,16 @@ func TestDescendantsReal(t *testing.T) {
 	}
 	for _, d := range Default.Descendants(cmd.Process.Pid) {
 		_ = syscall.Kill(d, syscall.SIGKILL)
+	}
+}
+
+// Several roots are walked in one snapshot: a process below two of them (or a
+// root below another root) is listed once, and a root on its own is not.
+func TestDescendantsOfSeveralRoots(t *testing.T) {
+	tree := map[int]procSample{10: {ppid: 1}, 11: {ppid: 10}, 12: {ppid: 11}, 20: {ppid: 1}, 21: {ppid: 20}, 30: {ppid: 1}}
+	got := descendantsIn(tree, []int{10, 11, 20})
+	slices.Sort(got)
+	if want := []int{11, 12, 21}; !slices.Equal(got, want) {
+		t.Fatalf("descendants = %v, want %v", got, want)
 	}
 }

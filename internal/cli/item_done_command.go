@@ -64,7 +64,7 @@ func itemDone(c *itemCtx, args []string) int {
 		return ExitUsage
 	}
 	if !ev.Proven && *runIt {
-		if rc, started := c.runProof(it, *remote); !started || (rc != 0 && stoppedFromOutside(rc)) {
+		if rc, started, stopped := c.runProof(it, *remote); !started || stopped {
 			return rc
 		}
 		c.subjects = map[string]proof.Subject{} // the tree may have changed while the proof ran
@@ -145,16 +145,18 @@ func (c *itemCtx) finishDone(it anchor.Item, ev itemstatus.Evidence, asJSON bool
 // of the run: for a gate, 0 only when the whole gate is proven. started is
 // false when nothing ran (a usage error, or a refusal such as a named remote
 // asked to prove uncommitted code); rc is then the exit code to return.
+// stopped is true when heavyq was stopped from outside (a signal, an operator
+// cancel): rc is passed through then, not explained as a failing proof.
 //
 // Where it runs: remoteFlag (--remote), else the gate's own remote, else
 // [proof] remote of heavyq.toml, else of the user config, else local.
-func (c *itemCtx) runProof(it anchor.Item, remoteFlag string) (rc int, started bool) {
+func (c *itemCtx) runProof(it anchor.Item, remoteFlag string) (rc int, started, stopped bool) {
 	if wd, err := os.Getwd(); err == nil {
 		defer func() { _ = os.Chdir(wd) }()
 	}
 	if err := os.Chdir(c.root); err != nil {
 		fmt.Fprintln(c.stderr, "heavyq:", err)
-		return ExitUsage, false
+		return ExitUsage, false, false
 	}
 	if tag := strings.ReplaceAll(it.ID, "/", ":"); history.ValidTag(tag) { // ids of plan-file items are longer or have "/"
 		prev, had := os.LookupEnv("HEAVYQ_ITEM")
@@ -173,18 +175,19 @@ func (c *itemCtx) runProof(it anchor.Item, remoteFlag string) (rc int, started b
 			args = append([]string{"--remote", remoteFlag}, args...)
 		}
 		rc = gateRunCommand(c.cfg, args, c.stdout, c.stderr)
-		return rc, rc != ExitUsage
+		return rc, rc != ExitUsage, gateStopCode(rc)
 	}
 	pl, err := resolveProofRemote(c.cfg, c.repo, nil, remoteFlag)
 	if err != nil {
 		fmt.Fprintln(c.stderr, "heavyq:", err)
-		return ExitUsage, false
+		return ExitUsage, false, false
 	}
 	pl, why := fitProofToTree(c.root, nil, pl, c.stderr)
 	if why != "" {
-		return c.refuse(why, "heavyq item done "+it.ID+" --run --remote local"), false
+		return c.refuse(why, "heavyq item done "+it.ID+" --run --remote local"), false, false
 	}
 	args := []string{fmt.Sprint(repoconfig.DefaultPrio), "--cache", "--strict", "--remote", pl.Remote, "--"}
 	// The proof command's own exit code comes back, so 2 is not "usage" here.
-	return runCommand(c.cfg, append(args, proof.Argv(it.Proof.Value)...), c.stderr), true
+	rc, stopped = runCommandStopped(c.cfg, append(args, proof.Argv(it.Proof.Value)...), c.stderr)
+	return rc, true, stopped
 }

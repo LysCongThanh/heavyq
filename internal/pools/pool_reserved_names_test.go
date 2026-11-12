@@ -20,6 +20,7 @@ func TestBuildRefusesNamesOfVariablesHeavyqReads(t *testing.T) {
 		"test", "history", "flow", "steer", "mentor", "notify", "stances",
 		"mentor_seed", "notify_budget", "flow_gh", "with", "subdir", "base_ref", "base_sha",
 		"env_path", "cache_dir", "job_id", "worktree", "test_fake_metrics",
+		"lifeline", "cmd_env_b64", "job_quiet", "test_mentor_budget", "test_mentor_delay",
 	} {
 		if _, err := Build([]Spec{{Name: name, Size: 2}}); err == nil || !strings.Contains(err.Error(), "reserved") {
 			t.Errorf("pool %q: Build = %v, want a reserved-name error", name, err)

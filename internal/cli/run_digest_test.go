@@ -68,7 +68,7 @@ func TestDigestRanClassification(t *testing.T) {
 			next: "next: command not found; check its name and PATH, then re-run"},
 		{name: "not executable", rc: 126, machine: "local", want: []string{"exit 126"},
 			next: "next: command is not executable; check its permissions, then re-run"},
-		{name: "connection lost", rc: ExitConnLost, machine: "box", want: []string{"FAIL"},
+		{name: "connection lost", rc: ExitConnLost, machine: "box", want: []string{"heavyq: INTERRUPTED", "connection to box was lost"},
 			next: "next: the connection to box was lost; retry, or add --remote local"},
 		{name: "255 locally is just a failure", rc: ExitConnLost, machine: "local", want: []string{"FAIL"},
 			next: "next: fix the failure above, then re-run this command"},
@@ -79,6 +79,8 @@ func TestDigestRanClassification(t *testing.T) {
 		{name: "ran on a remote that loses exit codes", rc: 0, machine: "box", distrust: "exit codes not trustworthy on box: x",
 			want: []string{"PASS?", "proves nothing"}, next: "next: " + nextUntrusted},
 		{name: "a command's own 77 is its failure", rc: ExitRemoteSetup, machine: "box", want: []string{"heavyq: FAIL", "exit 77"},
+			next: "next: fix the failure above, then re-run this command"},
+		{name: "77 locally is the command's own failure", rc: ExitRemoteSetup, machine: "local", want: []string{"heavyq: FAIL", "exit 77"},
 			next: "next: fix the failure above, then re-run this command"},
 		{name: "cancelled", rc: ExitCancelled, machine: "local", cancelled: true, want: []string{"heavyq: CANCELLED", "an operator cancelled it"},
 			next: "next: cancelled by operator; ask before re-running"},
@@ -163,8 +165,17 @@ func TestDigestIsOffForHumansUnlessAsked(t *testing.T) {
 // The human path must keep handing the command the process's own streams:
 // they stay a terminal (colours, line buffering) and nothing copies the bytes.
 func TestHumanStreamsAreTheRealOnesWithoutADigest(t *testing.T) {
+	// The real file, or (when it is not a terminal) the same file behind the
+	// sink that outlives a reader that went away (output_reader_gone.go).
+	real := func(w io.Writer) *os.File {
+		if s, ok := w.(*readerGoneSink); ok {
+			return s.f
+		}
+		f, _ := w.(*os.File)
+		return f
+	}
 	o := newRunOutput(agentmode.Human, false, io.Discard, time.Now(), "x")
-	if o.capture != nil || o.stdout != io.Writer(os.Stdout) || o.stderr != io.Writer(os.Stderr) {
+	if o.capture != nil || real(o.stdout) != os.Stdout || real(o.stderr) != os.Stderr {
 		t.Fatalf("human mode wraps the command's streams: %+v", o)
 	}
 	if a := newRunOutput(agentmode.Agent, false, io.Discard, time.Now(), "x"); a.capture == nil || a.stdout == io.Writer(os.Stdout) {

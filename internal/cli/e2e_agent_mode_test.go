@@ -42,7 +42,7 @@ func (h *rig) human() *rig {
 func heavyqLines(out string) []string {
 	var lines []string
 	for _, l := range strings.Split(out, "\n") {
-		if strings.HasPrefix(l, "heavyq:") {
+		if strings.HasPrefix(l, "heavyq:") || strings.HasPrefix(l, "heavyq-job:") { // the remote job's banner counts too
 			lines = append(lines, l)
 		}
 	}

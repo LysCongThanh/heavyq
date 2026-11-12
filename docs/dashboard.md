@@ -42,6 +42,12 @@ Open `http://127.0.0.1:PORT/#demo` from any `heavyq dash` to see the page with s
 - The page is served with `default-src 'none'` and `connect-src 'self'`: it loads nothing from the network.
 - Read-only by default. State-changing endpoints answer 403 unless the server runs with `--control`.
 - Command lines are passed through a redactor before they are served (also in `status --json`).
+- A refused request is answered at once and its connection closed (a body announced and never sent is not
+  waited for), and an idle keep-alive connection is closed after a minute, so a local user without the token
+  cannot pin sockets.
+- `--open` hands the browser a 0600 redirect page in the queue directory, never the token on a command line. A
+  confined browser (the Firefox snap) cannot read that directory and shows an error: open the printed link
+  instead.
 
 Anyone who can run processes as your user can already do everything the dashboard does, so the goal is to
 keep other users, other machines and web pages out, not to separate privileges within your account.

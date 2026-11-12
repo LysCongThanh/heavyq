@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/LysCongThanh/heavyq/internal/redact"
 )
 
 // MaxDigestBytes is the hard cap of a digest, whatever the command printed.
@@ -142,7 +144,7 @@ func FormatDur(d time.Duration) string {
 	return d.Round(time.Second).String()
 }
 
-func clipCmd(s string) string { return clipTo(strings.ReplaceAll(s, "\n", " "), 160) }
+func clipCmd(s string) string { return clipTo(redact.OneLine(s), 160) }
 
 // clipTo shortens s to at most n bytes on a character boundary, marking the cut.
 func clipTo(s string, n int) string {
