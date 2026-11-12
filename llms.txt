@@ -12,7 +12,7 @@ Typical use: `heavyq <prio> [--lane NAME] [--light] [--cache] [--max-wait DUR] -
 - [Configuration](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/configuration.md): every config key and environment variable
 - [Pools](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/pools.md): named ports, databases and browsers leased per run with `--needs`, all or none
 - [Exit codes](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/exit-codes.md): stable exit codes
-- [Spare machines](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/remote.md): SSH remotes, exact-commit runs, placement
+- [Spare machines](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/remote.md): SSH remotes, exact-commit runs, placement, moving a waiting ticket to other machines (`heavyq retarget`)
 - [Cache and coalescing](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/cache-and-coalescing.md): one run per commit, replayed results
 - [Receipts](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/receipts.md): `heavyq receipts --share`, a rounded summary with no names
 - [History ledger](https://raw.githubusercontent.com/LysCongThanh/heavyq/main/docs/history.md): JSONL record fields: commit, tree, session, item, gate

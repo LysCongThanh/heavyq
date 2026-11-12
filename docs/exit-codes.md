@@ -11,6 +11,11 @@
 | 127 / 126 | command not found / not executable. Also 127 under `--strict`, in gates and in item proofs when a run exited 0 but its output has a shell "command not found" line (see below) |
 | 255 | connection to the remote lost mid-run (the remote side stops the command) |
 
+The control commands exit 2 when they refuse a request, and nothing changes then: `heavyq cancel` and `reprio` for no
+such ticket (or a running one, for `reprio`), `heavyq retarget` for a move it cannot make safely (a running ticket, an
+unknown or paused machine, a ticket queued for this machine only; see
+[remote.md](remote.md#moving-a-waiting-ticket-heavyq-retarget)).
+
 ## A 0 that is not trusted (`PASS?`)
 
 `sh -c 'npx tsc | tail'` exits with `tail`'s status, so a missing `npx` still gives 0. When a run exits 0 and

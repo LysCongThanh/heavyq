@@ -56,6 +56,14 @@ func dashCommand(cfg *config.Config, args []string, stdout, stderr io.Writer) in
 			return ok, ok && t.Running
 		},
 		Machine: func(name string) bool { _, ok := live.get().Machine(name); return ok },
+		CheckTarget: func(id, where string) error { // the checks of heavyq retarget
+			t, ok := q.Find(id)
+			if !ok {
+				return fmt.Errorf("no ticket %q (it may have finished)", id)
+			}
+			_, err := vetRetarget(live.get(), t, where)
+			return err
+		},
 	})
 	if err != nil {
 		fmt.Fprintln(stderr, "heavyq:", err)
@@ -69,7 +77,7 @@ func dashCommand(cfg *config.Config, args []string, stdout, stderr io.Writer) in
 	url := fmt.Sprintf("http://%s/#token=%s", ln.Addr(), srv.Token())
 	mode := "read-only (add --control to act from the page)"
 	if *ctl {
-		mode = "control enabled: the page can cancel jobs, change priorities and pause machines"
+		mode = "control enabled: the page can cancel jobs, change priorities and pause machines (the API also moves waiting jobs)"
 	}
 	fmt.Fprintf(stdout, "heavyq dashboard: %s\n%s. Ctrl-C to stop.\n", url, mode)
 	if *open {

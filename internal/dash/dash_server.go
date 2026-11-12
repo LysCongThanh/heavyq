@@ -37,7 +37,7 @@ type Meta struct {
 
 // Options wires the server to heavyq's state.
 type Options struct {
-	Control  bool          // allow cancel / reprio / pause
+	Control  bool          // allow cancel / reprio / retarget / pause
 	Interval time.Duration // snapshot period of the stream
 	Version  string
 	Host     string
@@ -54,7 +54,10 @@ type Options struct {
 	Ticket func(id string) (exists, running bool)
 	// Machine reports whether a machine of that name is configured.
 	Machine func(name string) bool
-	Now     func() time.Time // for tests; time.Now when nil
+	// CheckTarget refuses a move of waiting ticket id to target where that
+	// `heavyq retarget` would refuse. Nil: every move is refused (501).
+	CheckTarget func(id, where string) error
+	Now         func() time.Time // for tests; time.Now when nil
 }
 
 // Server is one dashboard instance.
@@ -115,6 +118,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/v1/receipts", s.api(s.receiptsHandler))
 	mux.HandleFunc("POST /api/v1/tickets/{id}/cancel", s.api(s.control(s.cancel)))
 	mux.HandleFunc("POST /api/v1/tickets/{id}/prio", s.api(s.control(s.reprio)))
+	mux.HandleFunc("POST /api/v1/tickets/{id}/target", s.api(s.control(s.retarget)))
 	mux.HandleFunc("POST /api/v1/machines/{name}/pause", s.api(s.control(s.pause(true))))
 	mux.HandleFunc("POST /api/v1/machines/{name}/resume", s.api(s.control(s.pause(false))))
 	return s.guard(mux)

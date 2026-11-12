@@ -1,6 +1,10 @@
 package control
 
-import "testing"
+import (
+	"os"
+	"testing"
+	"time"
+)
 
 func TestTargetRequestAndAnswer(t *testing.T) {
 	m := Mailbox{Dir: t.TempDir() + "/ctl"}
@@ -30,7 +34,7 @@ func TestTargetRequestAndAnswer(t *testing.T) {
 		t.Fatal("an answer is read once")
 	}
 
-	// A new request drops an answer to an older one; Forget clears both.
+	// A new request drops an answer to an older one.
 	if err := m.AnswerTarget(tk, ""); err != nil {
 		t.Fatal(err)
 	}
@@ -40,15 +44,43 @@ func TestTargetRequestAndAnswer(t *testing.T) {
 	if _, ok := m.TargetAnswer(tk); ok {
 		t.Fatal("an answer to an older request survived a new one")
 	}
-	if err := m.AnswerTarget(tk, ""); err != nil {
-		t.Fatal(err)
-	}
+	// The ticket ends: its request goes, its answer stays for the requester
+	// (a moved ticket may run and end before the requester looks).
 	m.Forget(tk)
 	if _, ok := m.TakeTarget(tk); ok {
 		t.Fatal("Forget must clear the target request")
 	}
-	if _, ok := m.TargetAnswer(tk); ok {
-		t.Fatal("Forget must clear the answer")
+	if err := m.AnswerTarget(tk, ""); err != nil {
+		t.Fatal(err)
+	}
+	m.Forget(tk)
+	if why, ok := m.TargetAnswer(tk); !ok || why != "" {
+		t.Fatalf("answer after Forget = %q %v, want the applied answer", why, ok)
+	}
+}
+
+// Answers nobody reads (the dashboard does not wait for one) are swept by a
+// later request once they are older than answerTTL; fresh ones are kept.
+func TestUnreadTargetAnswersAreSwept(t *testing.T) {
+	m := Mailbox{Dir: t.TempDir()}
+	old, fresh := tk, "3-01762011288000000001-50123-wt-other"
+	for _, id := range []string{old, fresh} {
+		if err := m.AnswerTarget(id, ""); err != nil {
+			t.Fatal(err)
+		}
+	}
+	past := time.Now().Add(-answerTTL - time.Minute)
+	if err := os.Chtimes(m.path(key(old)+".target-done"), past, past); err != nil {
+		t.Fatal(err)
+	}
+	if err := m.RequestTarget("3-01762011288000000002-50124-wt-third", "local"); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := m.TargetAnswer(old); ok {
+		t.Fatal("an answer older than answerTTL was kept")
+	}
+	if _, ok := m.TargetAnswer(fresh); !ok {
+		t.Fatal("a fresh answer was swept")
 	}
 }
 

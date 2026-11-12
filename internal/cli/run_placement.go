@@ -86,9 +86,7 @@ func preparePlacement(cfg *config.Config, o *runOptions, stderr io.Writer) (*pla
 		}
 		return nil, fmt.Errorf("cannot run locally: %s (commit/checkout, or run remotely with --remote)", p.localWhy)
 	}
-	for _, r := range cfg.Remotes {
-		p.remotes = append(p.remotes, r.Name)
-	}
+	p.remotes = remoteNames(cfg)
 	p.candidates = p.machines()
 	if p.target != config.LocalName && config.TargetMayRunLocally(p.target) && p.localWhy != "" {
 		fmt.Fprintf(stderr, "heavyq: %s => remote machines only\n", p.localWhy)
@@ -177,6 +175,16 @@ func (p *placement) machines() []string {
 	default:
 		return []string{p.target}
 	}
+}
+
+// remoteNames lists the [[remote]] names of cfg: the remotes of the auto
+// target, taken when a ticket is submitted or moved (retarget), never on a poll.
+func remoteNames(cfg *config.Config) []string {
+	out := make([]string, 0, len(cfg.Remotes))
+	for _, r := range cfg.Remotes {
+		out = append(out, r.Name)
+	}
+	return out
 }
 
 // autoEligible reports the repo root when a default ticket may be placed

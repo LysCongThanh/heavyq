@@ -78,6 +78,7 @@ func (r *run) round(headSince *time.Time) (*claim, int, int, []*queue.Ticket, er
 			fmt.Fprintf(r.stderr, "heavyq: priority changed to %d by an operator\n", p)
 		}
 	}
+	r.applyRetarget() // heavyq retarget: new machines count from this round
 	snap, err := r.q.List()
 	if err != nil {
 		return nil, 0, 0, nil, err

@@ -24,6 +24,7 @@ that the job's own heavyq process applies on its next poll. The same actions wor
 ```bash
 heavyq cancel 48213        # by the pid shown in status: a waiting job leaves the queue, a running one is stopped
 heavyq reprio 50122 2      # a waiting job moves to priority 2 (keeps its place among equals)
+heavyq retarget 50122 --remote spare   # a waiting job moves to other machines (keeps its place; docs/remote.md)
 heavyq pause buildbox      # no new jobs start there; running jobs finish
 heavyq resume buildbox
 ```
@@ -54,6 +55,7 @@ keep other users, other machines and web pages out, not to separate privileges w
 | `GET receipts?window=week` | the receipts of `day`, `week` (default) or `month`: exact counts and the rounded share card (see [receipts.md](receipts.md)) |
 | `POST tickets/{id}/cancel` | 202. Waiting: leaves the queue. Running: SIGTERM to the process tree, SIGKILL after 10 s. Exit 78. |
 | `POST tickets/{id}/prio` `{"prio":1-9}` | 202 for waiting tickets, 409 for running ones |
+| `POST tickets/{id}/target` `{"remote":"WHERE"}` | 202 for a waiting ticket the move is safe for: it waits for the machines of `WHERE` from its next poll (`heavyq retarget`, see [remote.md](remote.md#moving-a-waiting-ticket-heavyq-retarget)). 400 with the reason for a move `heavyq retarget` refuses, 409 for running tickets. Not on the page yet. |
 | `POST machines/{name}/pause`, `.../resume` | 200. Paused machines admit nothing new. |
 
 Errors are `{"error":"..."}` with 400, 401, 403, 404, 409 or 421 (wrong `Host`).
@@ -124,7 +126,8 @@ Fields may be added within schema 1; renaming or removing one bumps `schema`.
 
 ## Control without the dashboard
 
-Requests are files in `<queue dir>/ctl/`: `<ticket>.cancel`, `<ticket>.prio`, `pause-<machine>`. They are
-what `heavyq cancel|reprio|pause|resume` and the dashboard write, and what each job's heavyq process reads
-about once per poll interval. Scripts may write them directly. Ticket names are the `id` fields of the
-snapshot.
+Requests are files in `<queue dir>/ctl/`: `<ticket>.cancel`, `<ticket>.prio`, `<ticket>.target`, `pause-<machine>`.
+They are what `heavyq cancel|reprio|retarget|pause|resume` and the dashboard write, and what each job's heavyq process
+reads about once per poll interval. Scripts may write them directly. `<ticket>` is the `id` field of the snapshot
+without its leading `<prio>-`, so a request still reaches a ticket whose priority changed. A job answers a `.target`
+request in `<ticket>.target-done`: empty when it moved, else why it kept its machines.

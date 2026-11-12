@@ -73,6 +73,7 @@ heavyq 4 --digest -- npm test                     # end with the result digest a
 heavyq status      # what runs, what waits, and why (opens with a short story in plain words)
 heavyq why         # just that story: "2 agents wait because every heavy slot on local is taken."
 heavyq why api     # one lane: its running and waiting jobs, the reason per machine, its last run
+heavyq retarget 4242 --remote spare   # a waiting job moves to other machines, keeps its place (docs/remote.md)
 heavyq history     # recent runs, with the commit each one ran on (-v: tree, session, item, gate)
 heavyq gate status # is this exact code proven? (heavyq.toml gates, or a detected default; exit 0 yes, 1 no)
 heavyq gate run    # run what is not proven yet, through the queue, cached

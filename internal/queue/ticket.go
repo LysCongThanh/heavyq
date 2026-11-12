@@ -33,6 +33,12 @@ type Ticket struct {
 	Pools map[string][]string `json:"pools,omitempty"`
 	// With are the pinned --with sibling repositories, "name@sha12".
 	With []string `json:"with,omitempty"`
+	// Repo and Commit are what a remote run of the ticket ships: the repository
+	// directory name and the commit resolved at enqueue. They are set only when
+	// its placement could leave this machine, so a ticket queued to run here
+	// only can never be moved to a remote (heavyq retarget): it has no commit.
+	Repo   string `json:"repo,omitempty"`
+	Commit string `json:"commit,omitempty"`
 
 	Machine   string    `json:"machine,omitempty"`
 	Slot      string    `json:"slot,omitempty"`

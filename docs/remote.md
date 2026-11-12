@@ -95,6 +95,42 @@ remote = "mac,local,linuxi"   # the fast spare first, this machine while it has 
 - The anti-starvation bypass (`force_after`) applies only to a ticket with one candidate machine, so a list
   never pushes a run onto a machine over its load limit: it waits for whichever has room.
 
+## Moving a waiting ticket: `heavyq retarget`
+
+A queued ticket can change machines without leaving the queue: when the box it waits for is going away, when
+another one has free slots, or when only another one has the tools the command needs.
+
+```bash
+heavyq retarget 48213 --remote spare         # by the pid shown in status, or by the ticket id
+heavyq retarget 48213 --remote spare,local   # an ordered list, as for a run
+heavyq retarget 48213 --remote local         # back to this machine
+```
+
+`WHERE` is what `--remote` takes on a run: `local`, `auto`, a `[[remote]]`, or a list. The ticket keeps its priority
+and its place among equals, and from its next poll waits for the new machines as if it had been queued with
+`--remote WHERE`:
+
+- a remote runs the commit the ticket recorded when it was queued (with default placement, the commit checked out
+  then), the same one it would have shipped to its first machine;
+- this machine runs the work tree in place, as for any target that names `local`;
+- the rules of the new target apply from then on: a ticket moved to remotes only exits 76 if they all stay
+  unreachable for `remote_down_max`, and the anti-starvation bypass needs one candidate machine.
+
+The ticket's own heavyq process re-plans its placement and answers, and `heavyq retarget` prints the answer: exit 0
+once the ticket moved (or, when it has not read the request within two polls, it moves when it does), 2 when the
+move is refused. A refused move changes nothing:
+
+| Refused with exit 2 | Why |
+|---|---|
+| a name that is not `local`, `auto` or a configured `[[remote]]`, or a bad list | the checks of `--remote` |
+| a running or finished ticket | only a waiting ticket moves |
+| a ticket queued to run on this machine only, moved to anything but `local`: `--remote local`, or default placement that stayed here (uncommitted changes, a path outside the repository, no git repository), `--need-gh` | it recorded no commit a remote could run. Cancel it (`heavyq cancel`) and queue it again with `--remote WHERE` inside a git repository |
+| a ticket with `--needs`, moved to anything but `local` | pool values belong to this machine |
+| a target whose machines are all paused | a paused machine admits nothing new: `heavyq resume` it first. In a list or `auto`, paused machines are skipped until they resume, as for every ticket |
+| `local` for a ticket this machine cannot run: a `--ref` that is not checked out here, a `--with` sibling off its pin | the ticket's own process refuses it and says why |
+
+The dashboard's control API files the same request: `POST tickets/{id}/target` (see [dashboard.md](dashboard.md)).
+
 ## Sibling repositories: `--with`
 
 A command that reads `../shared-schema` or `../core-lib` needs those repositories next to the main one. Declare

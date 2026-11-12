@@ -1,12 +1,14 @@
 // Package control carries operator requests (cancel a ticket, change its
-// priority, pause a machine) from the dashboard or the CLI to the heavyq
-// processes that own the tickets.
+// priority or its machines, pause a machine) from the dashboard or the CLI to
+// the heavyq processes that own the tickets.
 //
 // heavyq has no daemon, so requests are files in <queue dir>/ctl that the
 // ticket's own process picks up on its next poll:
 //
 //	<key>.cancel      stop the ticket (waiting: leave the queue; running: SIGTERM)
 //	<key>.prio        new priority 1-9 (waiting tickets only)
+//	<key>.target      new placement target (waiting tickets only), answered in
+//	                  <key>.target-done (control_target_request.go)
 //
 // <key> is the ticket name without its leading priority digit, so a request
 // still reaches a ticket whose priority changed in the meantime.
@@ -101,13 +103,15 @@ func (m Mailbox) TakePrio(ticket string) (int, bool) {
 	return p, true
 }
 
-// Forget removes every request addressed to ticket (called when it ends).
+// Forget removes every request addressed to ticket (called when it ends). An
+// answer to a target request stays for its requester (control_target_request.go).
 func (m Mailbox) Forget(ticket string) {
 	if !ticketRe.MatchString(ticket) {
 		return
 	}
-	_ = os.Remove(m.path(key(ticket) + ".cancel"))
-	_ = os.Remove(m.path(key(ticket) + ".prio"))
+	for _, suffix := range []string{".cancel", ".prio", ".target"} {
+		_ = os.Remove(m.path(key(ticket) + suffix))
+	}
 }
 
 // SetPaused pauses or resumes admissions on machine.
