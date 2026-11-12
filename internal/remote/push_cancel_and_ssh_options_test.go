@@ -92,7 +92,7 @@ func TestPushRunsSSHWithBatchModeAndKeepalives(t *testing.T) {
 	isolateGitConfig(t, "")
 	for _, v := range []string{"GIT_SSH_COMMAND", "GIT_SSH"} {
 		t.Setenv(v, "")
-		os.Unsetenv(v)
+		_ = os.Unsetenv(v)
 	}
 	repo, sha := newRepo(t, t.TempDir(), "app", "f", "x")
 	argsFile := filepath.Join(t.TempDir(), "ssh.args")
@@ -120,7 +120,7 @@ func TestPushKeepsTheUsersOwnGitSSHCommand(t *testing.T) {
 	gitRun(t, repo, "config", "core.sshCommand", stub)
 	for _, v := range []string{"GIT_SSH_COMMAND", "GIT_SSH"} {
 		t.Setenv(v, "")
-		os.Unsetenv(v)
+		_ = os.Unsetenv(v)
 	}
 	if err := Push(sshRemote(t), repo, "app", sha, sha[:12], 20*time.Second); err == nil {
 		t.Fatal("a push through a failing ssh succeeded")
