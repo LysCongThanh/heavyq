@@ -13,7 +13,6 @@ import (
 	"embed"
 	"encoding/hex"
 	"fmt"
-	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -88,24 +87,6 @@ func New(opts Options) (*Server, error) {
 // Token is the bearer token API calls must present.
 func (s *Server) Token() string { return s.token }
 
-// Listen opens a loopback listener on addr ("127.0.0.1:0" picks a port) and
-// records the port expected in Host headers.
-func (s *Server) Listen(addr string) (net.Listener, error) {
-	host, _, err := net.SplitHostPort(addr)
-	if err != nil {
-		return nil, fmt.Errorf("--addr %q: %w", addr, err)
-	}
-	if host != "127.0.0.1" && host != "::1" && host != "localhost" {
-		return nil, fmt.Errorf("--addr %q: the dashboard only listens on 127.0.0.1, ::1 or localhost", addr)
-	}
-	ln, err := net.Listen("tcp", addr)
-	if err != nil {
-		return nil, err
-	}
-	_, s.port, _ = net.SplitHostPort(ln.Addr().String())
-	return ln, nil
-}
-
 // Handler routes the page and the API.
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
@@ -142,15 +123,6 @@ func (s *Server) guard(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
-}
-
-func (s *Server) hostAllowed(host string) bool {
-	for _, name := range []string{"127.0.0.1", "localhost", "[::1]"} {
-		if host == name+":"+s.port {
-			return true
-		}
-	}
-	return false
 }
 
 // api requires the bearer token.
