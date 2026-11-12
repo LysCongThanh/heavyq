@@ -52,3 +52,15 @@ func TestLoadAcceptsAnchorMarkdownFiles(t *testing.T) {
 		}
 	}
 }
+
+func TestCheckAnchorFile(t *testing.T) {
+	for p, ok := range map[string]bool{
+		".heavyq/anchor.md": true, "a.md": true, "x/../a.md": true, "A.Md": true,
+		"": false, ".": false, "..": false, "../a.md": false, "/a.md": false, "a.md/": false,
+		"src": false, "a.go": false, ".md.txt": false, "a\x00.md": false, "a\n.md": false,
+	} {
+		if err := CheckAnchorFile(p); (err == nil) != ok {
+			t.Errorf("CheckAnchorFile(%q) = %v, want ok=%v", p, err, ok)
+		}
+	}
+}

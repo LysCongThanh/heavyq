@@ -68,7 +68,8 @@
       "properties": {
         "file": {
           "type": "string",
-          "description": "Checklist file, relative to the repository root.",
+          "pattern": "\\.[mM][dD]$",
+          "description": "Checklist file: one .md file, relative to the repository root, not a directory. It is left out of the tree id, so it can never name code.",
           "default": ".heavyq/anchor.md"
         },
         "extra": {

@@ -85,7 +85,8 @@ func patchRepoFile(root *jsonschema.Schema) {
 	anchorDef := def(root, "rawAnchor")
 	anchorDef.Description = "The anchor checklist: the work items of `heavyq item`."
 	file := prop(anchorDef, "file")
-	file.Description = "Checklist file, relative to the repository root."
+	file.Description = "Checklist file: one .md file, relative to the repository root, not a directory. It is left out of the tree id, so it can never name code."
+	file.Pattern = `\.[mM][dD]$`
 	file.Default = anchor.DefaultFile
 	prop(anchorDef, "extra").Description = "Extra read-only sources, as globs relative to the repository root."
 

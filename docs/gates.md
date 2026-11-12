@@ -127,7 +127,7 @@ max_proof_share = 1.0                  # share of the 30 min lease the expected 
 | `gate.paths` | list of strings | none (the whole tree) | at most 64 globs relative to the repository root, none twice, each at most 200 bytes. `*` and `?` stay inside one path component, `**` is a whole component (`**/*.go`, `docs/**`), a path with no wildcard names a file or a directory with everything below it. No character classes, escapes, `..`, absolute paths or a trailing `/`. A gate's proof is then the content of the files they match, see [what "proven" means](#a-gate-with-paths). |
 | `pool` | tables | none | `[[pool]]` tables, as in the user config; a pool here replaces the user's pool of the same name. See [pools](pools.md). |
 | `proof.remote` | string | unset (= `"local"`) | `[proof]`: where `item done --run` and `gate run` run proofs for gates without their own `remote` key; `local`, `auto`, a remote name or an ordered list `"a,b,c"`. Overrides `[proof]` of the user config. See [items](items.md#where-the-proof-runs). |
-| `anchor.file` | string | `".heavyq/anchor.md"` | relative path inside the repository: the checklist `heavyq item`, `flow` and `steer` read ([anchor](anchor.md)); heavyq's own edits to it never change the tree id (see below) |
+| `anchor.file` | string | `".heavyq/anchor.md"` | one `.md` file, a relative path inside the repository; not a directory: the checklist `heavyq item`, `flow` and `steer` read ([anchor](anchor.md)); the tree id leaves this path out, so heavyq's own edits to it never change it (see [below](#what-the-tree-id-ignores)) |
 | `anchor.extra` | list of strings | none | relative globs inside the repository: extra read-only sources of items |
 | `items.iterations` | integer | `3` | 1-20; proof runs an item is expected to need; `item claim` refuses an item whose proof p50 times this is over the lease budget |
 | `items.max_proof_share` | number | `1` | above 0, at most 1; the share of the 30 minute lease that budget is |
@@ -180,6 +180,12 @@ out a fixed set of bookkeeping paths, in the committed tree and in the edits ali
 Ticking an item, adding a decision or committing either one does not change the id, and an uncommitted change
 to these paths alone does not make the tree dirty (the result cache can still answer). Everything else counts,
 `heavyq.toml` included: changing a gate must void its proof. Other files under `.heavyq/` count too.
+
+Because the anchor file is left out with everything below it, `[anchor] file` must name a single `.md` file:
+`heavyq.toml` is rejected when it names a directory, a path ending in `/` or any other kind of file (code, for
+example). Should the path still turn out to be a directory, in the work tree or in the commit being identified,
+the tree id ignores the setting and leaves out the default `.heavyq/anchor.md` instead, so nothing under that
+directory ever escapes a proof.
 
 How the committed part is computed: a repository without those paths keeps `HEAD`'s tree id as is. Otherwise
 heavyq reads only the tree levels on the way to them (the root and `.heavyq/`, a handful of entries) and
