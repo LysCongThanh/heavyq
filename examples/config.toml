@@ -96,3 +96,19 @@ max_size_mb = 512        # oldest entries are evicted beyond this
 max_entry_mb = 64        # larger outputs are not stored
 cache_failures = false   # true = also replay non-zero exits to later runs
 env = []                 # variables whose values are part of the key, e.g. ["CI", "NODE_ENV"]
+
+# `heavyq fleet` (docs/fleet.md): machines heavyq only watches, and other queues it observes read-only.
+# [[remote]]
+# name = "box3"
+# ssh = "box3"
+# observe_only = true      # probed for load, RAM and processes; never a run target
+#
+# [[foreign]]
+# name = "bashq"
+# history = "/var/tmp/bashq/history.tsv"   # TSV, one finished run per line
+# columns = ["end_epoch", "machine", "lane", "prio", "light", "wait_s", "run_s", "exit"]   # the default
+# tickets = "/var/tmp/bashq"               # <prio>-<20-digit ns>-<pid>-<lane>, ".run" while running
+# infra_exits = [97, 124]                  # this queue's own infrastructure exits (127, 137, 255 always are)
+# machines_dir = "/srv/ops/machines.d"     # <machine>.env with SLOTS, LIGHT_SLOTS, KIND
+# slot_dirs = { box3 = ".bashq/slots" }    # its slot lock files on each machine
+# aliases = { "build-1" = "local" }        # names the queue writes -> heavyq machine names

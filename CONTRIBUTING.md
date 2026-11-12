@@ -32,6 +32,7 @@ The remote path is tested through a `sh -c` transport, which runs the same code 
 | `internal/remote` | transport, probe, `git push` of exact commits, the embedded remote job script, the tool probe (runs the job script's own PATH block) |
 | `internal/toolcheck` | placement by tools: the command names a command line starts (`FromArgv`, through `env` and `sh -c`; the cli unwraps the gate wrapper first), `--tools`/gate `tools` names, the per-remote answer cache with a TTL in the state directory |
 | `internal/config` | TOML config, defaults, validation |
+| `internal/fleet` | `heavyq fleet`, read-only: the overload rule, the infra/code exit split and the worker cap (pure, table-tested), the foreign queue readers (TSV history tail, tickets dir, machine files), the probe script and its parser, process attribution, the report and its text, markdown and agent renderers. See `docs/fleet.md` |
 | `internal/history` | the run ledger: JSONL records (commit, tree, session, ...), ULIDs, monthly rotation; `ReadTail` reads the newest records backwards, `Each`/`EachFrom` stream; `historytest` makes synthetic ledgers for tests |
 | `internal/ledgerindex` | rebuildable indexes beside the ledger (per lane, per tree), written under a lock where a record is appended (`Append`); hot-path reads (`TreeRuns`, `LastOfLane`, `Recent`) with a bounded-tail fallback; `heavyq doctor --reindex`. See `docs/ledger.md` |
 | `internal/deadline` | `RunWithin(d, fn)`: fail-open time budget for hook handlers |

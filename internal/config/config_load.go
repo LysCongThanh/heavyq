@@ -141,14 +141,23 @@ func (c *Config) normalize() error {
 			return fmt.Errorf("[[remote]] #%d: name %q must be unique, not %q, and match %s", i+1, r.Name, LocalName, SafeName)
 		}
 		seen[r.Name] = true
+		if r.ObserveOnly {
+			continue // validated by splitObserved
+		}
 		if err := r.normalizeRemote(); err != nil {
 			return fmt.Errorf("remote %q: %w", r.Name, err)
 		}
 	}
+	if err := c.splitObserved(); err != nil {
+		return err
+	}
 	if err := c.Run.normalize(); err != nil {
 		return err
 	}
-	return c.Proof.normalize(c)
+	if err := c.Proof.normalize(c); err != nil {
+		return err
+	}
+	return c.normalizeForeign()
 }
 
 // GateEnabled reports whether the RAM/load gate is on (default true).

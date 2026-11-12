@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -34,18 +35,19 @@ func TestProbeAttributesRealProcesses(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	// a ticket's own process with a CPU-bound child
-	owner := exec.Command("sh", "-c", "sh -c 'while :; do :; done' & wait")
+	// a ticket's own process with a CPU-bound child (bounded by timeout(1) should the cleanup not run; --foreground keeps it in our process group)
+	owner := exec.Command("sh", "-c", "timeout --foreground 30 sh -c 'while :; do :; done' & wait")
 	// a run that holds slot s2 the way `flock <file> cmd` does
 	holder := exec.Command("flock", filepath.Join(slots, "s2.lock"), "sleep", "30")
 	// a process working in a heavyq remote worktree
 	inWT := exec.Command("sleep", "30")
 	inWT.Dir = wt
 	for _, c := range []*exec.Cmd{owner, holder, inWT} {
+		c.SysProcAttr = &syscall.SysProcAttr{Setpgid: true} // the cleanup kills the whole group, children included
 		if err := c.Start(); err != nil {
 			t.Fatal(err)
 		}
-		t.Cleanup(func() { _ = c.Process.Kill(); _ = c.Wait() })
+		t.Cleanup(func() { _ = syscall.Kill(-c.Process.Pid, syscall.SIGKILL); _ = c.Wait() })
 	}
 	time.Sleep(300 * time.Millisecond) // let flock take the lock and the loop accumulate CPU
 
@@ -75,7 +77,7 @@ func TestProbeAttributesRealProcesses(t *testing.T) {
 		}
 		return nil
 	}
-	if g := find("bashq", "api", "sh"); g == nil || g.Procs < 2 {
+	if g := find("bashq", "api", "sh"); g == nil || g.Procs < 2 || g.CPUPct <= 1 {
 		t.Fatalf("the busy loop belongs to lane api: %+v", groups)
 	}
 	if g := find("bashq", "web", "sleep"); g == nil {
@@ -117,6 +119,10 @@ func TestParseProbeOutput(t *testing.T) {
 		"psi_memory full avg10=1.25 avg60=0.10 avg300=0.00 total=1",
 		"p 10 1 64 820.5 4096000 node",
 		"p 11 10 12 99.0 512000 Web Content",
+		"self 99",                                                     // the probe itself and its ps are not the machine's load
+		"clk 100", "interval_ns 2000000000", "c 10 400", "c 100 1800", // 400 ticks over 2 s at 100 Hz: 200%
+		"p 99 1 1 500.0 1000 bash",
+		"p 100 99 1 900.0 1000 ps",
 		"a\t10\tnode jest --maxWorkers=18 --token=supersecret",
 		"w 11",
 		"s bashq s1 1 10",
@@ -140,7 +146,7 @@ func TestParseProbeOutput(t *testing.T) {
 		t.Fatalf("slots: %+v", p.Slots)
 	}
 	groups, _ := Attribute(p, []Root{{Pid: 10, Owner: "bashq", Lane: "api"}})
-	if len(groups) != 2 || groups[0].Owner != "bashq" || strings.Contains(groups[0].Cmd, "supersecret") {
+	if len(groups) != 2 || groups[0].Owner != "bashq" || groups[0].CPUPct != 200 || groups[1].CPUPct != 0 || strings.Contains(groups[0].Cmd, "supersecret") {
 		t.Fatalf("groups: %+v", groups)
 	}
 	if _, err := ParseProbe("Permission denied (publickey)."); err == nil {

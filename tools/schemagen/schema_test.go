@@ -3,13 +3,16 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
+	"github.com/LysCongThanh/heavyq/internal/fleet"
 	"github.com/LysCongThanh/heavyq/internal/snapshot"
 )
 
@@ -129,22 +132,51 @@ func TestSchemasRefuseWhatHeavyqRefuses(t *testing.T) {
 		}
 	}
 	for name, doc := range map[string]string{
-		"full": "[queue]\npoll = \"5s\"\nresource_gate = false\n[local]\nheavy_slots = 4\n[[remote]]\nname = \"box\"\nssh = \"box\"\n[hook]\npermission = \"allow\"\n[[hook.rule]]\nmatch = [\"bun test\"]\n[cache]\nttl = \"1h30m\"\n",
+		"full":  "[queue]\npoll = \"5s\"\nresource_gate = false\n[local]\nheavy_slots = 4\n[[remote]]\nname = \"box\"\nssh = \"box\"\n[hook]\npermission = \"allow\"\n[[hook.rule]]\nmatch = [\"bun test\"]\n[cache]\nttl = \"1h30m\"\n",
+		"fleet": "[[remote]]\nname = \"watch\"\nssh = \"watch\"\nobserve_only = true\n[[foreign]]\nname = \"bashq\"\nhistory = \"/q/h.tsv\"\ncolumns = [\"end_epoch\", \"machine\", \"exit\"]\ninfra_exits = [97]\nslot_dirs = { watch = \"q/slots\" }\n",
 	} {
 		if err := cfg.Validate(tomlDoc(t, doc)); err != nil {
 			t.Errorf("config %q should be valid: %v", name, err)
 		}
 	}
 	for name, doc := range map[string]string{
-		"duration without unit": "[queue]\npoll = \"5\"\n",
-		"unknown section":       "[queu]\npoll = \"5s\"\n",
-		"unknown key":           "[queue]\npol = \"5s\"\n",
-		"bad permission":        "[hook]\npermission = \"yes\"\n",
-		"rule without match":    "[[hook.rule]]\nlane = \"x\"\n",
+		"duration without unit":  "[queue]\npoll = \"5\"\n",
+		"unknown section":        "[queu]\npoll = \"5s\"\n",
+		"unknown key":            "[queue]\npol = \"5s\"\n",
+		"bad permission":         "[hook]\npermission = \"yes\"\n",
+		"rule without match":     "[[hook.rule]]\nlane = \"x\"\n",
+		"foreign unknown column": "[[foreign]]\nname = \"bashq\"\nhistory = \"/q/h.tsv\"\ncolumns = [\"color\"]\n",
+		"foreign named heavyq":   "[[foreign]]\nname = \"heavyq\"\ntickets = \"/q\"\n",
+		"foreign with nothing":   "[[foreign]]\nname = \"bashq\"\n",
+		"foreign exit 0":         "[[foreign]]\nname = \"bashq\"\ntickets = \"/q\"\ninfra_exits = [0]\n",
 	} {
 		if err := cfg.Validate(tomlDoc(t, doc)); err == nil {
 			t.Errorf("config %q should be refused", name)
 		}
+	}
+}
+
+// A fleet report as `heavyq fleet --json` prints it satisfies fleet.schema.json.
+func TestFleetSchemaAcceptsAReport(t *testing.T) {
+	inRepoRoot(t)
+	now := time.Date(2026, 11, 12, 10, 0, 0, 0, time.UTC)
+	r := fleet.Assemble(fleet.Inputs{Now: now, Since: now.Add(-24 * time.Hour),
+		Machines: []fleet.MachineInput{
+			{Name: "local", Role: fleet.RoleLocal, HeavyqSlots: 2, HeavyqTotal: 3, Probe: &fleet.Probe{Cores: 8, Load1: 20, FreeMB: 100, TotalMB: 8000,
+				Procs: []fleet.Proc{{Pid: 2, PPid: 1, CPU: 100, RSSKB: 2048, Comm: "node"}}}},
+			{Name: "gone", Role: fleet.RoleObserveOnly, Err: errors.New("timed out")},
+		},
+		Queues: []fleet.QueueInput{{Name: "heavyq", Kind: fleet.KindHeavyq, Runs: []fleet.Run{{Machine: "local", WaitS: 1, RunS: 2, Exit: 255, Class: fleet.ClassInfra}},
+			Tickets: []fleet.Ticket{{Lane: "api", Prio: 3, Since: now.Add(-time.Hour)}}}},
+	})
+	schema := compile(t, "fleet.schema.json")
+	doc := viaJSON(t, r)
+	if err := schema.Validate(doc); err != nil {
+		t.Fatalf("report rejected: %v", err)
+	}
+	delete(doc.(map[string]any), "queues")
+	if err := schema.Validate(doc); err == nil {
+		t.Error("a report without queues should be refused")
 	}
 }
 

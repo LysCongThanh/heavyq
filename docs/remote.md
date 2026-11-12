@@ -73,6 +73,13 @@ What a remote run sees, and what it doesn't:
   connection drops, the remote stops the command's process group and removes the worktree. Exit 255 means
   the connection was lost.
 
+## Machines heavyq only watches
+
+A `[[remote]]` with `observe_only = true` (and only `name` and `ssh` or `transport`) is never a run target:
+placement, `--remote`, `auto` and `[proof]` do not see it. `heavyq fleet` still probes it for load, RAM,
+memory pressure and the processes that use them, so a fleet of many machines can be watched without giving
+heavyq slots there. See [fleet](fleet.md).
+
 ## An ordered list of machines
 
 `--remote a,b,c` (also `HEAVYQ_REMOTE`, `[proof] remote`, and a gate's `remote`) names the machines a run may

@@ -10,6 +10,7 @@ import (
 	"github.com/invopop/jsonschema"
 
 	"github.com/LysCongThanh/heavyq/internal/config"
+	"github.com/LysCongThanh/heavyq/internal/fleet"
 	"github.com/LysCongThanh/heavyq/internal/repoconfig"
 	"github.com/LysCongThanh/heavyq/internal/snapshot"
 )
@@ -45,6 +46,10 @@ func schemaFiles() []schemaFile {
 		{
 			File: "status.schema.json", Title: "heavyq status --json", Type: snapshot.Snapshot{},
 			Description: "The output of `heavyq status --json` (schema 1). Fields may be added within schema 1; readers should ignore unknown ones.",
+		},
+		{
+			File: "fleet.schema.json", Title: "heavyq fleet --json", Type: fleet.Report{},
+			Description: "The output of `heavyq fleet --json` (schema 1): every machine and every queue, heavyq's and the foreign ones. Fields may be added within schema 1; readers should ignore unknown ones.",
 		},
 	}
 }

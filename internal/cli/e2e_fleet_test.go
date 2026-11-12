@@ -39,14 +39,15 @@ func fleetFixture(t *testing.T, h *rig) string {
 			t.Fatal(err)
 		}
 	}
-	// "watch" is observed through `sh -c` (this machine); "dead" hangs until its probe times out.
+	// "watch" is observed through `sh -c` (this machine); "dead" fails like an ssh that cannot connect (a hanging
+	// machine is TestProbeOfAHangingMachineTimesOut: here the timeout is generous, for a loaded test machine).
 	return baseConfig + `[[remote]]
 name = "watch"
 transport = ["sh", "-c"]
 observe_only = true
 [[remote]]
 name = "dead"
-transport = ["sh", "-c", "sleep 60"]
+transport = ["sh", "-c", "exit 255"]
 git_url = "/nonexistent"
 [[foreign]]
 name = "bashq"
@@ -66,8 +67,8 @@ func TestE2EFleetObservesEveryQueue(t *testing.T) {
 	}
 
 	start := time.Now()
-	rc, out := h.run("fleet", "--json", "--timeout", "2s")
-	if rc != 0 || time.Since(start) > 30*time.Second {
+	rc, out := h.run("fleet", "--json", "--timeout", "45s")
+	if rc != 0 || time.Since(start) > 50*time.Second {
 		t.Fatalf("rc=%d after %s\n%s", rc, time.Since(start), out)
 	}
 	var r struct {
@@ -122,7 +123,7 @@ func TestE2EFleetObservesEveryQueue(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(md), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if rc, out := h.run("fleet", "--md", md, "--timeout", "1s"); rc != 0 || strings.TrimSpace(out) != "" {
+	if rc, out := h.run("fleet", "--md", md, "--timeout", "45s"); rc != 0 || strings.TrimSpace(out) != "" {
 		t.Fatalf("rc=%d\n%s", rc, out)
 	}
 	body := h.read("reports/fleet.md")
@@ -136,7 +137,7 @@ func TestE2EFleetObservesEveryQueue(t *testing.T) {
 	}
 
 	// Agent mode is a compact digest under the 4 KB budget.
-	if rc, out := h.run("fleet", "--agent", "--timeout", "1s"); rc != 0 || len(out) >= 4096 || !strings.Contains(out, "bashq") {
+	if rc, out := h.run("fleet", "--agent", "--timeout", "45s"); rc != 0 || len(out) >= 4096 || !strings.Contains(out, "bashq") {
 		t.Fatalf("rc=%d (%d bytes)\n%s", rc, len(out), out)
 	}
 	// Unsafe input fails closed before anything is probed.

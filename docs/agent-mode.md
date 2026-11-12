@@ -122,6 +122,9 @@ exactly as before.
   `next: heavyq gate run <name>` (the "Prove it with" sentence is dropped). `--json` is unchanged.
 - `heavyq why [lane]` is cut to 600 bytes, whole lines first, with `... (heavyq status shows the rest)` at
   the cut.
+- `heavyq fleet` prints its digest instead of the tables: one line per machine (overloaded first) and per
+  queue, a `next:` line with the worker caps to apply, under 4 KB; `--json` and `--md` are unchanged
+  ([fleet](fleet.md)).
 - A usage error ends with ``next: fix the arguments; `heavyq help agents` shows the usage``.
 - `heavyq help agents` prints a usage card of at most 900 bytes (about 200 tokens): the digest, the exit
   codes, what to do on 75 and 78, gate status and gate run, why.
@@ -133,5 +136,6 @@ exactly as before.
 | a 2-minute wait says 1 line (queued); with the running line and the digest, 3 | `TestAgentTwoMinuteWaitSaysQueuedOnce` (fake clock), `TestAgentModeWaitPrintsAtMostThreeHeavyqLines` |
 | a digest is under 4096 bytes, with 6 MB of failing output too | `TestDigestStaysUnderTheBudgetWithHugeFailingOutput`, `TestAgentModeFailureDigestIsBoundedAndKeepsTheFullLog` |
 | `why` is at most 600 bytes | `TestWhyStaysUnderTheByteBudgetInAgentMode` |
+| the `fleet` digest is under 4096 bytes, with 60 live tickets | `TestReportShapes`, `TestE2EFleetObservesEveryQueue` |
 | `heavyq help agents` is at most 900 bytes | `TestCardBudget`, `TestHelpAgentsCardFitsItsBudget` |
 | no ANSI in any agent output | `noANSI` in the end-to-end tests |

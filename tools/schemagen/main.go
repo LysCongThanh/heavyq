@@ -1,9 +1,10 @@
-// Command schemagen writes the JSON Schemas of heavyq's three file formats from the Go types the code
+// Command schemagen writes the JSON Schemas of heavyq's four file formats from the Go types the code
 // really uses, so the schemas cannot drift from the parsers:
 //
 //	heavyq.schema.json  heavyq.toml, the per-repository gates ([[gate]], [[pool]], [anchor])
 //	config.schema.json  the user config, ~/.config/heavyq/config.toml
 //	status.schema.json  the output of `heavyq status --json` (schema 1)
+//	fleet.schema.json   the output of `heavyq fleet --json` (schema 1)
 //
 // It is a separate module (own go.mod) so the main module keeps its stdlib + BurntSushi/toml rule; the
 // reflection library lives only here. Run it from this directory, then commit the result:
