@@ -71,7 +71,8 @@ func mdMachineDetail(b *bytes.Buffer, m Machine) {
 	}
 	fmt.Fprintf(b, "\n### %s\n\n", mdCell(m.Name))
 	if m.Cap != nil {
-		fmt.Fprintf(b, "Suggested worker cap: **%d** per run (%s).\n\n", m.Cap.Workers, m.Cap.Why)
+		fmt.Fprintf(b, "Suggested worker cap: **%d** workers per run = %s (%s).\n\n", m.Cap.Workers, m.Cap.division(),
+			mdCell(strings.Join(m.Cap.terms(), "; ")))
 	}
 	if len(m.Top) == 0 {
 		return // not measured (a partial probe): no RSS figure either

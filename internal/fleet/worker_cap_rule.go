@@ -83,7 +83,6 @@ func (c CapQueue) text() string {
 // queue used a heavy slot, the run being started is the one: cores / 1.
 func SuggestCap(cores int, queues []QueueSlots) (WorkerCap, bool) {
 	c := WorkerCap{Cores: cores, Queues: []CapQueue{}}
-	var parts []string
 	for _, q := range queues {
 		if q.Configured == 0 && q.BusyNow == 0 && q.WindowPeak == 0 {
 			continue // nothing configured, busy or run there: the queue does not use this machine
@@ -91,18 +90,31 @@ func SuggestCap(cores int, queues []QueueSlots) (WorkerCap, bool) {
 		cq := q.count()
 		c.Queues = append(c.Queues, cq)
 		c.HeavySlots += cq.Counted
-		parts = append(parts, cq.text())
 	}
 	if cores < 1 || len(c.Queues) == 0 {
 		return WorkerCap{}, false
 	}
 	c.Workers = max(1, cores/max(1, c.HeavySlots))
-	in := fmt.Sprintf("%d heavy slots in use", c.HeavySlots)
-	if c.HeavySlots == 0 {
-		in = "1 run (no heavy slot in use now or in the window)"
-	}
-	c.Why = fmt.Sprintf("%d cores / %s (%s) = %d workers per run", cores, in, strings.Join(parts, "; "), c.Workers)
+	// The result leads, so a reader (or a clipped line) always has the number; the terms grow with the queues.
+	c.Why = fmt.Sprintf("%d workers per run = %s (%s)", c.Workers, c.division(), strings.Join(c.terms(), "; "))
 	return c, true
+}
+
+// division is the arithmetic without the per-queue terms: "12 cores / 4 heavy slots in use".
+func (c WorkerCap) division() string {
+	if c.HeavySlots == 0 {
+		return fmt.Sprintf("%d cores / 1 run (no heavy slot in use now or in the window)", c.Cores)
+	}
+	return fmt.Sprintf("%d cores / %d heavy slots in use", c.Cores, c.HeavySlots)
+}
+
+// terms is each queue's count with how it was reached, in the order of c.Queues.
+func (c WorkerCap) terms() []string {
+	out := make([]string, 0, len(c.Queues))
+	for _, q := range c.Queues {
+		out = append(out, q.text())
+	}
+	return out
 }
 
 // PeakConcurrency is the most runs that were running at the same moment, each run being the interval

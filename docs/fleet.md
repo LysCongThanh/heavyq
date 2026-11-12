@@ -100,10 +100,20 @@ how many heavy slots it uses there, not how many it has:
   configured.
 
 A queue with nothing configured, busy or run on the machine is left out. When no slot is in use at all, the
-run being started is the one: `cores / 1`. Every number is shown: the text and markdown reports print the
-arithmetic (`12 cores / 4 heavy slots in use (heavyq 0 = max(now 0, peak 0) of 3; bashq 4 = max(now 1, peak 4)
-of 4) = 3 workers per run`), and `--json` has each queue's `busy_now`, `window_peak`, `configured`, `counted`
-and `basis` (`used`, `configured` or `busy_now`) under `worker_cap.queues`.
+run being started is the one: `cores / 1`. Every number is shown, the result first. The text report prints the
+count and the division on the machine's `cap:` line and each queue's term on a line of its own, so however many
+queues there are the count is never clipped:
+
+```text
+  cap: 3 workers per run = 12 cores / 4 heavy slots in use
+    heavyq 0 = max(now 0, peak 0) of 3
+    bashq 4 = max(now 1, peak 4) of 4
+```
+
+The markdown report and `worker_cap.why` in `--json` carry the same on one line (`3 workers per run = 12 cores /
+4 heavy slots in use (heavyq 0 = max(now 0, peak 0) of 3; bashq 4 = max(now 1, peak 4) of 4)`), and `--json` has
+each queue's `busy_now`, `window_peak`, `configured`, `counted` and `basis` (`used`, `configured` or
+`busy_now`) under `worker_cap.queues`.
 
 When every heavy run starts a test runner with one worker per core, N concurrent runs put N times the cores in
 runnable threads; capping each at `cores / N` keeps a full machine near `load = cores`. Pass it to the runner
@@ -178,7 +188,7 @@ fields may be added within it):
     "outside_rss_mb": 4100,
     "worker_cap": {"workers": 4, "cores": 18, "heavy_slots": 4,
                    "queues": [{"owner": "bashq", "busy_now": 4, "window_peak": 3, "configured": 6, "counted": 4, "basis": "used"}],
-                   "why": "18 cores / 4 heavy slots in use (bashq 4 = max(now 4, peak 3) of 6) = 4 workers per run"},
+                   "why": "4 workers per run = 18 cores / 4 heavy slots in use (bashq 4 = max(now 4, peak 3) of 6)"},
     "window": {"runs": 60, "run_hours": 15, "wait_p50_s": 1800, "wait_p90_s": 3240, "wait_p95_s": 3420, "run_p50_s": 900,
                "per_hour": 2.5, "red": 9, "red_infra": 3, "red_code": 6, "infra_rate": 0.05, "code_rate": 0.1}
   }],

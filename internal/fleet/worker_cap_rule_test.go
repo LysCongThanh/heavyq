@@ -115,10 +115,48 @@ func TestWorkerCapCountsSlotsInUse(t *testing.T) {
 			if c == nil || c.Workers != tc.workers || c.HeavySlots != tc.slots || c.Cores != tc.cores || !strings.Contains(c.Why, tc.why) {
 				t.Fatalf("cap %+v\nwant %d workers, %d slots, why containing %q", c, tc.workers, tc.slots, tc.why)
 			}
-			if !strings.HasSuffix(c.Why, fmt.Sprintf("= %d workers per run", tc.workers)) {
-				t.Errorf("the arithmetic ends in the result: %q", c.Why)
+			if !strings.HasPrefix(c.Why, fmt.Sprintf("%d workers per run = %d cores / ", tc.workers, tc.cores)) {
+				t.Errorf("the reasoning leads with the result: %q", c.Why)
 			}
 		})
+	}
+}
+
+// The text report keeps the worker count however many queues there are: the number leads the cap line and
+// each queue's term has a line of its own, every line under 120 columns.
+func TestWorkerCapTextKeepsTheCountWithTwoQueues(t *testing.T) {
+	now := time.Date(2026, 11, 12, 10, 0, 0, 0, time.UTC)
+	window := 24 * time.Hour
+	hq, hl := capFixture(t, OwnerHeavyq, capQueue{history: []string{"600 300 0 other"}, configured: 3}, now, window)
+	bq, bl := capFixture(t, "a-foreign-queue-with-a-long-name", capQueue{
+		history: []string{"7200 3600 0 box", "7000 3600 0 box", "60 30 0 box"}, busy: 1, configured: 4}, now, window)
+	hq.Kind = KindHeavyq
+	r := Assemble(Inputs{Now: now, Since: now.Add(-window), Queues: []QueueInput{hq, bq}, Machines: []MachineInput{{
+		Name: "box", Role: RoleRemote, HeavyqSlots: 3, HeavyqTotal: 3, Probe: &Probe{Cores: 12, Slots: append(hl, bl...)}}}})
+	if c := r.Machines[0].Cap; c == nil || c.Workers != 6 || len(c.Queues) != 2 || len([]rune(c.Why)) <= 112 {
+		t.Fatalf("want 6 workers from two queues, a reasoning longer than the old 112-column clip: %+v", c)
+	}
+	var b strings.Builder
+	RenderText(&b, r)
+	out := b.String()
+	for _, want := range []string{
+		"\n  cap: 6 workers per run = 12 cores / 2 heavy slots in use\n",
+		"\n    heavyq 0 = max(now 0, peak 0) of 3\n",
+		"\n    a-foreign-queue-with-a-long-name 2 = max(now 1, peak 2) of 4\n",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("text: no %q in\n%s", want, out)
+		}
+	}
+	for _, line := range strings.Split(out, "\n") {
+		if len([]rune(line)) >= 120 || strings.HasPrefix(strings.TrimSpace(line), "cap:") && strings.Contains(line, "…") {
+			t.Errorf("line too wide or the cap clipped: %q", line)
+		}
+	}
+	md := string(RenderMarkdown(r))
+	if !strings.Contains(md, "Suggested worker cap: **6** workers per run = 12 cores / 2 heavy slots in use (heavyq 0 = max(now 0, peak 0) of 3; "+
+		"a-foreign-queue-with-a-long-name 2 = max(now 1, peak 2) of 4).") {
+		t.Errorf("markdown cap:\n%s", md)
 	}
 }
 
