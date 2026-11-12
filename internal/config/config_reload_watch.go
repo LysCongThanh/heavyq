@@ -112,6 +112,16 @@ func (w *Watch) Changed(cur *Config) (*Config, error) {
 	return fresh, nil
 }
 
+// Retry makes the next check read the file again even if it is untouched: the
+// caller could not use the config Changed returned for a reason outside the file
+// (a repository heavyq.toml that does not load), so that config is returned
+// again until the caller can take it or the file changes.
+func (w *Watch) Retry() {
+	if w != nil {
+		w.seen = fileMark{size: -1}
+	}
+}
+
 // read loads the file as a fresh heavyq would, except that a file cur was read
 // from (cur is not the defaults) and is gone now is an error, not the defaults.
 func (w *Watch) read(m fileMark, cur *Config) (*Config, error) {

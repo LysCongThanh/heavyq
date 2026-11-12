@@ -14,13 +14,24 @@ import (
 // read, so status can only tell a different story when the waiter decides
 // with a different config, which startReason says instead of a start.
 
+// notInConfigReason is the wait reason on a candidate machine the config does
+// not have: a remote removed by an edit while the ticket waits (it counts as
+// unreachable, see checkRemoteDown), or one of another --config file.
+const notInConfigReason = "not in this config"
+
 // admissionOpportunities is where ticket t may try for a slot this round given
 // the tickets ahead of it: tickets waiting for a pool it does not share are
 // skipped (set: the pools they need; nil when none of them has needs), the
-// other machines are blocked with the reason why, and head says whether t is
+// other machines are blocked with the reason why (notInConfigReason for a
+// candidate cfg does not have), and head says whether t is
 // first in line for some machine (the anti-starvation clock runs).
 func admissionOpportunities(cfg *config.Config, t *queue.Ticket, ahead []*queue.Ticket, set *pools.Set) (opps []schedule.Opportunity, blocked map[string]string, head bool) {
 	opps, blocked = schedule.Opportunities(t, skipPoolBlocked(set, t, ahead), slotCounts(cfg))
+	for _, m := range t.Candidates {
+		if _, ok := cfg.Machine(m); !ok { // no slots in cfg: never an opportunity, and the reason is the config
+			blocked[m] = notInConfigReason
+		}
+	}
 	for _, op := range opps {
 		head = head || op.Head
 	}

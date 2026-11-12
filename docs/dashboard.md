@@ -105,7 +105,8 @@ Fields may be added within schema 1; renaming or removing one bumps `schema`.
   anti-starvation bypass), and `cpu_pct` / `rss_mb` of the whole process tree for local jobs.
 - `waiting[]`: in turn order, with `reasons` per candidate machine (`""` = starts on its next poll;
   `"decides under another config than this one"` when this config has room but the ticket's own heavyq reads
-  another file, or an edit it has not polled yet, see [configuration](configuration.md#editing-the-config-while-tickets-wait)) and
+  another file, or an edit it has not polled yet, see [configuration](configuration.md#editing-the-config-while-tickets-wait);
+  `"not in this config"` for a candidate remote this config does not have, such as one removed while it waits) and
   `bypass_in_s` (head of line only, `-1` otherwise, and `-1` when the bypass would not help: several candidate
   machines, or the ticket waits for RAM or a pool).
 - `coalesced[]`: identical `--cache` runs waiting for one leader.

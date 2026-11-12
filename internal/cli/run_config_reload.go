@@ -9,11 +9,13 @@ package cli
 //
 // What the ticket is stays as it was submitted: its target, candidate machines
 // and needs, and the cache settings its cache key and run identity were made
-// with. Everything admission reads (queue timing, slots, limits, remotes,
-// pools, the probe timeout) comes from the new file. An edit that does not
-// load is reported once and changes nothing: the ticket keeps its last good
-// config (fail closed). It returns a non-zero exit code when the ticket must
-// give up.
+// with. Everything admission reads (queue timing, slots, limits, the remotes
+// among its candidates, pools, the probe timeout) comes from the new file. An
+// edit that does not load is reported once and changes nothing: the ticket
+// keeps its last good config (fail closed). So does an edit whose pools cannot
+// be read because the repository's heavyq.toml does not load; that one is
+// retried on every poll, since fixing heavyq.toml does not touch the config
+// file. It returns a non-zero exit code when the ticket must give up.
 func (r *run) reloadConfig() int {
 	fresh, err := r.cfgWatch.Changed(r.cfg)
 	if err != nil {
@@ -28,9 +30,14 @@ func (r *run) reloadConfig() int {
 	if r.poolSet != nil {
 		set, err := poolSetFor(&next, r.needsDir())
 		if err != nil {
-			r.note("config edit not applied while waiting: %v; keeping the last good config", err)
+			r.cfgWatch.Retry()
+			if msg := err.Error(); msg != r.poolRefusal {
+				r.poolRefusal = msg
+				r.note("config edit not applied while waiting: %v; keeping the last good config", err)
+			}
 			return 0
 		}
+		r.poolRefusal = ""
 		if err := set.Validate(r.opts.Needs); err != nil {
 			r.giveUp("the config changed while waiting and --needs no longer fits: %v; giving up", err)
 			return ExitUsage

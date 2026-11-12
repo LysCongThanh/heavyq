@@ -106,8 +106,11 @@ func waitingSnapshots(cfg *config.Config, qs queue.Snapshot, probes *probeCache,
 		opps, blocked, head := admissionOpportunities(cfg, t, ahead, set)
 		w := snapshot.Waiting{Ticket: ticketSnapshot(t, now, box.CancelRequested(t.Name)), Position: i + 1,
 			Reasons: map[string]string{}, BypassInS: -1}
-		for m := range blocked {
-			w.Reasons[m] = behindReason(ahead, m)
+		for m, why := range blocked {
+			if why != notInConfigReason {
+				why = behindReason(ahead, m)
+			}
+			w.Reasons[m] = why
 		}
 		// The bypass clock starts when the ticket became head (its owner
 		// publishes that), not when it was enqueued.

@@ -19,18 +19,20 @@ import (
 // run is the state of one `heavyq <prio> -- cmd` invocation.
 type run struct {
 	cfg *config.Config
-	// cfgWatch re-reads the config file while the ticket waits (run_config_reload.go).
-	cfgWatch *config.Watch
-	opts     runOptions
-	pl       *placement
-	q        *queue.Dir
-	me       *queue.Ticket
-	probes   *probeCache
-	sigs     chan os.Signal
-	stderr   io.Writer
-	t0       time.Time
-	start    string      // our process start token
-	cache    *cacheState // nil without --cache
+	// cfgWatch re-reads the config file while the ticket waits (run_config_reload.go);
+	// poolRefusal is the last reason an edit was refused for its pools, said once.
+	cfgWatch    *config.Watch
+	poolRefusal string
+	opts        runOptions
+	pl          *placement
+	q           *queue.Dir
+	me          *queue.Ticket
+	probes      *probeCache
+	sigs        chan os.Signal
+	stderr      io.Writer
+	t0          time.Time
+	start       string      // our process start token
+	cache       *cacheState // nil without --cache
 	// interrupted: a signal stopped the command, so its result is not real.
 	interrupted bool
 	// cancelled: an operator stopped the ticket (heavyq cancel / dashboard).

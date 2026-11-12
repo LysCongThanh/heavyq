@@ -39,7 +39,8 @@ func dashCommand(cfg *config.Config, args []string, stdout, stderr io.Writer) in
 		fmt.Fprintln(stderr, "heavyq:", err)
 		return ExitUsage
 	}
-	probes, live := newProbeCache(cfg.Queue.ProbeTimeout.Duration), newLiveConfig(cfg)
+	probes := newProbeCache(cfg.Queue.ProbeTimeout.Duration)
+	live := newLiveConfig(cfg, probes)
 	host, _ := os.Hostname()
 	srv, err := dash.New(dash.Options{
 		Control: *ctl, Interval: *interval, Version: version(), Host: host, Mailbox: controlBox(),

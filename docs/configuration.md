@@ -60,18 +60,26 @@ There is no daemon: each waiting ticket's own heavyq process decides on every po
 re-reads the config file when it changes (one `stat` per poll while it does not), validated exactly as at start,
 so a slot, a higher `max_load_ratio` or a bigger pool is used by tickets already waiting, on their next poll.
 `heavyq status`, `why`, `top` and the dashboard read the same file, so what they say about a waiting ticket is
-the decision it makes. Turn order does not change: a reload only changes what the tickets can get, never who
-goes first.
+the decision it makes (`top` and the dashboard follow edits while they stay open: their probe timeout and the
+machines `top --control` may pause too). Turn order does not change: a reload only changes what the tickets can
+get, never who goes first.
 
 - **What a waiting ticket keeps.** Its place and priority, its target and candidate machines (`--remote`, auto
-  placement: a remote added later is not one of them), its `--needs`, and the `[cache]` settings its cache key
-  and run identity were made with. Admission settings (`[queue]`, `[local]`, the `[[remote]]` entries of its
-  candidates, `[[pool]]`) come from the edited file; a candidate remote removed from the file is no longer used.
+  placement: a remote added later is not one of them, with or without `--with` / `--ref`, whose tickets only
+  re-check whether this machine still holds the code they asked for), its `--needs`, and the `[cache]` settings
+  its cache key and run identity were made with. Admission settings (`[queue]`, `[local]`, the `[[remote]]`
+  entries of its candidates, `[[pool]]`) come from the edited file.
+- **A candidate remote removed from the file** is no longer used: status and `why` say `not in this config` for
+  it. A ticket that can only run remotely counts it as unreachable from its next poll, so when none of its
+  remotes is left (or reachable) it exits 76 after `remote_down_max`, with `<name> (not in the config)
+  unreachable` on stderr and in the digest. Putting the remote back before then lets it run.
 - **An edit that does not load** (a syntax error, an unsafe or out-of-range value, or the file being gone, even
   the default one: a ticket never drops to the built-in defaults because an editor replaced the file)
   changes nothing: the ticket keeps its last good config and says so once on stderr (not in agent mode):
   `config edit not applied while waiting: ...; keeping the last good config`. Fix the file and the next poll
-  picks it up. Status refuses a file that does not parse or validate outright, so it never explains a ticket
+  picks it up. A ticket with `--needs` also reads the repository's `heavyq.toml` for its pools: while that file
+  does not load, the edit is refused the same way (said once) and retried on every poll, so fixing `heavyq.toml`
+  alone is enough. Status refuses a file that does not parse or validate outright, so it never explains a ticket
   with a config the ticket refused.
 - **Needs that no longer fit.** If the edit removes or shrinks a pool a waiting ticket needs, the ticket gives up
   with exit 2, as it would have at submit.

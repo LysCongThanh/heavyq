@@ -27,7 +27,11 @@ type placement struct {
 	siblings    []gitutil.Sibling
 	refIsHead   bool
 	localWhy    string // non-empty: local is not an eligible machine
-	candidates  []string
+	// remotes are the [[remote]] names of the config at submit, the remotes of
+	// the auto target: a ticket keeps them while it waits, so a remote added by
+	// a config edit is not one of its candidates (run_config_reload.go).
+	remotes    []string
+	candidates []string
 }
 
 // preparePlacement resolves the target machine set for o.
@@ -81,7 +85,10 @@ func preparePlacement(cfg *config.Config, o *runOptions, stderr io.Writer) (*pla
 		}
 		return nil, fmt.Errorf("cannot run locally: %s (commit/checkout, or run remotely with --remote)", p.localWhy)
 	}
-	p.candidates = p.machines(cfg)
+	for _, r := range cfg.Remotes {
+		p.remotes = append(p.remotes, r.Name)
+	}
+	p.candidates = p.machines()
 	if p.target != config.LocalName && config.TargetMayRunLocally(p.target) && p.localWhy != "" {
 		fmt.Fprintf(stderr, "heavyq: %s => remote machines only\n", p.localWhy)
 	}
@@ -145,7 +152,9 @@ func (p *placement) refreshLocal() {
 // machines lists the candidate machines of the target, in the order the
 // scheduler tries them: for a list, the list's own order (the first that fits
 // wins, see evaluate). Local is left out while it is not eligible (localWhy).
-func (p *placement) machines(cfg *config.Config) []string {
+// It reads no config: what a waiting ticket recomputes is local's eligibility,
+// never the remotes it was submitted with.
+func (p *placement) machines() []string {
 	if ms := config.MachineList(p.target); ms != nil {
 		out := make([]string, 0, len(ms))
 		for _, m := range ms {
@@ -163,10 +172,7 @@ func (p *placement) machines(cfg *config.Config) []string {
 		if p.localWhy == "" {
 			out = append(out, config.LocalName)
 		}
-		for _, r := range cfg.Remotes {
-			out = append(out, r.Name)
-		}
-		return out
+		return append(out, p.remotes...)
 	default:
 		return []string{p.target}
 	}

@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/LysCongThanh/heavyq/internal/slots"
 )
 
 // A waiting ticket polls for itself (there is no daemon), so it must see an
@@ -37,17 +39,21 @@ func (p *proc) finished() bool {
 }
 
 // The field report: a ticket waits for the only heavy slot, a legacy lock file
-// held by a process outside heavyq (flock(1)), on a machine over its load limit.
-// The operator adds a second slot and raises the load limit. The waiting ticket
-// starts on its next poll, while the first holder still holds its slot, and a
-// ticket submitted later is not stuck behind it.
+// held outside heavyq (as flock(1) would; here the test process holds it, so
+// the test runs where flock(1) is missing, as on a stock macOS), on a machine
+// over its load limit. The operator adds a second slot and raises the load
+// limit. The waiting ticket starts on its next poll, on the new slot while the
+// first one is still held, and a ticket submitted later is not stuck behind it.
 func TestE2EWaitingTicketPicksUpAnEditedConfig(t *testing.T) {
 	root := realTempDir(t)
 	a, b := filepath.Join(root, "a.lock"), filepath.Join(root, "b.lock")
 	h := newRig(t, reloadConfig([]string{a}, "0.5"))
 	h.fakeMetrics(busyReading)
-	hold := newExternal(t, h, "flock", a, "sh", "-c", h.gateFile("go"))
-	h.until("flock(1) holds the first legacy slot", func() bool { return isLocked(a) })
+	hold, err := slots.TryLock(a)
+	if err != nil || hold == nil {
+		t.Fatalf("hold the first legacy slot: %v", err)
+	}
+	defer hold.Release()
 	waiter := h.start("1", "--lane", "waiter", "--", "true")
 	h.waiting(1)
 	if rc, out := h.run("why", "waiter"); rc != 0 || !strings.Contains(out, "local: all heavy slots busy") {
@@ -55,17 +61,12 @@ func TestE2EWaitingTicketPicksUpAnEditedConfig(t *testing.T) {
 	}
 
 	h.setConfig(reloadConfig([]string{a, b}, "1.875"))
-	if rc := waiter.wait(t, 15*time.Second); rc != 0 {
-		t.Fatalf("waiter rc=%d:\n%s", rc, waiter.out)
-	}
-	if hold.finished() {
-		t.Fatalf("the holder must still hold its slot: the waiter started on the new one:\n%s", hold.out)
+	if rc := waiter.wait(t, 15*time.Second); rc != 0 || !strings.Contains(waiter.out.String(), "local/b") {
+		t.Fatalf("the waiter starts on the new slot: rc=%d\n%s", rc, waiter.out)
 	}
 	if rc, out := h.run("1", "--lane", "probe", "--", "true"); rc != 0 {
 		t.Fatalf("a later ticket runs on the new slot: rc=%d\n%s", rc, out)
 	}
-	h.touch("go")
-	hold.wait(t, 20*time.Second)
 }
 
 // An edit that does not load (here an unsafe max_load_ratio) changes nothing:

@@ -37,7 +37,7 @@ func (r *run) waitForTurn() (*claim, int) {
 				r.giveUp("code changed while waiting (%s); giving up", r.pl.localWhy)
 				return nil, ExitUsage
 			}
-			r.me.Candidates = r.pl.machines(r.cfg)
+			r.me.Candidates = r.pl.machines()
 		}
 		c, pos, total, ahead, err := r.round(&headSince)
 		if err != nil {
@@ -153,17 +153,30 @@ func (r *run) checkRemoteDown(since, lastWarn *time.Time) int {
 	if since.IsZero() {
 		*since = now
 	}
-	down := now.Sub(*since)
+	down, names := now.Sub(*since), downNames(r.cfg, rem)
 	if down >= r.cfg.Queue.RemoteDownMax.Duration {
-		r.giveUp("%s unreachable for %s; giving up", strings.Join(rem, ", "), fmtDur(down))
+		r.giveUp("%s unreachable for %s; giving up", names, fmtDur(down))
 		return ExitRemoteDown
 	}
 	if !r.out.mode.Terse() && now.Sub(*lastWarn) >= downWarnEvery { // an agent hears it in the digest
-		fmt.Fprintf(r.stderr, "heavyq: %s unreachable (%s); exit %d after %s\n", strings.Join(rem, ", "),
+		fmt.Fprintf(r.stderr, "heavyq: %s unreachable (%s); exit %d after %s\n", names,
 			fmtDur(down), ExitRemoteDown, fmtDur(r.cfg.Queue.RemoteDownMax.Duration))
 		*lastWarn = now
 	}
 	return 0
+}
+
+// downNames lists the remotes a remote-only ticket waits for, marking those an
+// edit removed from the config while it waited: they are down for it too.
+func downNames(cfg *config.Config, rem []string) string {
+	out := make([]string, len(rem))
+	for i, n := range rem {
+		out[i] = n
+		if _, ok := cfg.Machine(n); !ok {
+			out[i] += " (not in the config)"
+		}
+	}
+	return strings.Join(out, ", ")
 }
 
 func describeAhead(ahead []*queue.Ticket) string {

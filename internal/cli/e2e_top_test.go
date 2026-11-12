@@ -91,7 +91,7 @@ func TestTopActionsUseTheControlMailboxWithTheDashboardChecks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	a, err := newTopActions(cfg)
+	a, err := newTopActions(newLiveConfig(cfg, newProbeCache(cfg.Queue.ProbeTimeout.Duration)).get)
 	if err != nil {
 		t.Fatal(err)
 	}

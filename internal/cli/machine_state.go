@@ -43,7 +43,9 @@ func (c *probeCache) setTimeout(d time.Duration) {
 	c.mu.Unlock()
 }
 
-// refresh probes the given remotes whose cache entry expired, in parallel.
+// refresh probes the given remotes whose cache entry expired, in parallel. A
+// name cfg does not have (a remote an edit removed while a ticket waits) loses
+// its entry: it is not reachable through this config, whatever it last answered.
 func (c *probeCache) refresh(cfg *config.Config, names []string) {
 	var wg sync.WaitGroup
 	c.mu.Lock()
@@ -51,7 +53,13 @@ func (c *probeCache) refresh(cfg *config.Config, names []string) {
 	c.mu.Unlock()
 	for _, n := range names {
 		m, ok := cfg.Machine(n)
-		if !ok || m.IsLocal() {
+		if !ok {
+			c.mu.Lock()
+			delete(c.entries, n)
+			c.mu.Unlock()
+			continue
+		}
+		if m.IsLocal() {
 			continue
 		}
 		c.mu.Lock()

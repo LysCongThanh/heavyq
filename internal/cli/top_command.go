@@ -55,7 +55,7 @@ func topCommand(cfg *config.Config, args []string, stdout, stderr io.Writer) int
 	}
 	theme := render.ThemeFromEnv(os.Getenv, *ascii)
 	probes := newProbeCache(cfg.Queue.ProbeTimeout.Duration)
-	live := newLiveConfig(cfg)
+	live := newLiveConfig(cfg, probes)
 	build := func() (snapshot.Snapshot, error) { return buildSnapshot(live.get(), probes, cpuSampleInterval) }
 
 	if *line || *once {
@@ -68,7 +68,7 @@ func topCommand(cfg *config.Config, args []string, stdout, stderr io.Writer) int
 	}
 	var actions app.Actions
 	if *ctl {
-		a, err := newTopActions(cfg)
+		a, err := newTopActions(live.get)
 		if err != nil {
 			fmt.Fprintln(stderr, "heavyq:", err)
 			return ExitUsage
