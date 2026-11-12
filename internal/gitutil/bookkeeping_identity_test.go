@@ -226,6 +226,11 @@ func TestBookkeepingPathsFallBackAndNeverHideTheConfig(t *testing.T) {
 		"the config":     "[anchor]\nfile = \"heavyq.toml\"\n",
 		"empty":          "[anchor]\nfile = \"\"\n",
 		"other sections": "[queue]\nmax = 1\n",
+		"a directory":    "[anchor]\nfile = \"src\"\n",
+		"trailing slash": "[anchor]\nfile = \"plan.md/\"\n",
+		"a code file":    "[anchor]\nfile = \"main.go\"\n",
+		"the root":       "[anchor]\nfile = \".\"\n",
+		"control chars":  "[anchor]\nfile = \"a\\nb.md\"\n",
 	} {
 		dir := t.TempDir()
 		if toml != "" {
