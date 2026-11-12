@@ -75,7 +75,10 @@ func cut(s string, max int) string {
 			break
 		}
 		used += w
-		end = i + utf8.RuneLen(r)
+		// The bytes the decoder consumed, not utf8.RuneLen(r): an invalid
+		// byte decodes to RuneError, whose RuneLen is 3 but which took 1 byte.
+		_, size := utf8.DecodeRuneInString(s[i:])
+		end = i + size
 	}
 	// Marks right after the last kept character belong to it.
 	for end < len(s) {
