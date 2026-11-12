@@ -2,7 +2,7 @@
 was submitted with, so a slot or a higher `max_load_ratio` added while it waited was never used, while `heavyq
 status` and `why` (fresh processes reading the new file) said it "starts on the next poll", and every later ticket
 waited behind it in turn order. A waiting ticket now re-reads the file when it changes (one `stat` per poll),
-keeps its last good config and says so once when an edit does not load (a vanished file included, never the
+uses an edit once two polls in a row read it the same (never a half-written file), keeps its last good config and says so once when an edit does not load (a vanished file included, never the
 defaults), adopts an edited `probe_timeout`, and gives up with exit 2 when an edit
 removes a pool it needs. Its candidate machines stay those it was submitted with (a remote added later is not one
 of them, `--with` and `--ref` included); a candidate remote removed from the file is `not in this config` in status

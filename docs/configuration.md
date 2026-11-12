@@ -58,7 +58,9 @@ cache), `CLAUDE_CONFIG_DIR` (`--scope user` target). Commands run locally get `H
 
 There is no daemon: each waiting ticket's own heavyq process decides on every poll whether it may start. It
 re-reads the config file when it changes (one `stat` per poll while it does not), validated exactly as at start,
-so a slot, a higher `max_load_ratio` or a bigger pool is used by tickets already waiting, on their next poll.
+so a slot, a higher `max_load_ratio` or a bigger pool is used by tickets already waiting, within two polls: an
+edit is used once two polls in a row read it the same, because an editor that writes the file in place can be
+read half-way, and half a config is a valid config nobody wrote.
 `heavyq status`, `why`, `top` and the dashboard read the same file, so what they say about a waiting ticket is
 the decision it makes (`top` and the dashboard follow edits while they stay open: their probe timeout and the
 machines `top --control` may pause too). Turn order does not change: a reload only changes what the tickets can

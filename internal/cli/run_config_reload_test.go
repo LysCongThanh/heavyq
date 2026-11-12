@@ -38,8 +38,10 @@ func TestReloadConfigAdoptsTheEditedProbeTimeout(t *testing.T) {
 	}
 
 	write("9s")
-	if rc := r.reloadConfig(); rc != 0 {
-		t.Fatalf("rc=%d:\n%s", rc, &stderr)
+	for range 2 { // the first check that reads an edit only remembers it
+		if rc := r.reloadConfig(); rc != 0 {
+			t.Fatalf("rc=%d:\n%s", rc, &stderr)
+		}
 	}
 	r.probes.mu.Lock()
 	got := r.probes.timeout
@@ -104,7 +106,7 @@ func TestReloadConfigRetriesAnEditRefusedForABrokenHeavyqToml(t *testing.T) {
 	}
 
 	write(filepath.Join(repo, "heavyq.toml"), "")
-	if rc := r.reloadConfig(); rc != 0 || r.cfg.Queue.Poll.Duration != 3*time.Second {
+	if rc := r.reloadConfig(); rc != 0 || r.cfg.Queue.Poll.Duration != 3*time.Second { // the config file reads the same: no second check needed
 		t.Fatalf("fixing heavyq.toml alone lets the edit apply: rc=%d poll=%v\n%s", rc, r.cfg.Queue.Poll.Duration, &stderr)
 	}
 }

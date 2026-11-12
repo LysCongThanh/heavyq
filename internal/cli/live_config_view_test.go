@@ -35,6 +35,7 @@ func TestLiveConfigFollowsEditsInProbesAndControlRequests(t *testing.T) {
 	}
 
 	write("[queue]\nprobe_timeout = \"9s\"\n[[remote]]\nname = \"late\"\nssh = \"late\"\n")
+	live.get() // the first read of an edit is only remembered (config.Watch)
 	if err := a.SetPaused("late", true); err != nil {
 		t.Fatalf("a remote added by the edit can be paused: %v", err)
 	}
