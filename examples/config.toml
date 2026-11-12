@@ -42,6 +42,10 @@ work_dir = ".heavyq"     # remote dir (relative to the remote home): git/, wt/, 
 # whose login shell does not already set it (example).
 # env_path = "~/.local/go-sdk/bin"
 #
+# When this remote fails its exit canary (it loses exit codes), still run commands that prove
+# nothing there, recorded as suspect; gates and item proofs are refused either way (docs/remote.md).
+# allow_untrusted_exit = true
+#
 # Optional shell snippet run in the fresh worktree before the command.
 # It gets HEAVYQ_CACHE_DIR (persistent, under work_dir) and HEAVYQ_WORKTREE.
 # A non-zero exit aborts the run with exit code 77.

@@ -7,11 +7,12 @@ import (
 )
 
 // remoteOnlyKeys are the MachineConfig keys that mean something for a [[remote]] only; [local] refuses them.
-var remoteOnlyKeys = []string{"name", "ssh", "transport", "work_dir", "git_url", "cache_hook", "env_path", "observe_only"}
+var remoteOnlyKeys = []string{"name", "ssh", "transport", "work_dir", "git_url", "cache_hook", "env_path", "observe_only",
+	"allow_untrusted_exit"}
 
 // runOnlyKeys are the [[remote]] keys an observe_only remote refuses: heavyq never runs anything there.
 var runOnlyKeys = []string{"heavy_slots", "light_slots", "max_load_ratio", "job_mb", "light_mb", "reserve_mb",
-	"git_url", "cache_hook", "env_path", "work_dir"}
+	"git_url", "cache_hook", "env_path", "work_dir", "allow_untrusted_exit"}
 
 // patchMachines splits config.MachineConfig, one Go type for [local] and [[remote]], into two definitions,
 // so each table offers only its own keys, and adds the rules of the validators.

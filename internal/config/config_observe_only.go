@@ -32,7 +32,7 @@ func (m *MachineConfig) normalizeObserved() error {
 		"heavy_slots": m.HeavySlots != 0, "light_slots": m.LightSlots != 0, "max_load_ratio": m.MaxLoadRatio != 0,
 		"job_mb": m.JobMB != 0, "light_mb": m.LightMB != 0, "reserve_mb": m.ReserveMB != 0,
 		"legacy_lock_files": len(m.LegacyLockFiles) > 0, "git_url": m.GitURL != "", "cache_hook": m.CacheHook != "",
-		"env_path": m.EnvPath != "", "work_dir": m.WorkDir != "",
+		"env_path": m.EnvPath != "", "work_dir": m.WorkDir != "", "allow_untrusted_exit": m.AllowUntrustedExit,
 	} {
 		if set {
 			return fmt.Errorf("%s does not apply: heavyq never runs anything there", key)
