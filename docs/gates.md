@@ -296,8 +296,8 @@ A gate is proven when every command is. Everything else fails closed:
 - A command with no matching record is `missing`.
 - If the tree cannot be identified (not a repository, no commit yet, a submodule with
   changes of its own, a file flagged assume-unchanged or skip-worktree, which includes every path outside a
-  sparse checkout's cone, more untracked content than heavyq can digest) nothing is provable. `gate status` says
-  why and exits 1, and `gate run` refuses to start.
+  sparse checkout's cone, here or in a checked-out submodule, more untracked content than heavyq can digest)
+  nothing is provable. `gate status` says why and exits 1, and `gate run` refuses to start.
 - An older record without `run_id` does not prove a command when `cache.env` is set (see Run identity).
 - A command longer than 200 bytes whose only runs are older records (no `cmd_hash`) is `missing`: the ledger
   only kept a cut-off form of it, and two different long commands could look alike. Run it again (`gate run`)
