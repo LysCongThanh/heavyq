@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/LysCongThanh/heavyq/internal/procinfo"
 )
 
 func okTag(s string) bool { return s != "" && !strings.ContainsAny(s, " /;$") }
@@ -129,14 +131,14 @@ func TestPruneRemovesOnlyStaleSessionFiles(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	d.Prune(func(int, string) bool { return true })
+	d.Prune(procinfo.Default)
 	ents, _ := os.ReadDir(dir)
 	if len(ents) != 1 || ents[0].Name() != "new" {
 		t.Fatalf("after prune: %v", ents)
 	}
-	d.Prune(func(int, string) bool { return true }) // no sessions dir problems when repeated
+	d.Prune(procinfo.Default) // no sessions dir problems when repeated
 	if err := os.RemoveAll(dir); err != nil {
 		t.Fatal(err)
 	}
-	d.Prune(func(int, string) bool { return true }) // and none when it is absent
+	d.Prune(procinfo.Default) // and none when it is absent
 }

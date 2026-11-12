@@ -36,6 +36,9 @@ func TestQueueOrderPriorityThenFIFO(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []string{"first2", "second2", "first5", "second5", "nine"}
+	if len(s.Waiting) != len(want) {
+		t.Fatalf("listed %d tickets, want %d: %+v", len(s.Waiting), len(want), s.Waiting)
+	}
 	for i, tk := range s.Waiting {
 		if tk.Lane != want[i] {
 			t.Fatalf("position %d: got %s want %s", i, tk.Lane, want[i])
@@ -77,7 +80,7 @@ func TestPruneRemovesDeadAndRecycledPids(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	d.Prune(procinfo.Default.Alive)
+	d.Prune(procinfo.Default)
 	s, _ := d.List()
 	if len(s.Waiting) != 1 || s.Waiting[0].Lane != "live" {
 		t.Fatalf("after prune: %+v", s.Waiting)
@@ -95,13 +98,13 @@ func TestSanitizeLane(t *testing.T) {
 
 func TestMutexIsExclusive(t *testing.T) {
 	d, _ := Open(t.TempDir())
-	unlock, err := d.Mutex()
+	unlock, err := d.Mutex(time.Second, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	got := make(chan struct{})
 	go func() {
-		u, err := d.Mutex()
+		u, err := d.Mutex(10*time.Second, nil)
 		if err == nil {
 			u()
 		}
