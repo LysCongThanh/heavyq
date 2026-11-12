@@ -54,6 +54,9 @@ func ParseNeeds(spec string) ([]Need, error) {
 				return nil, fmt.Errorf("needs %q: the count after %q must be 1-%d", part, name+":", MaxNeed)
 			}
 		}
+		if reserved[name] {
+			return nil, fmt.Errorf("needs %q: pool name %q is reserved (heavyq sets or reads HEAVYQ_%s)", part, name, strings.ToUpper(name))
+		}
 		if !ValidName(name) {
 			return nil, fmt.Errorf("needs %q: %q is not a pool name (%s)", part, name, poolName)
 		}

@@ -52,7 +52,8 @@ The command gets one environment variable per value: `HEAVYQ_PORT_1`, `HEAVYQ_PO
 name in the repository's `heavyq.toml` replaces the user's (the repository knows its own databases). A pool name is
 `[a-z][a-z0-9_]{0,31}`; values are `[A-Za-z0-9][A-Za-z0-9._-]{0,63}` (they become file names and environment values).
 `values` and `size` are exclusive; a range is `"a-b"` with `a <= b`. Unknown keys, duplicate pools and names that would
-collide with variables heavyq sets (`lane`, `slot`, `machine`, ...) are errors.
+collide with a variable heavyq sets or reads (`lane`, `slot`, `machine`, `history`, `flow`, `test`, ...) are errors: the
+command, and any heavyq it runs, would otherwise see the pool's value in that variable.
 Two pools in different repositories that share a name and a value share the lock, which is what you want for one
 physical database.
 
