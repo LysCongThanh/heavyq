@@ -53,14 +53,8 @@ var (
 	rangeSpec = regexp.MustCompile(`^\s*(\d+)\s*-\s*(\d+)\s*$`)
 )
 
-// reserved names would make HEAVYQ_<NAME> collide with a variable heavyq
-// sets or reads.
-var reserved = map[string]bool{
-	"machine": true, "slot": true, "lane": true, "active": true, "session": true,
-	"item": true, "remote": true, "config": true, "dir": true, "auto": true, "output": true, "agent": true,
-}
-
-// ValidName reports whether s is an acceptable pool name.
+// ValidName reports whether s is an acceptable pool name: the right shape and
+// not reserved (pool_reserved_names.go).
 func ValidName(s string) bool { return poolName.MatchString(s) && !reserved[s] }
 
 // Build validates specs and returns the pools in file order. Two pools of one
@@ -94,7 +88,7 @@ func (sp Spec) build() (Pool, error) {
 		return Pool{}, fmt.Errorf("name %q must match %s", sp.Name, poolName)
 	}
 	if reserved[sp.Name] {
-		return Pool{}, fmt.Errorf("name %q is reserved (HEAVYQ_%s is set by heavyq)", sp.Name, strings.ToUpper(sp.Name))
+		return Pool{}, fmt.Errorf("name %q is reserved (heavyq sets or reads HEAVYQ_%s)", sp.Name, strings.ToUpper(sp.Name))
 	}
 	p := Pool{Name: sp.Name, Port: sp.Name == "port" || strings.HasSuffix(sp.Name, "_port")}
 	if sp.Port != nil {
