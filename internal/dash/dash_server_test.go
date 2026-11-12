@@ -24,11 +24,12 @@ type fixture struct {
 	box  control.Mailbox
 }
 
-func start(t *testing.T, ctl bool) *fixture {
+// start serves a test dashboard; edit, if any, changes its options first.
+func start(t *testing.T, ctl bool, edit ...func(*Options)) *fixture {
 	t.Helper()
 	box := control.Mailbox{Dir: t.TempDir()}
 	now := time.Date(2026, 11, 1, 22, 0, 0, 0, time.UTC)
-	s, err := New(Options{
+	opts := Options{
 		Control: ctl, Interval: time.Second, Version: "test", Host: "box", Mailbox: box,
 		Snapshot: func() (snapshot.Snapshot, error) {
 			return snapshot.Snapshot{Schema: 1, Host: "box", Running: []snapshot.Running{}}, nil
@@ -41,7 +42,11 @@ func start(t *testing.T, ctl bool) *fixture {
 		},
 		Machine: func(n string) bool { return n == "local" },
 		Now:     func() time.Time { return now },
-	})
+	}
+	for _, e := range edit {
+		e(&opts)
+	}
+	s, err := New(opts)
 	if err != nil {
 		t.Fatal(err)
 	}
