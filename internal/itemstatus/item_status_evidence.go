@@ -5,6 +5,7 @@ import (
 
 	"github.com/LysCongThanh/heavyq/internal/history"
 	"github.com/LysCongThanh/heavyq/internal/proof"
+	"github.com/LysCongThanh/heavyq/internal/redact"
 )
 
 // NoProof is the Evidence of an item that declares no proof.
@@ -57,16 +58,19 @@ func EvidenceFor(g proof.Gate, subject proof.Subject, recs []history.Record) Evi
 	return ev
 }
 
+// commandReason says why command c does not prove the code. The reason is
+// shown (item ls --json, item done, recap), so the command in it is redacted.
 func commandReason(c proof.Command) string {
+	cmd := redact.Command(c.Cmd)
 	switch {
 	case c.State == proof.Failed && c.Class == proof.ClassFlaky:
-		return "flaky on this code: " + c.Cmd
+		return "flaky on this code: " + cmd
 	case c.State == proof.Failed:
-		return "failed on this code: " + c.Cmd
+		return "failed on this code: " + cmd
 	case c.Reason != "":
 		return c.Reason
 	}
-	return "not run on this code yet: " + c.Cmd
+	return "not run on this code yet: " + cmd
 }
 
 // lastPassOnOtherTree is the latest run of cmd that ran to its end and passed

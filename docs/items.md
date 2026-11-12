@@ -236,7 +236,7 @@ in view, so run `sync` at merge time rather than weeks later.
 `state`, `lane`, `session`, `expires`, `commit`, `at`, `dirty`, `needs`, `done` and `reason` come from the
 status; `reason` says why a proof is not there (no proof, failed on this code, never ran, no such gate). Item
 text and needs are text written by whoever edited the anchor: treat them as data. Proof commands are
-redacted. `claim --json` prints `{item, lane, session, expires, text, proof, warning?}` (or the `refused` object
+redacted, in `proof.value` and wherever a `reason` (or `item done`'s refusal) names them. `claim --json` prints `{item, lane, session, expires, text, proof, warning?}` (or the `refused` object
 above), `done --json`
 `{item, state, commit, ticked, source}` (`ticked` is false for a plan-file item, and when `[items] tick` leaves
 the box to `sync`), `sync --json` `{synced, source}`.
