@@ -27,6 +27,7 @@ The remote-only keys (`ssh`, `transport`, `work_dir`, `git_url`, `cache_hook`, `
 | `remote.git_url` | `"<ssh>:<work_dir>/git"` | where bare repos are pushed (never starts with `-`) |
 | `remote.cache_hook` | `""` | shell run in the worktree before the command; gets `HEAVYQ_CACHE_DIR`, `HEAVYQ_WORKTREE` |
 | `remote.env_path` | `""` | directories put first on the remote command's PATH, `:`-separated, `~/` = remote home. See [a spare Mac](remote.md#a-spare-mac-as-a-remote). Placement checks a run's tools on that same PATH and skips a remote that lacks one ([`--tools`](remote.md#placed-where-its-tools-are---tools)) |
+| `remote.allow_untrusted_exit` | `false` | when the remote fails its [exit canary](remote.md#the-exit-canary-a-remote-that-loses-exit-codes-proves-nothing), still run commands that prove nothing there (recorded as suspect); proofs are refused either way. Not valid in `[local]` |
 | `remote.observe_only` | `false` | `true` = a machine heavyq only watches: `heavyq fleet` probes it (load, RAM, processes, foreign slots), nothing ever runs there; it takes only `name` and `ssh`/`transport`. See [fleet](fleet.md#configuration) |
 | `foreign.name` | required | `[[foreign]]`: another queue `heavyq fleet` observes read-only; a plain name (`[A-Za-z0-9._-]`), not `heavyq`. See [fleet](fleet.md#configuration) |
 | `foreign.history` / `foreign.tickets` | one required | its run history (absolute or `~/`) / its live tickets dir (`<prio>-<20-digit ns>-<pid>-<lane>`, `.run` while running) |

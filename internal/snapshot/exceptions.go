@@ -116,6 +116,7 @@ func machineTrouble(s Snapshot) []Exception {
 		e.ID = KindMachine + "|" + m.Name + "|" + e.Evidence.Detail
 		out = append(out, e)
 	}
+	out = append(out, untrustedExits(s)...)
 	if e, ok := outsideRAM(s); ok {
 		out = append(out, e)
 	}
@@ -165,4 +166,25 @@ func shellQuote(s string) string {
 		return s
 	}
 	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}
+
+// untrustedExits: remotes whose exit canary failed. Their runs prove nothing, so a gate placed there cannot pass.
+func untrustedExits(s Snapshot) []Exception {
+	var out []Exception
+	for _, m := range s.Machines {
+		if m.ExitUntrusted == "" {
+			continue
+		}
+		e := Exception{Kind: KindMachine, Severity: SeverityWarning, Machine: m.Name,
+			Text:     UntrustedExitText(m.Name, m.ExitUntrusted) + "; its runs prove nothing until the canary passes again.",
+			Evidence: Evidence{Detail: "exit-untrusted"}}
+		e.ID = KindMachine + "|" + m.Name + "|" + e.Evidence.Detail
+		out = append(out, e)
+	}
+	return out
+}
+
+// UntrustedExitText is the one phrase every surface uses for a remote that failed the exit canary.
+func UntrustedExitText(machine, reason string) string {
+	return "exit codes not trustworthy on " + machine + ": " + reason
 }

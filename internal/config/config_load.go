@@ -106,6 +106,9 @@ func (c *Config) normalize() error {
 	if err := c.normalizeLocal(); err != nil {
 		return fmt.Errorf("[local]: %w", err)
 	}
+	if c.Local.AllowUntrustedExit {
+		return errors.New("[local]: allow_untrusted_exit is only valid in [[remote]]")
+	}
 	if err := c.Hook.normalize(); err != nil {
 		return err
 	}

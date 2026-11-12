@@ -75,17 +75,18 @@ light_slots = 2
 
 func TestRejectsBadConfigs(t *testing.T) {
 	cases := map[string]string{
-		"reserved name":    "[[remote]]\nname = \"local\"\nssh = \"x\"\n",
-		"duplicate":        "[[remote]]\nname = \"a\"\nssh = \"a\"\n[[remote]]\nname = \"a\"\nssh = \"a\"\n",
-		"ssh with options": "[[remote]]\nname = \"a\"\nssh = \"-oProxyCommand=evil a\"\n",
-		"no transport":     "[[remote]]\nname = \"a\"\n",
-		"transport no git": "[[remote]]\nname = \"a\"\ntransport = [\"sh\", \"-c\"]\n",
-		"unsafe work dir":  "[[remote]]\nname = \"a\"\nssh = \"a\"\nwork_dir = \"$(rm -rf x)\"\n",
-		"negative ratio":   "[local]\nmax_load_ratio = -1\n",
-		"too many slots":   "[local]\nheavy_slots = 100\n",
-		"bad duration":     "[queue]\npoll = \"soon\"\n",
-		"bad base ref":     "[queue]\nbase_ref = \"../x\"\n",
-		"legacy on remote": "[[remote]]\nname = \"a\"\nssh = \"a\"\nlegacy_lock_files = [\"/x\"]\n",
+		"reserved name":           "[[remote]]\nname = \"local\"\nssh = \"x\"\n",
+		"duplicate":               "[[remote]]\nname = \"a\"\nssh = \"a\"\n[[remote]]\nname = \"a\"\nssh = \"a\"\n",
+		"ssh with options":        "[[remote]]\nname = \"a\"\nssh = \"-oProxyCommand=evil a\"\n",
+		"no transport":            "[[remote]]\nname = \"a\"\n",
+		"transport no git":        "[[remote]]\nname = \"a\"\ntransport = [\"sh\", \"-c\"]\n",
+		"unsafe work dir":         "[[remote]]\nname = \"a\"\nssh = \"a\"\nwork_dir = \"$(rm -rf x)\"\n",
+		"negative ratio":          "[local]\nmax_load_ratio = -1\n",
+		"too many slots":          "[local]\nheavy_slots = 100\n",
+		"bad duration":            "[queue]\npoll = \"soon\"\n",
+		"bad base ref":            "[queue]\nbase_ref = \"../x\"\n",
+		"legacy on remote":        "[[remote]]\nname = \"a\"\nssh = \"a\"\nlegacy_lock_files = [\"/x\"]\n",
+		"untrusted exit on local": "[local]\nallow_untrusted_exit = true\n",
 	}
 	for name, body := range cases {
 		t.Run(name, func(t *testing.T) {

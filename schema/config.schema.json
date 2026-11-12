@@ -243,6 +243,10 @@
           "type": "array",
           "uniqueItems": true,
           "description": "Local only: lock files shared with legacy `flock \u003cfile\u003e cmd` users,\nabsolute paths with distinct base names. When set they replace the\ngenerated heavy slot files."
+        },
+        "allow_untrusted_exit": {
+          "type": "boolean",
+          "description": "when the exit canary finds this remote loses exit codes, commands that prove nothing still run there\n(recorded as suspect); proofs (gates, item proofs, --cache, --strict) are refused anyway"
         }
       },
       "additionalProperties": false,
@@ -547,6 +551,10 @@
         "observe_only": {
           "type": "boolean",
           "description": "ObserveOnly: heavyq never runs anything there; `heavyq fleet` only probes it (load, RAM, processes,\nforeign slots). Such a remote takes only name and ssh (or transport)."
+        },
+        "allow_untrusted_exit": {
+          "type": "boolean",
+          "description": "when the exit canary finds this remote loses exit codes, commands that prove nothing still run there\n(recorded as suspect); proofs (gates, item proofs, --cache, --strict) are refused anyway"
         }
       },
       "additionalProperties": false,

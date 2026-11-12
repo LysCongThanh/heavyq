@@ -9,7 +9,7 @@
 #         HEAVYQ_HOOK_B64    optional dependency-cache hook (shell, base64)
 #         HEAVYQ_WATCH_STDIN=1  stdin is a lifeline: EOF means heavyq died
 #         HEAVYQ_ENV_PATH    directories put first on PATH ("~/" = $HOME; the remote's env_path)
-# Portable: runs on Linux (flock, setsid) and on stock macOS (bash 3.2, Perl instead of flock/setsid).
+# Portable: runs on Linux (flock, util-linux setsid) and on stock macOS (bash 3.2, Perl instead of flock/setsid).
 # Exit: the command's code (97/98 from the command become 96);
 #       97 = slot busy, 98 = setup failed (nothing was run).
 set -uo pipefail
@@ -136,12 +136,14 @@ CMD="$(printf '%s' "${HEAVYQ_CMD_B64:-}" | base64 "$B64D")" || fail "cannot deco
 # command would otherwise read this job's base ref, siblings or command as its own.
 unset HEAVYQ_CMD_B64 HEAVYQ_SUBDIR HEAVYQ_WITH HEAVYQ_BASE_REF HEAVYQ_BASE_SHA HEAVYQ_HOOK_B64 HEAVYQ_WATCH_STDIN HEAVYQ_ENV_PATH
 # 9>&-: the command never inherits the slot lock, so daemons it leaves behind cannot pin the slot.
-# Own session and process group: setsid(1) on Linux; macOS has none, so Perl calls setsid(2) and execs bash
-# (same pid, so $! is still the group id that kill_group signals).
-if command -v setsid > /dev/null 2>&1; then
+# Own session and process group: util-linux setsid(1) on Linux; elsewhere (macOS has none) Perl calls setsid(2)
+# and execs bash (same pid, so $! is still the group id that kill_group signals). Any other program named setsid
+# is not trusted: a wrapper that forks and exits hands `wait` an early 0 and leaves the command running after its
+# worktree is gone. heavyq's exit canary checks the result of this choice (docs/remote.md).
+if command -v setsid > /dev/null 2>&1 && setsid --version 2> /dev/null < /dev/null 9>&- | grep util-linux > /dev/null; then
   setsid bash -c "$CMD" 9>&- &
 else
-  command -v perl > /dev/null 2>&1 || fail "need setsid or perl to isolate the command"
+  command -v perl > /dev/null 2>&1 || fail "need util-linux setsid or perl to isolate the command"
   perl -MPOSIX -e 'POSIX::setsid() >= 0 or die "heavyq-job: setsid: $!\n"; exec @ARGV or die "heavyq-job: exec: $!\n"' bash -c "$CMD" 9>&- &
 fi
 CHILD=$!

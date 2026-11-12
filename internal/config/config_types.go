@@ -110,6 +110,9 @@ type MachineConfig struct {
 	// ObserveOnly: heavyq never runs anything there; `heavyq fleet` only probes it (load, RAM, processes,
 	// foreign slots). Such a remote takes only name and ssh (or transport).
 	ObserveOnly bool `toml:"observe_only"`
+	// when the exit canary finds this remote loses exit codes, commands that prove nothing still run there
+	// (recorded as suspect); proofs (gates, item proofs, --cache, --strict) are refused anyway
+	AllowUntrustedExit bool `toml:"allow_untrusted_exit"`
 }
 
 // IsLocal reports whether the machine is the local workstation.

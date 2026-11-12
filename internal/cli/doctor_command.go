@@ -40,6 +40,7 @@ func doctorCommand(cfgPath string, explicit bool, args []string, stdout, stderr 
 	defer func() {
 		if rc != ExitUsage {
 			printBriefDelivery(stdout) // informational: never changes the exit code
+			printExitCanary(stdout, cfgPath, explicit)
 			printNestedWorkTreesHint(stdout)
 			printRemoteTools(stdout, cfgPath, explicit)
 		}
