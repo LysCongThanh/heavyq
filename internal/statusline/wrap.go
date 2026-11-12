@@ -12,7 +12,8 @@ import (
 
 // wrapTimeout bounds the user's own command: a status line that never returns
 // must not hold Claude Code's updates, and it is theirs, not ours, to fix.
-const wrapTimeout = 5 * time.Second
+// A variable only so a test can shorten it.
+var wrapTimeout = 5 * time.Second
 
 // maxWrapped bounds what is kept of the wrapped command's output.
 const maxWrapped = 64 << 10
