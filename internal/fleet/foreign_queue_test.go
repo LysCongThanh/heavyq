@@ -128,3 +128,24 @@ func TestReadTicketsOfAForeignQueue(t *testing.T) {
 		t.Fatal("a missing tickets dir is an error the report shows")
 	}
 }
+
+// Lines are appended as runs end on several machines, so one slightly older than the window can follow newer
+// ones: it is dropped but must not end the read, and lines with an impossible time or negative wait are skipped.
+func TestReadHistoryToleratesOutOfOrderLines(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0)
+	since := now.Add(-24 * time.Hour)
+	p := writeHistory(t, [][]any{
+		{since.Add(time.Hour).Unix(), "box", "a", 1, 0, 1, 1, 0},
+		{since.Add(-30 * time.Minute).Unix(), "box", "late", 1, 0, 1, 1, 0}, // out of order, outside the window
+		{since.Add(2 * time.Hour).Unix(), "box", "b", 1, 0, 1, 1, 0},
+		{5, "box", "epoch", 1, 0, 1, 1, 0},
+		{since.Add(3 * time.Hour).Unix(), "box", "neg", 1, 0, -1, 1, 0},
+	})
+	got, err := ReadHistoryTSV(HistorySource{Path: p, Columns: config.ForeignColumns, Since: since})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Runs) != 2 || got.Runs[0].Lane != "a" || got.Runs[1].Lane != "b" || got.Skipped != 2 {
+		t.Fatalf("runs=%+v skipped=%d", got.Runs, got.Skipped)
+	}
+}

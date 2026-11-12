@@ -15,6 +15,10 @@ import (
 // backwards from the end, so a file that grows for years costs what the window holds, never more than this.
 const DefaultHistoryMaxBytes = 32 << 20
 
+// clockSkew is how far out of order lines may arrive: several machines append when their runs end, so a line
+// slightly older than the window can sit after newer ones. Reading stops only past this slack.
+const clockSkew = time.Hour
+
 // historyChunk is how much is read per step backwards.
 const historyChunk = 64 << 10
 
@@ -98,7 +102,7 @@ func takeLine(line []byte, idx map[string]int, since time.Time, rev *[]Run, out 
 		return false
 	}
 	if !since.IsZero() && r.End.Before(since) {
-		return true
+		return r.End.Before(since.Add(-clockSkew)) // inside the slack: skip the line, keep reading
 	}
 	*rev = append(*rev, r)
 	return false
@@ -127,7 +131,7 @@ func parseHistoryLine(f []string, idx map[string]int) (Run, bool) {
 	exit, ok3 := get("exit")
 	sec, err1 := strconv.ParseInt(end, 10, 64)
 	code, err2 := strconv.Atoi(exit)
-	if !ok1 || !ok2 || !ok3 || err1 != nil || err2 != nil || machine == "" || code < 0 || code > 255 {
+	if !ok1 || !ok2 || !ok3 || err1 != nil || err2 != nil || machine == "" || code < 0 || code > 255 || sec < 1e9 {
 		return r, false
 	}
 	r.End, r.Machine, r.Exit = time.Unix(sec, 0), machine, code
@@ -140,9 +144,15 @@ func parseHistoryLine(f []string, idx map[string]int) (Run, bool) {
 	}
 	if v, ok := get("wait_s"); ok {
 		r.WaitS, _ = strconv.ParseFloat(v, 64)
+		if !(r.WaitS >= 0) { // negative or NaN
+			return r, false
+		}
 	}
 	if v, ok := get("run_s"); ok {
 		r.RunS, _ = strconv.ParseFloat(v, 64)
+		if !(r.RunS >= 0) {
+			return r, false
+		}
 	}
 	return r, true
 }

@@ -106,3 +106,10 @@ func TestForeignQueueFailsClosed(t *testing.T) {
 		}
 	}
 }
+
+func TestLocalObserveOnlyFailsClosed(t *testing.T) {
+	_, err := Load(writeConfig(t, "[local]\nobserve_only = true\n"), true)
+	if err == nil || !strings.Contains(err.Error(), "observe_only") {
+		t.Fatalf("[local] observe_only must be refused, got %v", err)
+	}
+}

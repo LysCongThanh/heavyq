@@ -134,6 +134,9 @@ func (c *Config) normalize() error {
 	if c.Pools, err = pools.Build(c.PoolSpecs); err != nil {
 		return err
 	}
+	if c.Local.ObserveOnly {
+		return errors.New("[local]: observe_only is for a [[remote]]")
+	}
 	seen := map[string]bool{LocalName: true}
 	for i := range c.Remotes {
 		r := &c.Remotes[i]
