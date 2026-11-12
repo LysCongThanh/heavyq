@@ -17,13 +17,15 @@ git root, in this order, and every ecosystem found adds its commands to it:
 |---|---|
 | `go.mod` | `go vet ./...`, `go test ./...` |
 | `package.json` | `<pm> run <script>` for each of `typecheck`, `lint`, `test` that it defines, in that order |
-| `pytest.ini`, `pyproject.toml`, or `setup.cfg` containing a `[tool:pytest]` section | `pytest` |
+| `pytest.ini`, `pyproject.toml` that names pytest (a `[tool.pytest.ini_options]` table, a dev dependency), or `setup.cfg` containing a `[tool:pytest]` section | `pytest` |
 | `Cargo.toml` | `cargo test` |
 
 `<pm>` comes from the lockfile next to `package.json`: `pnpm-lock.yaml` is `pnpm`, `yarn.lock` is `yarn`,
 `bun.lockb` or `bun.lock` is `bun` (checked in that order), anything else is `npm` (`npm run test`). A script
 counts only if its value is a non-blank string, and the `test` script that `npm init` writes
-(`echo "Error: no test specified" && exit 1`) does not count, because it can never pass.
+(`echo "Error: no test specified" && exit 1`) does not count, because it can never pass. For the same reason a
+`pyproject.toml` that never mentions pytest outside a `#` comment (one kept for ruff, mypy or packaging) adds
+nothing: a pytest with no tests to collect exits 5.
 
 Detection never runs anything. It reads at most a few files, each bounded to 1 MiB (a bigger one is ignored),
 parses `package.json` as JSON data, and uses only the *names* of the scripts: no text from a file reaches a
