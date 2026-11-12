@@ -35,12 +35,31 @@ func newProbeCache(timeout time.Duration) *probeCache {
 	return &probeCache{timeout: timeout, entries: map[string]probeEntry{}}
 }
 
-// refresh probes the given remotes whose cache entry expired, in parallel.
+// setTimeout changes how long a probe may take, for the probes started from
+// now on (a waiting ticket adopting an edited [queue].probe_timeout).
+func (c *probeCache) setTimeout(d time.Duration) {
+	c.mu.Lock()
+	c.timeout = d
+	c.mu.Unlock()
+}
+
+// refresh probes the given remotes whose cache entry expired, in parallel. A
+// name cfg does not have (a remote an edit removed while a ticket waits) loses
+// its entry: it is not reachable through this config, whatever it last answered.
 func (c *probeCache) refresh(cfg *config.Config, names []string) {
 	var wg sync.WaitGroup
+	c.mu.Lock()
+	timeout := c.timeout
+	c.mu.Unlock()
 	for _, n := range names {
 		m, ok := cfg.Machine(n)
-		if !ok || m.IsLocal() {
+		if !ok {
+			c.mu.Lock()
+			delete(c.entries, n)
+			c.mu.Unlock()
+			continue
+		}
+		if m.IsLocal() {
 			continue
 		}
 		c.mu.Lock()
@@ -56,7 +75,7 @@ func (c *probeCache) refresh(cfg *config.Config, names []string) {
 		wg.Add(1)
 		go func(m config.MachineConfig) {
 			defer wg.Done()
-			res, err := remote.Probe(m, c.timeout)
+			res, err := remote.Probe(m, timeout)
 			c.mu.Lock()
 			c.entries[m.Name] = probeEntry{res: res, err: err, at: time.Now()}
 			c.mu.Unlock()

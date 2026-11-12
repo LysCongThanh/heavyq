@@ -17,12 +17,12 @@ import (
 // (internal/dash/dash_api_handlers.go). Nothing here signals a process: a
 // request is a file the ticket's own heavyq picks up on its next poll.
 type topActions struct {
-	cfg *config.Config
+	cfg func() *config.Config // the config as the file holds it now (liveConfig.get)
 	q   *queue.Dir
 	box control.Mailbox
 }
 
-func newTopActions(cfg *config.Config) (*topActions, error) {
+func newTopActions(cfg func() *config.Config) (*topActions, error) {
 	q, err := queue.Open(QueueDir())
 	if err != nil {
 		return nil, err
@@ -61,7 +61,7 @@ func (a *topActions) Prio(ticket string, prio int) error {
 
 // SetPaused pauses or resumes admissions on a configured machine.
 func (a *topActions) SetPaused(machine string, paused bool) error {
-	if _, ok := a.cfg.Machine(machine); !ok {
+	if _, ok := a.cfg().Machine(machine); !ok {
 		return errors.New("no such machine in the configuration")
 	}
 	return a.box.SetPaused(machine, paused)

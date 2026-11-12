@@ -46,12 +46,13 @@ func TestMain(m *testing.M) {
 }
 
 // calmLimits make the local machine look idle whatever the test machine is
-// doing (#67): the RAM budget is 1 MB (0 would mean "the default") and the load
-// limit is the highest the config allows, so no run is ever admitted "under
-// load" and a failure can only be "failed" or "flaky". A test that asserts a
-// failure class, a red gate or a loop must not drop them; one that wants the
-// machine to look loaded says so with loadedConfig or fakeMetrics.
-const calmLimits = "job_mb = 1\nlight_mb = 1\nmax_load_ratio = 64\n"
+// doing (#67): the RAM budget is 1 MB and so is the headroom (0 would mean "the
+// default", and the default 2 GB headroom is more than a busy test machine may
+// have free), and the load limit is the highest the config allows, so no run is
+// ever admitted "under load" and a failure can only be "failed" or "flaky". A
+// test that asserts a failure class, a red gate or a loop must not drop them;
+// one that wants the machine to look loaded says so with loadedConfig or fakeMetrics.
+const calmLimits = "job_mb = 1\nlight_mb = 1\nreserve_mb = 1\nmax_load_ratio = 64\n"
 
 const baseConfig = `[queue]
 poll = "50ms"

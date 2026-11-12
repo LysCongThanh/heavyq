@@ -103,15 +103,14 @@ func waitingSnapshots(cfg *config.Config, qs queue.Snapshot, probes *probeCache,
 	box := controlBox()
 	for i, t := range qs.Waiting {
 		ahead := qs.Waiting[:i]
-		opps, blocked := schedule.Opportunities(t, skipPoolBlocked(set, t, ahead), slotCounts(cfg))
+		opps, blocked, head := admissionOpportunities(cfg, t, ahead, set)
 		w := snapshot.Waiting{Ticket: ticketSnapshot(t, now, box.CancelRequested(t.Name)), Position: i + 1,
 			Reasons: map[string]string{}, BypassInS: -1}
-		for m := range blocked {
-			w.Reasons[m] = behindReason(ahead, m)
-		}
-		head := false
-		for _, op := range opps {
-			head = head || op.Head
+		for m, why := range blocked {
+			if why != notInConfigReason {
+				why = behindReason(ahead, m)
+			}
+			w.Reasons[m] = why
 		}
 		// The bypass clock starts when the ticket became head (its owner
 		// publishes that), not when it was enqueued.
@@ -126,7 +125,7 @@ func waitingSnapshots(cfg *config.Config, qs queue.Snapshot, probes *probeCache,
 				w.Reasons[m] = why
 			}
 			if c != nil {
-				w.Reasons[c.machine] = ""
+				w.Reasons[c.machine] = startReason(cfg, t)
 			}
 		}
 		if head && cfg.GateEnabled() && bypassCanHelp(t, w.Reasons) { // the bypass skips the load check only

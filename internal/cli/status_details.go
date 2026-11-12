@@ -48,7 +48,7 @@ func loadHolders(snap queue.Snapshot) string {
 // ticket has not started.
 func printHeadReasons(w io.Writer, cfg *config.Config, snap queue.Snapshot, probes *probeCache) {
 	head := snap.Waiting[0]
-	opps, blocked := schedule.Opportunities(head, nil, slotCounts(cfg))
+	opps, blocked, _ := admissionOpportunities(cfg, head, nil, nil)
 	var waited time.Duration
 	if !head.HeadSince.IsZero() {
 		waited = time.Since(head.HeadSince)
@@ -60,7 +60,10 @@ func printHeadReasons(w io.Writer, cfg *config.Config, snap queue.Snapshot, prob
 	}
 	fmt.Fprintf(w, "HEAD TICKET %s (p%d, %s) waits because:\n", head.Lane, head.Prio, head.Target)
 	if c != nil {
-		reasons[c.machine] = fmt.Sprintf("nothing blocks it now; it claims %s on its next poll", c.slot)
+		reasons[c.machine] = startReason(cfg, head)
+		if reasons[c.machine] == "" {
+			reasons[c.machine] = fmt.Sprintf("nothing blocks it now; it claims %s on its next poll", c.slot)
+		}
 	}
 	names := make([]string, 0, len(reasons))
 	for m := range reasons {

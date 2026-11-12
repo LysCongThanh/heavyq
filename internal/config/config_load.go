@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strings"
 
 	"github.com/BurntSushi/toml"
 
@@ -34,8 +33,20 @@ func DefaultPath() string {
 }
 
 // Load reads the config at path. A missing file is not an error unless
-// required is true (an explicit --config / HEAVYQ_CONFIG was given).
+// required is true (an explicit --config / HEAVYQ_CONFIG was given). The
+// result remembers where it came from (Origin), so a process that waits can
+// re-read the same file (Watch).
 func Load(path string, required bool) (*Config, error) {
+	cfg, err := read(path, required)
+	if err != nil {
+		return nil, err
+	}
+	cfg.Origin.Path, cfg.Origin.Required = absPath(path), required
+	return cfg, nil
+}
+
+// read is Load without the origin.
+func read(path string, required bool) (*Config, error) {
 	if path == "" {
 		return defaults()
 	}
@@ -52,7 +63,7 @@ func Load(path string, required bool) (*Config, error) {
 
 // defaults returns the config used when there is no file.
 func defaults() (*Config, error) {
-	cfg := &Config{}
+	cfg := &Config{Origin: Origin{Sum: noFileSum}}
 	if err := cfg.normalize(); err != nil {
 		return nil, err
 	}
@@ -78,7 +89,7 @@ func parse(path string, data []byte) (*Config, error) {
 	for _, key := range tomlkeys.Unknown(md) {
 		cfg.Unknown = append(cfg.Unknown, UnknownKey{Key: key.String(), Line: tomlkeys.Line(data, key)})
 	}
-	cfg.Path = path
+	cfg.Path, cfg.Origin.Sum = path, contentSum(data)
 	if err := cfg.normalize(); err != nil {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
@@ -138,73 +149,6 @@ func (c *Config) normalize() error {
 		return err
 	}
 	return c.Proof.normalize(c)
-}
-
-func (m *MachineConfig) normalizeCommon() error {
-	if m.HeavySlots < 0 || m.LightSlots < 0 || m.HeavySlots+m.LightSlots > 64 {
-		return errors.New("heavy_slots/light_slots must be >= 0 and total <= 64")
-	}
-	if m.HeavySlots+m.LightSlots == 0 {
-		return errors.New("needs at least one slot")
-	}
-	if m.MaxLoadRatio == 0 {
-		m.MaxLoadRatio = defaultLoadRatio
-	}
-	if m.MaxLoadRatio < 0 || m.MaxLoadRatio > 64 {
-		return errors.New("max_load_ratio must be in (0, 64]")
-	}
-	for _, v := range []*int{&m.JobMB, &m.LightMB, &m.ReserveMB} {
-		if *v < 0 {
-			return errors.New("job_mb/light_mb/reserve_mb must be >= 0")
-		}
-	}
-	if m.JobMB == 0 {
-		m.JobMB = defaultJobMB
-	}
-	if m.LightMB == 0 {
-		m.LightMB = defaultLightMB
-	}
-	if m.ReserveMB == 0 {
-		m.ReserveMB = defaultReserveMB
-	}
-	return nil
-}
-
-func (m *MachineConfig) normalizeRemote() error {
-	if m.HeavySlots == 0 && m.LightSlots == 0 {
-		m.HeavySlots = 2
-	}
-	if err := m.normalizeCommon(); err != nil {
-		return err
-	}
-	if len(m.LegacyLockFiles) > 0 {
-		return errors.New("legacy_lock_files is only valid in [local]")
-	}
-	if m.WorkDir == "" {
-		m.WorkDir = defaultRemoteWorkDir
-	}
-	if strings.ContainsAny(m.WorkDir, "'\"`$\\\n ") || strings.Contains(m.WorkDir, "..") {
-		return fmt.Errorf("work_dir %q contains unsafe characters", m.WorkDir)
-	}
-	if err := validateEnvPath(m.EnvPath); err != nil {
-		return err
-	}
-	if len(m.Transport) == 0 {
-		if m.SSH == "" {
-			return errors.New("set ssh (an ssh alias) or transport")
-		}
-		if !sshAliasPattern.MatchString(m.SSH) {
-			return fmt.Errorf("ssh %q must be a plain host alias (put options in ~/.ssh/config)", m.SSH)
-		}
-		m.Transport = []string{"ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", m.SSH}
-	}
-	if m.GitURL == "" {
-		if m.SSH == "" {
-			return errors.New("git_url is required when transport is customised without ssh")
-		}
-		m.GitURL = m.SSH + ":" + strings.TrimSuffix(m.WorkDir, "/") + "/git"
-	}
-	return nil
 }
 
 // GateEnabled reports whether the RAM/load gate is on (default true).
