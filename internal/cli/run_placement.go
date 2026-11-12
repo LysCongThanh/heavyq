@@ -69,6 +69,9 @@ func preparePlacement(cfg *config.Config, o *runOptions, stderr io.Writer) (*pla
 			}
 		}
 	}
+	if err := p.narrowToShippable(mainRepo, stderr); err != nil {
+		return nil, err
+	}
 	if p.target != "local" {
 		if err := p.resolveRemoteSource(mainRepo, o, stderr); err != nil {
 			return nil, err

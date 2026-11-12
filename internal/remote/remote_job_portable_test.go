@@ -82,11 +82,12 @@ func TestPortableJobRunsInOwnProcessGroupWithoutSetsid(t *testing.T) {
 		t.Fatal(err)
 	}
 	pathWithout(t, "flock", "setsid")
+	// The command line runs as a script of the job's isolated bash, so the command's parent leads the group.
 	rc, out, errs := runJob(t, JobSpec{Machine: m, Repo: "app", SHA: sha, Lane: "x", Slot: "h1",
-		Argv: []string{"bash", "-c", `echo "$$ $(ps -o pgid= -p $$ | tr -d ' ')"; exit 3`}})
+		Argv: []string{"bash", "-c", `echo "$PPID $(ps -o pgid= -p $$ | tr -d ' ')"; exit 3`}})
 	f := strings.Fields(out)
 	if rc != 3 || len(f) != 2 || f[0] != f[1] {
-		t.Fatalf("rc=%d, want its own process group (pid pgid): %q\nstderr:%s", rc, out, errs)
+		t.Fatalf("rc=%d, want its own process group (leader pgid): %q\nstderr:%s", rc, out, errs)
 	}
 	assertNoWorktrees(t, m)
 }

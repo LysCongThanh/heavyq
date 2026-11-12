@@ -68,6 +68,10 @@ func TestE2EExitCanaryRefusesProofsOnARemoteThatLosesExitCodes(t *testing.T) {
 	if rc, out := h.run("3", "--remote", "box", "--cache", "--", "true"); rc != ExitRemoteSetup || !strings.Contains(out, untrustedBox) {
 		t.Fatalf("--cache on an untrusted remote: rc=%d\n%s", rc, out)
 	}
+	// Refused before the command ran: heavyq's own 77, so the ledger says it gave up, not that it ran.
+	if recs := h.history(); len(recs) == 0 || recs[len(recs)-1].Result != history.OutcomeGaveUp {
+		t.Fatalf("a run refused by the exit canary must be recorded as gave up: %+v", recs)
+	}
 	for _, args := range [][]string{{"why"}, {"status"}, {"doctor"}} {
 		if _, out := h.run(args...); !strings.Contains(out, untrustedBox) {
 			t.Fatalf("heavyq %s does not say %q:\n%s", args[0], untrustedBox, out)

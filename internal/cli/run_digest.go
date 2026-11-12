@@ -79,9 +79,9 @@ func (r *run) digestRan(rc int, machine string, co gitutil.Checkout, ran, waited
 	case r.interrupted:
 		res.Verdict, res.Why = agentmode.Interrupted, fmt.Sprintf("stopped by signal %d", rc-128)
 		res.Next = "run it again if you still need the result"
-	case rc == ExitRemoteSetup && r.distrust != "":
+	case r.remoteSetupFailed && r.distrust != "": // heavyq refused a remote that loses exit codes
 		res.Verdict, res.Why, res.Next = agentmode.NotRun, r.distrust+"; the command did not run", nextUntrusted
-	case rc == ExitRemoteSetup:
+	case r.remoteSetupFailed: // heavyq's own 77, never a command's
 		res.Verdict, res.Why = agentmode.NotRun, "remote setup on "+machine+" failed; the command did not run"
 		res.Next = nextRemoteDown
 	case r.distrust != "":

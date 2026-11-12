@@ -52,7 +52,7 @@ func (r *run) proving() bool {
 
 // checkExitTrust makes sure remote m returns exit codes before a run there: the stored canary verdict when
 // it is fresh, else the canary now, through the job path the run takes (the run's commit, already pushed,
-// and its slot). It returns 0 to go on, else the code to end the run with (nothing ran). On an untrusted
+// and its slot). It returns 0 to go on, else heavyq's own ExitRemoteSetup (setupFailed: nothing ran). On an untrusted
 // remote a proof is refused; any other run is refused too unless the remote sets allow_untrusted_exit, and
 // then it runs with r.distrust set, so its record is suspect and never proof.
 func (r *run) checkExitTrust(m config.MachineConfig, repo, slot string, timeout time.Duration) int {
@@ -62,7 +62,7 @@ func (r *run) checkExitTrust(m config.MachineConfig, repo, slot string, timeout 
 		trusted, reason, err := remote.RunCanary(m, remote.CanaryJob{Repo: repo, SHA: r.pl.sha, Lane: r.me.Lane, Slot: slot}, timeout)
 		if err != nil {
 			fmt.Fprintf(r.stderr, "heavyq: the exit canary on %s could not run (%v); the command did not run\n", m.Name, err)
-			return ExitRemoteSetup
+			return r.setupFailed()
 		}
 		v = remote.CanaryVerdict{Trusted: trusted, Reason: reason, At: time.Now()}
 		if err := remote.SaveCanary(dir, m, v); err != nil {
@@ -75,7 +75,7 @@ func (r *run) checkExitTrust(m config.MachineConfig, repo, slot string, timeout 
 	r.distrust = snapshot.UntrustedExitText(m.Name, v.Reason)
 	if r.proving() || !m.AllowUntrustedExit {
 		fmt.Fprintf(r.stderr, "heavyq: %s; the command did not run (a result from there would prove nothing): %s\n", r.distrust, nextUntrusted)
-		return ExitRemoteSetup
+		return r.setupFailed()
 	}
 	fmt.Fprintf(r.stderr, "heavyq: %s; running anyway (allow_untrusted_exit), but the result proves nothing\n", r.distrust)
 	return 0

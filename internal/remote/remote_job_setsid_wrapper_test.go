@@ -30,8 +30,8 @@ func wrapperDir(t *testing.T, body string) string {
 	return dir
 }
 
-// waitForFile waits up to d for path to exist.
-func waitForFile(path string, d time.Duration) bool {
+// fileAppears waits up to d for path to exist.
+func fileAppears(path string, d time.Duration) bool {
 	for deadline := time.Now().Add(d); time.Now().Before(deadline); time.Sleep(50 * time.Millisecond) {
 		if _, err := os.Stat(path); err == nil {
 			return true
@@ -54,7 +54,7 @@ func TestJobKeepsExitCodeWhenSetsidIsAForkingWrapper(t *testing.T) {
 		Argv: []string{"sh", "-c", `sleep 0.3; echo done > "$HEAVYQ_CACHE_DIR/finished"; exit 3`}})
 	_, statErr := os.Stat(done)
 	if rc != 3 || statErr != nil {
-		waitForFile(done, 3*time.Second) // let a stray command finish before the temp dir goes
+		fileAppears(done, 3*time.Second) // let a stray command finish before the temp dir goes
 		t.Fatalf("rc=%d (want 3), command finished before the job returned: %v\nstdout:%s\nstderr:%s", rc, statErr == nil, out, errs)
 	}
 	assertNoWorktrees(t, m)

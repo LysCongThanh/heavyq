@@ -14,7 +14,6 @@ import (
 	"github.com/LysCongThanh/heavyq/internal/config"
 	"github.com/LysCongThanh/heavyq/internal/history"
 	"github.com/LysCongThanh/heavyq/internal/ledgerindex"
-	"github.com/LysCongThanh/heavyq/internal/remote"
 )
 
 // execute runs the command on the claimed machine and records history.
@@ -33,8 +32,8 @@ func (r *run) execute(c *claim) int {
 	}
 	runSecs := time.Since(runStart).Seconds()
 	rc = r.judgeSuspect(rc)
-	ran := !r.interrupted && !r.cancelled && rc != 126 && rc != 127 &&
-		(c.machine == config.LocalName || (rc != ExitRemoteSetup && rc != ExitConnLost)) && r.suspect == ""
+	ran := !r.interrupted && !r.cancelled && !r.remoteSetupFailed && rc != 126 && rc != 127 &&
+		(c.machine == config.LocalName || rc != ExitConnLost) && r.suspect == ""
 	r.cacheFinish(c.machine, rc, ran, runSecs)
 	rec := history.Record{End: time.Now(), Machine: c.machine, Lane: r.me.Lane, Prio: r.me.Prio, Light: r.me.Light,
 		WaitSecs: waited.Seconds(), RunSecs: runSecs, Exit: rc, Cmd: r.me.Cmd, Forced: c.forced,
@@ -48,8 +47,8 @@ func (r *run) execute(c *claim) int {
 		rec.Result = history.OutcomeInterrupted
 	case r.suspect != "":
 		rec.Result = history.OutcomeSuspect // exit 0 (127 under --strict), but the shell lost a command: no proof
-	case rc == ExitRemoteSetup || rc == 126 || rc == 127:
-		rec.Result = history.OutcomeGaveUp // the command never started
+	case r.remoteSetupFailed || rc == 126 || rc == 127:
+		rec.Result = history.OutcomeGaveUp // the command never started (a command's own 77 is its failure)
 	case r.distrust != "":
 		rec.Result = history.OutcomeSuspect // the remote loses exit codes (allow_untrusted_exit): no proof
 	}
@@ -106,58 +105,6 @@ func (r *run) runLocal(c *claim) int {
 		r.cpuSecs, r.maxRSSMB = childUsage(cmd.ProcessState)
 		return rc
 	})
-}
-
-func (r *run) runRemote(c *claim) int {
-	m, _ := r.cfg.Machine(c.machine)
-	name := filepath.Base(r.pl.repo)
-	timeout := r.cfg.Queue.ProbeTimeout.Duration * 6
-	if err := remote.Push(m, r.pl.repo, name, r.pl.sha, r.pl.sha[:12], timeout); err != nil {
-		fmt.Fprintln(r.stderr, "heavyq:", err)
-		return ExitRemoteSetup
-	}
-	baseRef := ""
-	if r.opts.BaseRef != "" && r.pl.baseSHA != "" {
-		if err := remote.Push(m, r.pl.repo, name, r.pl.baseSHA, "base-"+r.pl.baseSHA[:12], timeout); err != nil {
-			fmt.Fprintln(r.stderr, "heavyq: warning: base ref not pushed:", err)
-		} else {
-			baseRef = r.opts.BaseRef
-		}
-	}
-	for _, s := range r.pl.siblings {
-		if err := remote.Push(m, s.Path, s.Name, s.SHA, s.SHA[:12], timeout); err != nil {
-			fmt.Fprintln(r.stderr, "heavyq:", err)
-			return ExitRemoteSetup
-		}
-	}
-	sibs := siblingIDs(r.pl.siblings)
-	if rc := r.checkExitTrust(m, name, c.slot, timeout); rc != 0 {
-		return rc
-	}
-	select {
-	case s := <-r.sigs:
-		return signalExit(s)
-	default:
-	}
-	jobOut, jobErr := r.cmdStreams()
-	job, err := remote.StartJob(remote.JobSpec{Machine: m, Repo: name, SHA: r.pl.sha, Lane: r.me.Lane, Slot: c.slot,
-		Argv: r.opts.Argv, Subdir: r.pl.subdir, Siblings: sibs, BaseRef: baseRef, BaseSHA: r.pl.baseSHA,
-		Stdout: jobOut, Stderr: jobErr})
-	if err != nil {
-		fmt.Fprintln(r.stderr, "heavyq:", err)
-		return ExitRemoteSetup
-	}
-	rc := r.supervise(job.Signal, job.Wait)
-	switch rc {
-	case remote.ExitSlotBusy, remote.ExitSetupFailed:
-		fmt.Fprintf(r.stderr, "heavyq: remote setup on %s failed (job code %d); the command did not run\n", c.machine, rc)
-		return ExitRemoteSetup
-	case remote.ExitConnectionLost:
-		fmt.Fprintf(r.stderr, "heavyq: connection to %s lost; the remote side stops the command\n", c.machine)
-	case 127:
-		r.remoteNotFound(c.machine)
-	}
-	return rc
 }
 
 // supervise waits for the child while forwarding termination signals: the
