@@ -74,11 +74,12 @@ One JSON object per line, written with a single `O_APPEND` write:
 {"at":"2026-11-02T00:36:50.1Z","op":"claim","item":"task-1","lane":"api","session":"s1"}
 ```
 
-`op` is `claim`, `renew`, `release`, `reclaim`, `block` or `done`. Reclaims add `reason`, `prev_lane`,
-`prev_session`; forced releases add `forced`; `block` adds `needs` and `done` adds `commit`. The last two are
-written by `Finish`, which under one lock checks the holder, runs a callback (the checkbox tick), appends the
-event and removes the lease; `RenewLane` extends every lease of a lane and writes no event; `Events` reads the
-tail of the log. If only the log append fails, the operation still happened: the call returns
+`op` is `claim`, `renew`, `release`, `reclaim`, `block`, `done` or `sync`. Reclaims add `reason`, `prev_lane`,
+`prev_session`; forced releases add `forced`; `block` adds `needs`, `done` adds `commit` (and `deferred` when
+`[items] tick` left the box unticked) and `sync` adds `commit`. `block` and `done` are written by `Finish`, which
+under one lock checks the holder, runs a callback (the checkbox tick), appends the event and removes the lease;
+`sync` by `NoteSync`, called inside `WithLock` right after `heavyq item sync` ticked the box, and it touches no
+lease; `RenewLane` extends every lease of a lane and writes no event; `Events` reads the tail of the log. If only the log append fails, the operation still happened: the call returns
 the lease together with an error wrapping `ErrEventLog`.
 
 ## Concurrency

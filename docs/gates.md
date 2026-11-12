@@ -131,6 +131,7 @@ max_proof_share = 1.0                  # share of the 30 min lease the expected 
 | `anchor.extra` | list of strings | none | relative globs inside the repository |
 | `items.iterations` | integer | `3` | 1-20; proof runs an item is expected to need; `item claim` refuses an item whose proof p50 times this is over the lease budget |
 | `items.max_proof_share` | number | `1` | above 0, at most 1; the share of the 30 minute lease that budget is |
+| `items.tick` | string | `"auto"` | `"auto"`, `"always"` or `"never"`: whether `item done` ticks the box in the anchor file. `auto` ticks unless the repository has more than one work tree, where parallel lanes ticking adjacent lines conflict at merge time; without a tick `item sync` ticks later, once. See [items](items.md#parallel-work-trees-tick-and-sync) |
 
 The file may be empty (no gates). It is at most 1 MiB and must be a regular file (a symlink to one is fine).
 
@@ -166,7 +167,7 @@ is a run of the command when all of these hold:
 
 ### What the tree id ignores
 
-heavyq writes to the work tree itself: `heavyq item done` ticks a box in the anchor file. If that changed the
+heavyq writes to the work tree itself: `heavyq item done` (or `item sync`) ticks a box in the anchor file. If that changed the
 tree id, the proof that justified `done` would read as stale the moment it was recorded. So the tree id leaves
 out a fixed set of bookkeeping paths, in the committed tree and in the edits alike:
 

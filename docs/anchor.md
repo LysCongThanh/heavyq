@@ -77,5 +77,5 @@ permission bits kept). It refuses ids that do not exist, items from extra source
 (`ErrConcurrent`; retry). Setting the state an item already has writes nothing.
 
 Writers are not serialised by this package. Two processes flipping different items in the same instant can
-lose one update. `heavyq item done` therefore ticks under the lease store's directory lock; it does so only
+lose one update. `heavyq item done` and `heavyq item sync` therefore tick under the lease store's directory lock; they do so only
 after it has proof, and the status of an item is derived from proofs, never from the box.
