@@ -3,6 +3,7 @@ package config
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -81,7 +82,9 @@ func NewWatch(cfg *Config) *Watch {
 // cur's, else nil. An edit that does not load (syntax, an unsafe or invalid
 // value, an explicit file gone) returns its error the first time only; the
 // caller keeps cur, its last good config, and later checks stay quiet until
-// the file changes again.
+// the file changes again. A file cur was read from that is gone is such an
+// edit, whether it was required or not: a moment without the file (an editor
+// replacing it) must not drop a waiting ticket to the defaults.
 func (w *Watch) Changed(cur *Config) (*Config, error) {
 	if w == nil || w.origin.Path == "" {
 		return nil, nil
@@ -94,7 +97,7 @@ func (w *Watch) Changed(cur *Config) (*Config, error) {
 	if m.exists && time.Since(time.Unix(0, m.modNano)) < racyWindow {
 		w.seen = fileMark{size: -1} // a same-size edit in the same clock tick would look untouched: read again next time
 	}
-	fresh, err := Load(w.origin.Path, w.origin.Required)
+	fresh, err := w.read(m, cur)
 	if err != nil {
 		if err.Error() == w.failed {
 			return nil, nil
@@ -107,4 +110,13 @@ func (w *Watch) Changed(cur *Config) (*Config, error) {
 		return nil, nil
 	}
 	return fresh, nil
+}
+
+// read loads the file as a fresh heavyq would, except that a file cur was read
+// from (cur is not the defaults) and is gone now is an error, not the defaults.
+func (w *Watch) read(m fileMark, cur *Config) (*Config, error) {
+	if !m.exists && cur.Origin.Sum != noFileSum {
+		return nil, fmt.Errorf("config file %s is gone", w.origin.Path)
+	}
+	return Load(w.origin.Path, w.origin.Required)
 }

@@ -56,8 +56,10 @@ func TestWatchFollowsEditsAndKeepsTheLastGoodConfig(t *testing.T) {
 	}
 }
 
-// A required file that disappears is refused; an optional one falls back to
-// the defaults, as Load at start would.
+// A file the config was read from that disappears is refused once, required or
+// not: the waiter keeps its last good config rather than falling back to the
+// defaults. When the file comes back, its content is picked up (or, when it is
+// the same, nothing changes).
 func TestWatchOnAMissingFile(t *testing.T) {
 	dir := t.TempDir()
 	for _, required := range []bool{true, false} {
@@ -71,13 +73,35 @@ func TestWatchOnAMissingFile(t *testing.T) {
 		if err := os.Remove(path); err != nil {
 			t.Fatal(err)
 		}
-		fresh, err := w.Changed(cur)
-		if required && (fresh != nil || err == nil) {
-			t.Fatalf("required: %v %v", fresh, err)
+		if fresh, err := w.Changed(cur); fresh != nil || err == nil || !strings.Contains(err.Error(), "is gone") {
+			t.Fatalf("required=%v: %v %v", required, fresh, err)
 		}
-		if !required && (err != nil || fresh == nil || fresh.Origin.Sum != noFileSum || fresh.Local.HeavySlots != 2) {
-			t.Fatalf("optional: %+v %v", fresh, err)
+		if fresh, err := w.Changed(cur); fresh != nil || err != nil {
+			t.Fatalf("required=%v: the missing file is reported once: %v %v", required, fresh, err)
 		}
+		rewriteConfig(t, path, "[local]\nheavy_slots = 1\n")
+		if fresh, err := w.Changed(cur); fresh != nil || err != nil {
+			t.Fatalf("required=%v: the same file back changes nothing: %v %v", required, fresh, err)
+		}
+		rewriteConfig(t, path, "[local]\nheavy_slots = 5\n")
+		if fresh, err := w.Changed(cur); err != nil || fresh == nil || fresh.Local.HeavySlots != 5 {
+			t.Fatalf("required=%v: an edit after the file came back: %+v %v", required, fresh, err)
+		}
+	}
+	// A config that never came from a file (defaults) has nothing to lose, and
+	// a file created later is picked up.
+	path := filepath.Join(dir, "later.toml")
+	cur, err := Load(path, false)
+	if err != nil || cur.Origin.Sum != noFileSum {
+		t.Fatalf("defaults: %+v %v", cur, err)
+	}
+	w := NewWatch(cur)
+	if fresh, err := w.Changed(cur); fresh != nil || err != nil {
+		t.Fatalf("still no file: %v %v", fresh, err)
+	}
+	rewriteConfig(t, path, "[local]\nheavy_slots = 7\n")
+	if fresh, err := w.Changed(cur); err != nil || fresh == nil || fresh.Local.HeavySlots != 7 {
+		t.Fatalf("a file created later: %+v %v", fresh, err)
 	}
 	if cfg, err := Load("", false); err != nil || cfg.Origin.Sum != noFileSum || NewWatch(cfg) == nil {
 		t.Fatalf("defaults: %+v %v", cfg, err)

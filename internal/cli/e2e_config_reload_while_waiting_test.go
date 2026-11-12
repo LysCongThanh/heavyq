@@ -36,22 +36,22 @@ func (p *proc) finished() bool {
 	}
 }
 
-// The field report: a ticket waits for the only heavy slot, held by another
-// run, on a machine over its load limit. The operator adds a second slot and
-// raises the load limit. The waiting ticket starts on its next poll, while the
-// first run still holds its slot, and a ticket submitted later is not stuck
-// behind it.
+// The field report: a ticket waits for the only heavy slot, a legacy lock file
+// held by a process outside heavyq (flock(1)), on a machine over its load limit.
+// The operator adds a second slot and raises the load limit. The waiting ticket
+// starts on its next poll, while the first holder still holds its slot, and a
+// ticket submitted later is not stuck behind it.
 func TestE2EWaitingTicketPicksUpAnEditedConfig(t *testing.T) {
 	root := realTempDir(t)
 	a, b := filepath.Join(root, "a.lock"), filepath.Join(root, "b.lock")
 	h := newRig(t, reloadConfig([]string{a}, "0.5"))
 	h.fakeMetrics(busyReading)
-	hold := h.start("4", "--lane", "holder", "--", "sh", "-c", h.gateFile("go"))
-	h.running(1)
+	hold := newExternal(t, h, "flock", a, "sh", "-c", h.gateFile("go"))
+	h.until("flock(1) holds the first legacy slot", func() bool { return isLocked(a) })
 	waiter := h.start("1", "--lane", "waiter", "--", "true")
 	h.waiting(1)
-	if rc, out := h.run("why", "waiter"); rc != 0 || !strings.Contains(out, "local: load 9.00 >= 4.0") {
-		t.Fatalf("before the edit the load limit keeps the waiter out (rc=%d):\n%s", rc, out)
+	if rc, out := h.run("why", "waiter"); rc != 0 || !strings.Contains(out, "local: all heavy slots busy") {
+		t.Fatalf("before the edit the only slot keeps the waiter out (rc=%d):\n%s", rc, out)
 	}
 
 	h.setConfig(reloadConfig([]string{a, b}, "1.875"))

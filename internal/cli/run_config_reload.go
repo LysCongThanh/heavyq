@@ -10,9 +10,10 @@ package cli
 // What the ticket is stays as it was submitted: its target, candidate machines
 // and needs, and the cache settings its cache key and run identity were made
 // with. Everything admission reads (queue timing, slots, limits, remotes,
-// pools) comes from the new file. An edit that does not load is reported once
-// and changes nothing: the ticket keeps its last good config (fail closed).
-// It returns a non-zero exit code when the ticket must give up.
+// pools, the probe timeout) comes from the new file. An edit that does not
+// load is reported once and changes nothing: the ticket keeps its last good
+// config (fail closed). It returns a non-zero exit code when the ticket must
+// give up.
 func (r *run) reloadConfig() int {
 	fresh, err := r.cfgWatch.Changed(r.cfg)
 	if err != nil {
@@ -37,6 +38,7 @@ func (r *run) reloadConfig() int {
 		r.poolSet = set
 	}
 	r.cfg = &next
+	r.probes.setTimeout(next.Queue.ProbeTimeout.Duration)
 	r.note("config changed while waiting; this ticket now follows it")
 	return 0
 }
