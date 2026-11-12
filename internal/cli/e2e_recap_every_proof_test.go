@@ -48,6 +48,11 @@ func TestE2ERecapCountsEveryProof(t *testing.T) {
 	if r := rows["gate-b"]; r.State != "stale" || r.Done {
 		t.Fatalf("gate-b was proved but never ticked: %+v", r)
 	}
+	// `item ls` says the same: the ticked ones are "done, older tree", the one nobody ticked is just older.
+	ls := h.mustRun(app, 0, "item", "ls", "--all")
+	if !strings.Contains(ls, ", done, older tree)") || strings.Count(ls, "done, older tree") != 3 || strings.Count(ls, "older tree") != 4 {
+		t.Errorf("item ls:\n%s", ls)
+	}
 
 	if rc, out, errOut := h.inDir(app, env, "flow", "refresh"); rc != 0 {
 		t.Fatalf("flow refresh rc=%d\n%s%s", rc, out, errOut)
