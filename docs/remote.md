@@ -76,9 +76,11 @@ What a remote run sees, and what it doesn't:
 ## Machines heavyq only watches
 
 A `[[remote]]` with `observe_only = true` (and only `name` and `ssh` or `transport`) is never a run target:
-placement, `--remote`, `auto` and `[proof]` do not see it. `heavyq fleet` still probes it for load, RAM,
-memory pressure and the processes that use them, so a fleet of many machines can be watched without giving
-heavyq slots there. See [fleet](fleet.md).
+placement (by tools too), `--remote`, `auto`, `heavyq retarget` and `[proof]` do not see it. A waiting ticket
+treats a candidate remote edited to `observe_only` like one removed from the file
+([editing the config while tickets wait](configuration.md#editing-the-config-while-tickets-wait)). `heavyq fleet`
+still probes it for load, RAM, memory pressure and the processes that use them, so a fleet of many machines can
+be watched without giving heavyq slots there. See [fleet](fleet.md).
 
 ## An ordered list of machines
 
