@@ -55,7 +55,7 @@ keep other users, other machines and web pages out, not to separate privileges w
 | `GET receipts?window=week` | the receipts of `day`, `week` (default) or `month`: exact counts and the rounded share card (see [receipts.md](receipts.md)) |
 | `POST tickets/{id}/cancel` | 202. Waiting: leaves the queue. Running: SIGTERM to the process tree, SIGKILL after 10 s. Exit 78. |
 | `POST tickets/{id}/prio` `{"prio":1-9}` | 202 for waiting tickets, 409 for running ones |
-| `POST tickets/{id}/target` `{"remote":"WHERE"}` | 202 for a waiting ticket the move is safe for: it waits for the machines of `WHERE` from its next poll (`heavyq retarget`, see [remote.md](remote.md#moving-a-waiting-ticket-heavyq-retarget)). 400 with the reason for a move `heavyq retarget` refuses, 409 for running tickets. Not on the page yet. |
+| `POST tickets/{id}/target` `{"remote":"WHERE"}` | 202 for a waiting ticket the move is safe for: it waits for the machines of `WHERE` from its next poll; right after a config edit the request is filed once the ticket follows the edit, within two polls (`heavyq retarget`, see [remote.md](remote.md#moving-a-waiting-ticket-heavyq-retarget)). 400 with the reason for a move `heavyq retarget` refuses, 409 for running tickets. Not on the page yet. |
 | `POST machines/{name}/pause`, `.../resume` | 200. Paused machines admit nothing new. |
 
 Errors are `{"error":"..."}` with 400, 401, 403, 404, 409 or 421 (wrong `Host`).

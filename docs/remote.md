@@ -117,7 +117,13 @@ and its place among equals, and from its next poll waits for the new machines as
   unreachable for `remote_down_max`, and the anti-starvation bypass needs one candidate machine;
 - the clocks of the old machines do not follow it: the new machines are probed once before the ticket can give up
   on them, and both `remote_down_max` and the head-of-line wait of the anti-starvation bypass count from the move. A
-  ticket moved off an unreachable remote just before `remote_down_max` runs out is not dropped for it.
+  ticket moved off an unreachable remote just before `remote_down_max` runs out is not dropped for it;
+- a waiting ticket follows edits of the config file ([configuration.md](configuration.md#editing-the-config-while-tickets-wait)),
+  and a move is checked with the config it follows: `heavyq retarget` (and the dashboard) files the request once the
+  ticket decides with the file it read, within two polls, so a `[[remote]]` just added is a valid target. `auto`
+  means the remotes of the config at the move, and the ticket keeps the machines it moved to across later edits, as
+  it keeps those it was queued with: a remote added after the move is not one of them, and it never goes back to
+  its old machines. A machine it moved to that an edit removes is `not in this config`, as for any candidate.
 
 The ticket's own heavyq process re-plans its placement and answers, and `heavyq retarget` prints the answer: exit 0
 once the ticket moved (or, when it has not read the request within two polls, it moves when it does), 2 when the

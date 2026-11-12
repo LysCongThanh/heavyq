@@ -61,8 +61,12 @@ func dashCommand(cfg *config.Config, args []string, stdout, stderr io.Writer) in
 			if !ok {
 				return fmt.Errorf("no ticket %q (it may have finished)", id)
 			}
-			_, err := vetRetarget(live.get(), t, where)
-			return err
+			cfg := live.get()
+			if _, err := vetRetarget(cfg, t, where); err != nil {
+				return err
+			}
+			awaitTicketConfig(cfg, t) // the ticket vets the move with the config this one read
+			return nil
 		},
 	})
 	if err != nil {

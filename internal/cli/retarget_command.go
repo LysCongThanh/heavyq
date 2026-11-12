@@ -41,6 +41,7 @@ func retargetCommand(cfg *config.Config, args []string, stdout, stderr io.Writer
 		fmt.Fprintf(stdout, "lane %s (pid %d) already waits for %s\n", t.Lane, t.Pid, where)
 		return 0
 	}
+	awaitTicketConfig(cfg, t)
 	if err := controlBox().RequestTarget(t.Name, where); err != nil {
 		fmt.Fprintln(stderr, "heavyq:", err)
 		return 1

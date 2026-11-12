@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/LysCongThanh/heavyq/internal/config"
 	"github.com/LysCongThanh/heavyq/internal/queue"
@@ -82,4 +83,28 @@ func retargetDetail(t *queue.Ticket, where string, paused []string) string {
 		return ""
 	}
 	return " (" + strings.Join(parts, "; ") + ")"
+}
+
+// awaitTicketConfig waits, a few polls at most, until ticket t decides with the
+// config cfg the requester read (the ConfigSum the ticket publishes), before a
+// move is filed. A waiting ticket adopts an edit of the file only once two of
+// its polls read it the same (run_config_reload.go), and it vets the move with
+// the config it follows: filed at once after an edit, a move to a remote the
+// edit added would be refused as unknown. When the ticket still follows another
+// config at the deadline (it refuses the edit, or it is busy probing), the move
+// is filed anyway and the ticket's own answer decides.
+func awaitTicketConfig(cfg *config.Config, t *queue.Ticket) {
+	deadline := time.Now().Add(2*cfg.Queue.Poll.Duration + cfg.Queue.ProbeTimeout.Duration + time.Second)
+	for t.ConfigSum != "" && t.ConfigSum != cfg.Origin.Sum && time.Now().Before(deadline) {
+		time.Sleep(retargetAnswerPoll)
+		q, err := queue.Open(QueueDir())
+		if err != nil {
+			return
+		}
+		now, ok := q.Find(t.Name)
+		if !ok || now.Running {
+			return // the request is filed and leftQueue reports it
+		}
+		t = now
+	}
 }
