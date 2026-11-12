@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"time"
 )
@@ -31,14 +32,24 @@ func Host(procRoot string) Metrics {
 	return m
 }
 
+// Where macOS installs the sampler's tools. They are called by absolute path
+// because PATH may not hold them: cron runs jobs with PATH=/usr/bin:/bin, and
+// sysctl lives in /usr/sbin, so a PATH lookup would silently turn the RAM/load
+// gate off on a Mac that is perfectly measurable (the remote probe adds the
+// same directories to PATH for the same reason).
+var (
+	darwinSysctlDirs = []string{"/usr/sbin", "/sbin"}
+	darwinVMStatDirs = []string{"/usr/bin"}
+)
+
 // localMacOS samples the local Mac.
 func localMacOS() Metrics {
 	unknown := Metrics{Cores: runtime.NumCPU()}
-	sysOut, err := run("sysctl", "-n", "hw.memsize", "hw.ncpu", "vm.loadavg")
+	sysOut, err := run(toolPath("sysctl", darwinSysctlDirs), "-n", "hw.memsize", "hw.ncpu", "vm.loadavg")
 	if err != nil {
 		return unknown
 	}
-	vmOut, err := run("vm_stat")
+	vmOut, err := run(toolPath("vm_stat", darwinVMStatDirs))
 	if err != nil {
 		return unknown
 	}
@@ -71,6 +82,18 @@ func ParseDarwin(sysctlOut, vmStatOut string) (Metrics, error) {
 		Cores:   ncpu,
 		Known:   true,
 	}, nil
+}
+
+// toolPath returns the first dirs/name that is an executable regular file, or
+// name itself (a PATH lookup) when none is, e.g. on a system that moved it.
+func toolPath(name string, dirs []string) string {
+	for _, dir := range dirs {
+		p := filepath.Join(dir, name)
+		if st, err := os.Stat(p); err == nil && st.Mode().IsRegular() && st.Mode().Perm()&0o111 != 0 {
+			return p
+		}
+	}
+	return name
 }
 
 // run executes a command with a fixed C locale and returns its stdout.
