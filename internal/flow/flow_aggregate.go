@@ -3,8 +3,6 @@ package flow
 import (
 	"sort"
 	"time"
-
-	"github.com/LysCongThanh/heavyq/internal/itemstatus"
 )
 
 // Fleet is the lead time of all timelines inside the window, by state.
@@ -15,13 +13,16 @@ type Fleet struct {
 	FlowEfficiency float64 `json:"flow_efficiency"`
 }
 
-// Throughput is the primary metric: proven items per active hour. Without
-// pull requests "proven" is the proof, not the merge.
+// Throughput is the primary metric: finished items per active hour. An item is finished when its proof passed or
+// it was marked done inside the window, claimed or not, and whether or not the code has changed since (an item
+// that reads stale now was finished). Without pull requests "finished" is the proof, not the merge.
 type Throughput struct {
-	ProvenPerHour    float64 `json:"proven_per_hour"`
+	ProvenPerHour float64 `json:"proven_per_hour"`
+	// P50ClaimToProofS is the lead time: the median from a claim to the proof that followed it, over the items
+	// that have such a pair. 0 when none does; it never gates the count.
 	P50ClaimToProofS float64 `json:"p50_claim_to_proof_s"`
 	WindowS          float64 `json:"window_s"`
-	N                int     `json:"n"` // items proven inside the window
+	N                int     `json:"n"` // items finished inside the window
 	// LastProof is when the most recent item in the window was proven, null when none was: the statusline and the
 	// forecast flag "at risk" when nothing has been proven for twice the median while lanes are working.
 	LastProof *time.Time `json:"last_proof"`
@@ -84,25 +85,21 @@ func constraintOf(f Fleet, base *Baseline) Constraint {
 	return Constraint{State: states[0], Share: share, Significant: share >= SignificantShare && share > base.Of(states[0])}
 }
 
-// throughputOf counts the items proven inside the window per hour the fleet was
-// active (the wall-clock union of all its spans), and the median time from the
-// claim an item's proof followed to the proof.
+// throughputOf counts the items finished inside the window per hour the fleet was active (the wall-clock union
+// of all its spans), and the median time from the claim an item's proof followed to the proof. An item counts
+// however it was finished, claimed or not (completions); only the median needs a claim.
 func throughputOf(in Input, holds map[string]*itemHolds, from time.Time, activeS float64) Throughput {
 	tp := Throughput{WindowS: in.window().Seconds()}
 	var lat []float64
-	for _, f := range in.Items {
-		st := f.Status
-		if st.State != itemstatus.Proven || st.At.Before(from) || st.At.After(in.Now) {
-			continue
-		}
+	for id, c := range completions(in, from) {
 		tp.N++
-		if tp.LastProof == nil || st.At.After(*tp.LastProof) {
-			t := st.At.UTC()
+		if tp.LastProof == nil || c.last.After(*tp.LastProof) {
+			t := c.last.UTC()
 			tp.LastProof = &t
 		}
-		if ih := holds[st.ID]; ih != nil {
-			if c, ok := ih.lastClaim(st.At); ok {
-				lat = append(lat, st.At.Sub(c).Seconds())
+		if ih := holds[id]; ih != nil {
+			if cl, ok := ih.lastClaim(c.first); ok {
+				lat = append(lat, c.first.Sub(cl).Seconds())
 			}
 		}
 	}

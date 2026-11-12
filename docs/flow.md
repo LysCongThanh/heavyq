@@ -40,9 +40,14 @@ later).
 
 - **Fleet lead time** is the sum of all timeline spans in the window, by state. **Flow efficiency** is
   `working / lead time`.
-- **Throughput** is proven items per active hour (the wall-clock union of all spans), and the median time from the
-  claim an item's proof followed to the proof (`p50_claim_to_proof_s`). Without pull requests "proven" is the proof,
-  not the merge.
+- **Throughput** is finished items per active hour (the wall-clock union of all spans). An item is finished when
+  its proof passed or it was marked done inside the window, **claimed or not**, and **whether or not the code has
+  changed since**: an item that reads `stale` now was finished then. The traces are the item reading `proven`, a `done`
+  event, and its gate passing in the ledger (every command of the gate on one tree; a cache replay is not a pass).
+  An item counts once however often it was proved, `n` is that count, and `last_proof` is the newest pass. The median
+  time from the claim an item's proof followed to the proof (`p50_claim_to_proof_s`) is the lead time: it uses
+  claim-to-proof pairs only and is `0` when no item has one, which never keeps an item out of the count.
+  Without pull requests "proven" is the proof, not the merge.
 - **The constraint** is the state with the largest share of lead time, excluding `working` (that is the work itself;
   its share is the flow efficiency). `significant` is true when the share is at least 0.30 **and** above the state's own
   baseline: an exponentially weighted average (alpha 0.2) of the share that state held in past windows, folded in at most
@@ -55,7 +60,7 @@ later).
 {"schema":1,"repo":"/work/app","updated":"2026-11-02T10:40:00Z",
  "goal":"ship login v2",
  "run":null,
- "items":{"total":8,"proven":5,"running":2,"blocked":1,"claimed_unproven":0,"open":0},
+ "items":{"total":8,"proven":5,"running":2,"blocked":1,"claimed_unproven":0,"done_stale":0,"open":0},
  "needs_you":[{"item":"doc-7","lane":"docs","session":"sess-1","reason":"permission_prompt: Bash(npm run e2e)","since":"2026-11-02T10:31:00Z"}],
  "constraint":{"state":"ci_wait","share":0.41,"significant":true},
  "throughput":{"proven_per_hour":2.1,"p50_claim_to_proof_s":1800,"window_s":14400,"n":9,"last_proof":"2026-11-02T10:35:00Z"},
@@ -75,8 +80,10 @@ added, never renamed or retyped.
 - `constraint.state` is `""` when there is no lead time. `needs_you` and `lanes` are `[]` when empty.
 - `throughput.last_proof` is when the newest item in the window was proven, `null` when none was (with `p50_claim_to_proof_s`
   it tells "nothing proven for twice the median while lanes work", the at-risk signal).
-- `items.open` counts items nobody holds and nothing proves (stale ones included). `claimed_unproven` counts items
-  ticked without a passing proof.
+- `items.open` counts items nobody holds and nothing proves (a stale one nobody ticked included).
+  `claimed_unproven` counts items ticked that nothing ever proved. `done_stale` (additive) counts items ticked whose
+  proof passed on older code: the code changed since, so they need one more proof run (`heavyq item done <id> --run`),
+  and they are neither `open` nor `claimed_unproven`.
 - `needs_you[].item` is the item the lane holds, `""` when none. `since` is when the lane started waiting.
 - `fleet` and `events` were added after the first draft of the contract (additive). `events` holds the newest 10
   stop failures and model switches in the window: `kind` is `stop_failure` (`detail` is Claude Code's `error`:

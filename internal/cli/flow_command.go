@@ -105,8 +105,8 @@ func writeFlowText(w io.Writer, s *flow.Snapshot, now time.Time) {
 		fmt.Fprintf(w, "goal: %s\n", s.Goal)
 	}
 	it := s.Items
-	fmt.Fprintf(w, "items: %d/%d proven, %d running, %d blocked, %d claimed-unproven, %d open\n",
-		it.Proven, it.Total, it.Running, it.Blocked, it.ClaimedUnproven, it.Open)
+	fmt.Fprintf(w, "items: %d/%d proven, %d running, %d blocked, %d claimed-unproven, %d done-stale, %d open\n",
+		it.Proven, it.Total, it.Running, it.Blocked, it.ClaimedUnproven, it.DoneStale, it.Open)
 	if len(s.NeedsYou) == 0 {
 		fmt.Fprintln(w, "needs you: nothing")
 	} else {
@@ -127,8 +127,12 @@ func writeFlowText(w io.Writer, s *flow.Snapshot, now time.Time) {
 		fmt.Fprintf(w, "constraint: %s %.0f%% of lead time%s\n", c.State, c.Share*100, sig)
 	}
 	tp := s.Throughput
+	lead := "n/a (no item claimed and then proven)" // the median needs claim-to-proof pairs; the count does not
+	if tp.P50ClaimToProofS > 0 {
+		lead = ago(time.Duration(tp.P50ClaimToProofS * float64(time.Second)))
+	}
 	fmt.Fprintf(w, "throughput: %.1f proven/h, median claim to proof %s, %d proven in the last %s\n",
-		tp.ProvenPerHour, ago(time.Duration(tp.P50ClaimToProofS*float64(time.Second))), tp.N, ago(time.Duration(tp.WindowS*float64(time.Second))))
+		tp.ProvenPerHour, lead, tp.N, ago(time.Duration(tp.WindowS*float64(time.Second))))
 	for _, l := range s.Lanes {
 		item := ""
 		if l.Item != "" {

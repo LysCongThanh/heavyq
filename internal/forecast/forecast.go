@@ -6,7 +6,10 @@
 //	ETA = now + remaining items x recent p50 claim-to-proof / parallelism
 //
 // The p50 is per item and per lane, so the lanes working at once divide the
-// remaining work (at least one lane: someone will have to start).
+// remaining work (at least one lane: someone will have to start). When no claim
+// ever led to a proof there is no p50 (proofs by someone who never claimed): the
+// fleet's measured throughput stands in for it, ETA = now + remaining / rate, and
+// the rate already counts the lanes.
 package forecast
 
 import (
@@ -40,6 +43,10 @@ const (
 // MinSamples is how many proofs a forecast needs. Below it the status is unknown.
 const MinSamples = 3
 
+// minPerHour is the slowest measured rate a forecast is made from: below it (one item in a hundred hours) the
+// number says nothing about the work left.
+const minPerHour = 0.01
+
 // StallFactor: no proof for longer than this many p50s, while lanes are
 // working, is at risk even when the ETA still fits.
 const StallFactor = 2
@@ -50,7 +57,10 @@ type Input struct {
 	Remaining int           // items not proven yet
 	Running   int           // lanes working right now; below 1 counts as 1
 	P50       time.Duration // recent median claim-to-proof of one item
-	N         int           // proofs the P50 rests on
+	N         int           // proofs the P50 (or the rate) rests on
+	// PerHour is the measured fleet throughput, items finished per active hour. It is used only when there is no
+	// P50 (0): the rate is the whole fleet's, so it is not divided by the lanes. 0 when none was measured.
+	PerHour float64
 	// LastProof is when the latest item was proven; zero when unknown, which
 	// switches the stall check off.
 	LastProof time.Time
@@ -87,11 +97,17 @@ func Compute(in Input) Result {
 	if in.Remaining <= 0 {
 		return Result{Status: OnTrack, Confidence: conf, Done: true, ETA: in.Now}
 	}
-	if in.N < MinSamples || in.P50 <= 0 {
+	if in.N < MinSamples {
 		return Result{Status: Unknown, Confidence: conf, Reason: fmt.Sprintf("%d of %d proofs measured", max(in.N, 0), MinSamples)}
 	}
-	lanes := max(in.Running, 1)
-	left := time.Duration(int64(in.Remaining) * int64(in.P50) / int64(lanes))
+	per, lanes := in.P50, max(in.Running, 1)
+	if per <= 0 && in.PerHour >= minPerHour {
+		per, lanes = time.Duration(float64(time.Hour)/in.PerHour), 1
+	}
+	if per <= 0 {
+		return Result{Status: Unknown, Confidence: conf, Reason: fmt.Sprintf("%d proofs counted, no rate measured yet", in.N)}
+	}
+	left := time.Duration(int64(in.Remaining) * int64(per) / int64(lanes))
 	res := Result{Status: OnTrack, Confidence: conf, Left: left, ETA: in.Now.Add(left)}
 	if !in.ExpectedEnd.IsZero() && res.ETA.After(in.ExpectedEnd) {
 		res.Status = AtRisk
@@ -99,9 +115,12 @@ func Compute(in Input) Result {
 		return res
 	}
 	if in.Running > 0 && !in.LastProof.IsZero() {
-		if since := in.Now.Sub(in.LastProof); since > StallFactor*in.P50 {
+		if since := in.Now.Sub(in.LastProof); since > StallFactor*per {
 			res.Status = AtRisk
-			res.Reason = "no proof for " + roundDur(since) + " (p50 " + roundDur(in.P50) + ")"
+			res.Reason = "no proof for " + roundDur(since) + " (typically one in " + roundDur(per) + ")"
+			if in.P50 > 0 {
+				res.Reason = "no proof for " + roundDur(since) + " (p50 " + roundDur(in.P50) + ")"
+			}
 		}
 	}
 	return res

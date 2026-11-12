@@ -8,4 +8,4 @@ session s5 lane=misc session=s5
   09:31:00-09:33:00 working       2m0s
 lane misc state=working item="" since=09:31:00
 constraint rework share=0.36 significant=true
-items {Total:0 Proven:0 Running:0 Blocked:0 ClaimedUnproven:0 Open:0}
+items {Total:0 Proven:0 Running:0 Blocked:0 ClaimedUnproven:0 DoneStale:0 Open:0}

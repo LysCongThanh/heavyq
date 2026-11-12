@@ -23,6 +23,7 @@ func ForecastInput(s *flow.Snapshot, now time.Time) forecast.Input {
 	t := s.Throughput
 	in.N = t.N
 	in.P50 = time.Duration(t.P50ClaimToProofS * float64(time.Second))
+	in.PerHour = t.ProvenPerHour
 	if t.LastProof != nil {
 		in.LastProof = *t.LastProof
 	}

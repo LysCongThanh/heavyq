@@ -9,7 +9,7 @@ heavyq recap [--since 2h] [--session S] [--run ID] [--json] [--verbose] [--ascii
 ```
 
 ```
-◆ 5/9 proven  ✓ on track · ~16:00 (medium confidence, 9 proofs)  ▲ CI wait  ⚑ 2 needs you
+◆ 5/10 proven  ✓ on track · ~16:30 (medium confidence, 9 proofs)  ▲ CI wait  ⚑ 2 needs you
 next: heavyq item claim doc-7   (doc-7  needs: a Stripe test key)
 
 merged into main (2)
@@ -22,6 +22,9 @@ proven, not on main (2)
 
 claimed, unproven (1)
   doc-3  ticked, no proof declared   heavyq item done doc-3 --run
+
+done · stale (1)
+  api-4  proven at 9a8b7c6, the code changed since   heavyq item done api-4 --run
 
 blocked (2)
   doc-7  needs: a Stripe test key             heavyq item claim doc-7
@@ -40,7 +43,8 @@ in flight (1)
   (when significant) and how many things need you. With no flow state yet it says `forecast unknown`.
 - **next:** the single action that would help most, chosen in the order a person would triage: a blocked item or
   a prompt that needs you; a forecast at risk (`heavyq top`); the same failure repeated; a ticked item nothing
-  proves; a proven item whose box is not ticked; starting the next item when nothing is in flight. When none
+  proves; a done item whose proof went stale; a proven item whose box is not ticked; starting the next item when
+  nothing is in flight. When none
   applies it says `nothing needs you`.
 
 ## The buckets
@@ -51,11 +55,14 @@ Empty buckets are left out; every line ends with the command that acts on it.
 |---|---|---|
 | merged into main | proven in the window, and the proven commit is reachable from the default branch | `git show --stat <commit>`, or `heavyq item done <id>` if the box is not ticked |
 | proven, not on main | proven in the window, the commit is not on the default branch | `heavyq item done <id>` (ticks the box), then merge |
-| claimed, unproven | ticked (or proven on older code, `stale`) with nothing proving it now | `heavyq item done <id> --run` |
+| claimed, unproven | ticked, and nothing ever proved it: no proof declared, it never ran, or it fails now | `heavyq item done <id> --run` |
+| done · stale | ticked, and its proof passed on older code: the code changed since (any commit does it, a docs-only one too), so it needs one more proof run, not starting over | `heavyq item done <id> --run` |
 | blocked | an item blocked on a need, and what the flow state says waits for you (a permission prompt has no item) | `heavyq item claim <id>` once answered; `heavyq top` for a prompt |
 | wasted | the same failing run repeated, with the count and the time it cost | `heavyq why <lane>` |
 | in flight | items a lane holds, and until when the lease runs | `heavyq item done <id> --run` |
 
+- A **stale item nobody ticked** is open work (it appears in no bucket; `heavyq item claim --next` hands it out),
+  and `flow show` counts it as `open`. A ticked one is `done · stale`: the recap does not call it claimed or unproven.
 - **Merged** means reachable from the default branch (`origin/HEAD`, else `origin/main`, `origin/master`, `main`,
   `master`). A squash or rebase merge leaves the original commit unreachable, so it reads `proven, not on main`:
   the recap never claims more than git can show. Without a default branch the buckets merge into one called
@@ -75,8 +82,8 @@ Empty buckets are left out; every line ends with the command that acts on it.
 - `--ascii` replaces the glyphs (also automatic in a locale that is not UTF-8). `--no-notify` skips the check below.
 - `--json` is the same document for agents. Schema 1: `schema`, `generated`, `since`, `goal`, `merge_ref`, `progress`
   (`proven`, `total`), `forecast` (`status`, `confidence`, `done`, `eta`, `reason`, `samples`), `constraint`,
-  `needs_you`, `best` (`command`, `why`), the six buckets `merged`, `proven_not_merged`, `claimed_unproven`,
-  `blocked`, `wasted`, `in_flight` (each line has `text`, `action`, and when known `id`, `lane`, `at`, `count`,
+  `needs_you`, `best` (`command`, `why`), the seven buckets `merged`, `proven_not_merged`, `claimed_unproven`,
+  `done_stale`, `blocked`, `wasted`, `in_flight` (each line has `text`, `action`, and when known `id`, `lane`, `at`, `count`,
   `commit`, `lost_s`) and `lanes` with `--verbose`. It is built from the same value the text is, so they cannot differ.
 
 ## Notifications

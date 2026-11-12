@@ -4,7 +4,6 @@ import (
 	"sort"
 
 	"github.com/LysCongThanh/heavyq/internal/flow"
-	"github.com/LysCongThanh/heavyq/internal/itemstatus"
 )
 
 func (r *Recap) addProven(it Item, merged func(string) bool) {
@@ -22,14 +21,28 @@ func (r *Recap) addProven(it Item, merged func(string) bool) {
 	r.ProvenNotMerged = append(r.ProvenNotMerged, l)
 }
 
+// claimedUnproven is a ticked item nothing proves: no proof is declared, it never ran or it fails now.
 func claimedUnproven(it Item) Line {
 	why := "ticked, nothing proves it"
-	if it.State == itemstatus.Stale {
-		why = "proven on older code, the code changed since"
-	} else if it.Reason != "" {
+	if it.Reason != "" {
 		why = clean(it.Reason, 60) // the derived reason already says "ticked, ..."
 	}
 	return Line{ID: it.ID, Lane: it.Lane, Text: it.ID + "  " + why, Action: "heavyq item done " + it.ID + " --run"}
+}
+
+// doneStale is a ticked item whose proof passed on code that has changed since: not claimed, not unproven, just
+// due for one more proof run. It says where the proof passed and when.
+func doneStale(it Item) Line {
+	l := Line{ID: it.ID, Lane: it.Lane, Commit: it.Commit, Text: it.ID + "  proven on older code", Action: "heavyq item done " + it.ID + " --run"}
+	if it.Commit != "" {
+		l.Text = it.ID + "  proven at " + it.Commit
+	}
+	l.Text += ", the code changed since"
+	if !it.At.IsZero() {
+		t := it.At
+		l.At = &t
+	}
+	return l
 }
 
 func inFlight(it Item) Line {

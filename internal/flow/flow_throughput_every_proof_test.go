@@ -113,3 +113,28 @@ func TestItemCountsSeparateDoneStaleFromOpen(t *testing.T) {
 		}
 	}
 }
+
+// A cache replay is not a run, a run that never ran to its end proves nothing, a pass outside the repository root
+// is not the gate, and another gate's pass is not this one's.
+func TestThroughputIgnoresReplaysUnfinishedRunsAndOtherGates(t *testing.T) {
+	item := staleDone("a", "ga", "go test a")
+	replay := gateRun("ga", "go test a", "T1", 10, 60)
+	replay.Cache = "hit"
+	cancelled := gateRun("ga", "go test a", "T2", 11, 60)
+	cancelled.Result = history.OutcomeCancelled
+	sub := gateRun("ga", "go test a", "T3", 12, 60)
+	sub.Subdir = "internal"
+	failed := gateRun("ga", "go test a", "T4", 13, 60)
+	failed.Exit = 1
+	other := gateRun("gb", "go test a", "T5", 14, 60)
+	untree := gateRun("ga", "go test a", "", 15, 60)
+	in := Input{Now: at(60), Repo: "/work/app", Items: []ItemFact{item},
+		Records: []history.Record{replay, cancelled, sub, failed, other, untree}}
+	if tp := throughputOfInput(in); tp.N != 0 || tp.LastProof != nil {
+		t.Fatalf("none of these is the gate passing: %+v", tp)
+	}
+	in.Records = append(in.Records, gateRun("ga", "go test a", "T6", 16, 60))
+	if tp := throughputOfInput(in); tp.N != 1 || tp.LastProof == nil || !tp.LastProof.Equal(at(16)) {
+		t.Fatalf("one real pass: %+v", tp)
+	}
+}

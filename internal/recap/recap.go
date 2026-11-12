@@ -98,6 +98,7 @@ type Recap struct {
 	Merged          []Line    `json:"merged"`
 	ProvenNotMerged []Line    `json:"proven_not_merged"`
 	ClaimedUnproven []Line    `json:"claimed_unproven"`
+	DoneStale       []Line    `json:"done_stale"` // ticked, proven before, the code changed since (additive)
 	Blocked         []Line    `json:"blocked"`
 	Wasted          []Line    `json:"wasted"`
 	InFlight        []Line    `json:"in_flight"`
@@ -107,7 +108,7 @@ type Recap struct {
 // Build derives the recap.
 func Build(f Facts) Recap {
 	r := Recap{Schema: Schema, Generated: f.Now, Since: f.Since, Goal: f.Goal,
-		Merged: []Line{}, ProvenNotMerged: []Line{}, ClaimedUnproven: []Line{}, Blocked: []Line{}, Wasted: []Line{}, InFlight: []Line{}}
+		Merged: []Line{}, ProvenNotMerged: []Line{}, ClaimedUnproven: []Line{}, DoneStale: []Line{}, Blocked: []Line{}, Wasted: []Line{}, InFlight: []Line{}}
 	if f.Merged != nil {
 		r.MergeRef = f.MergeRef
 	}
@@ -134,8 +135,14 @@ func Build(f Facts) Recap {
 			if !it.At.Before(f.Since) {
 				r.addProven(it, f.Merged)
 			}
-		case itemstatus.Stale, itemstatus.ClaimedDoneUnproven:
+		case itemstatus.ClaimedDoneUnproven:
 			r.ClaimedUnproven = append(r.ClaimedUnproven, claimedUnproven(it))
+		case itemstatus.Stale:
+			if it.Done {
+				r.DoneStale = append(r.DoneStale, doneStale(it))
+			} else if firstOpen == "" { // proved once, never ticked: open work, claimable like any
+				firstOpen = it.ID
+			}
 		case itemstatus.Blocked:
 			r.Blocked = append(r.Blocked, Line{ID: it.ID, Lane: it.Lane, Text: it.ID + "  needs: " + or(clean(it.Needs, 60), "an answer"),
 				Action: "heavyq item claim " + it.ID})
@@ -151,7 +158,7 @@ func Build(f Facts) Recap {
 	r.addNeedsYou(f.State)
 	r.NeedsYou = len(r.Blocked)
 	r.Wasted = wasted(f.Records, f.Since, f.Session)
-	for _, l := range [][]Line{r.Merged, r.ProvenNotMerged, r.ClaimedUnproven, r.InFlight} {
+	for _, l := range [][]Line{r.Merged, r.ProvenNotMerged, r.ClaimedUnproven, r.DoneStale, r.InFlight} {
 		sortLines(l)
 	}
 	r.Forecast, r.Constraint = headerFacts(f, r.Progress.Total-r.Progress.Proven, running, lastProof)

@@ -190,7 +190,8 @@ Recap buckets, each line ending with the command that acts on it:
 |---|---|
 | merged into main | proven, and the proven commit is reachable from the default branch |
 | proven, not on main | proven, not reachable from main (a squash merge reads this way: recap does not claim more than git shows) |
-| claimed, unproven | ticked with nothing proving it now: `item done <id> --run` |
+| claimed, unproven | ticked, and nothing ever proved it: `item done <id> --run` |
+| done · stale | ticked, proven on older code, the code changed since (a docs-only commit too): `item done <id> --run` |
 | blocked | waiting on a human: `item claim <id>` once answered, `heavyq top` for a prompt |
 | wasted | the same failing run repeated, with the time it cost: `heavyq why <lane>` |
 | in flight | held by a lane until the lease runs out |

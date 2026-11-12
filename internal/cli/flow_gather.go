@@ -111,7 +111,9 @@ func flowItems(cfg *config.Config, root string, recent []history.Record, now tim
 		st.Needs, st.Reason = redact.Command(st.Needs), redact.Command(st.Reason)
 		f := flow.ItemFact{Status: st}
 		if name, cmds, why := proofCommands(set, r.Item.Proof); r.Item.Proof.Kind != "" && why == "" {
-			f.Gate = name
+			if r.Item.Proof.Kind == anchor.ProofGate { // the ledger tags a gate's runs with its name: a command proof has no gate
+				f.Gate = name
+			}
 			for _, c := range cmds {
 				f.ProofCmds = append(f.ProofCmds, redact.Command(c))
 			}

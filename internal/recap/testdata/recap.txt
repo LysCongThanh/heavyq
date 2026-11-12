@@ -1,4 +1,4 @@
-◆ 5/9 proven  ✓ on track · ~16:00 (medium confidence, 9 proofs)  ▲ CI wait  ⚑ 2 needs you
+◆ 5/10 proven  ✓ on track · ~16:30 (medium confidence, 9 proofs)  ▲ CI wait  ⚑ 2 needs you
 next: heavyq item claim doc-7   (doc-7  needs: a Stripe test key)
 
 merged into main (2)
@@ -11,6 +11,9 @@ proven, not on main (2)
 
 claimed, unproven (1)
   doc-3  no proof declared   heavyq item done doc-3 --run
+
+done · stale (1)
+  api-4  proven at 9a8b7c6, the code changed since   heavyq item done api-4 --run
 
 blocked (2)
   doc-7  needs: a Stripe test key             heavyq item claim doc-7

@@ -6,12 +6,12 @@
   "merge_ref": "main",
   "progress": {
     "proven": 5,
-    "total": 9
+    "total": 10
   },
   "forecast": {
     "status": "on_track",
     "confidence": "medium",
-    "eta": "2026-11-02T16:00:00Z",
+    "eta": "2026-11-02T16:30:00Z",
     "samples": 9
   },
   "constraint": "ci_wait",
@@ -62,6 +62,16 @@
       "text": "doc-3  no proof declared",
       "lane": "docs",
       "action": "heavyq item done doc-3 --run"
+    }
+  ],
+  "done_stale": [
+    {
+      "id": "api-4",
+      "text": "api-4  proven at 9a8b7c6, the code changed since",
+      "lane": "api",
+      "at": "2026-11-02T11:20:00Z",
+      "commit": "9a8b7c6",
+      "action": "heavyq item done api-4 --run"
     }
   ],
   "blocked": [

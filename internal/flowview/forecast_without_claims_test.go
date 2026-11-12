@@ -21,7 +21,7 @@ func TestForecastFromThroughputWhenThereIsNoClaimMedian(t *testing.T) {
 		t.Errorf("forecast: %+v", f)
 	}
 	// A stall is still a stall: nothing proven for twice the typical gap (20 minutes at 3 per hour) while lanes work.
-	stalled := strings.Replace(body, "13:50:00Z", "13:10:00Z", 1)
+	stalled := strings.Replace(body, `"last_proof":"2026-11-02T13:50:00Z"`, `"last_proof":"2026-11-02T13:10:00Z"`, 1)
 	if f := Forecast(readSample(t, stalled), now); f.Status != forecast.AtRisk || !strings.Contains(f.Reason, "no proof for") {
 		t.Errorf("50 minutes without a proof at 3 an hour: %+v", f)
 	}

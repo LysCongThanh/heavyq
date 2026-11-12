@@ -45,16 +45,6 @@ type Snapshot struct {
 	Quota *QuotaInfo `json:"quota"`
 }
 
-// ItemCounts say where the anchor's items stand.
-type ItemCounts struct {
-	Total           int `json:"total"`
-	Proven          int `json:"proven"`
-	Running         int `json:"running"` // a live lease holds it
-	Blocked         int `json:"blocked"` // `item block` or a needs: span
-	ClaimedUnproven int `json:"claimed_unproven"`
-	Open            int `json:"open"` // nobody holds it and nothing proves it (stale included)
-}
-
 // NeedsYou is one thing only a person can supply.
 type NeedsYou struct {
 	Item    string    `json:"item"`
@@ -99,25 +89,6 @@ func Build(in Input) Snapshot {
 		sort.SliceStable(snap.NeedsYou, func(i, j int) bool { return snap.NeedsYou[i].Since.Before(snap.NeedsYou[j].Since) })
 	}
 	return snap
-}
-
-func countItems(items []ItemFact) ItemCounts {
-	c := ItemCounts{Total: len(items)}
-	for _, f := range items {
-		switch f.Status.State {
-		case itemstatus.Proven:
-			c.Proven++
-		case itemstatus.Claimed:
-			c.Running++
-		case itemstatus.Blocked:
-			c.Blocked++
-		case itemstatus.ClaimedDoneUnproven:
-			c.ClaimedUnproven++
-		default: // open, stale
-			c.Open++
-		}
-	}
-	return c
 }
 
 // needsYou lists the open blocks of lanes and the items blocked on a need,

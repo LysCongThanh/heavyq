@@ -28,9 +28,11 @@ const (
 // tell its proof runs from its other runs in the ledger.
 type ItemFact struct {
 	Status itemstatus.Status
-	// Gate and ProofCmds name the item's proof: a ledger run tagged with the
-	// gate, or whose command line is one of ProofCmds (redacted, as the ledger
-	// holds them), is proving. Every run tagged with any gate is proving too.
+	// Gate and ProofCmds name the item's proof: a ledger run whose command line
+	// is one of ProofCmds (redacted, as the ledger holds them) is proving, and
+	// so is every run tagged with any gate. Gate is set only when the proof is a
+	// gate (a command proof has none): the item counts as finished when every
+	// command of that gate passed on one tree.
 	Gate      string
 	ProofCmds []string
 }
