@@ -157,7 +157,7 @@ func (s *itemSet) rows(recs []history.Record, now time.Time, heldOnly bool) ([]i
 			root = s.laneTree(l.Lane, recs)
 		}
 		proofEv := itemstatus.Evidence{Declared: it.Proof.Kind != ""}
-		if !heldOnly || live || m.Blocked || it.Checked || it.Needs != "" {
+		if !heldOnly || live || m.Blocked || m.Done || it.Checked || it.Needs != "" {
 			proofEv = ev.of(it, root)
 		}
 		st := itemstatus.Derive(itemstatus.Input{Item: it, Lease: l, Mark: m, Proof: proofEv, Now: now})

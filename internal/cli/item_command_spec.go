@@ -14,6 +14,7 @@ func init() {
 			"heavyq [--config FILE] item release <id> [--force]",
 			"heavyq [--config FILE] item done <id> [--run [--remote WHERE]] [--json]",
 			"heavyq [--config FILE] item block <id> \"needs: <what a human must provide>\"",
+			"heavyq [--config FILE] item sync [--json]",
 		},
 		Subs: []subSpec{
 			{Name: "ls", Summary: "list the items nobody has finished", Flags: []flagSpec{
@@ -24,11 +25,13 @@ func init() {
 				{Long: "force", Help: "claim an item the size gate refuses (no proof, or a proof too long for the lease)"}, jsonFlag("machine-readable output")}},
 			{Name: "release", Args: "<id>", Summary: "give an item back", Flags: []flagSpec{
 				{Long: "force", Help: "release it even if another lane holds it"}}},
-			{Name: "done", Args: "<id>", Summary: "tick an item once its proof passes on this exact code", Flags: []flagSpec{
+			{Name: "done", Args: "<id>", Summary: "finish an item once its proof passes on this exact code, and tick its box", Flags: []flagSpec{
 				{Long: "run", Help: "run the proof through the queue first"},
 				{Long: "remote", Value: "WHERE", Choices: []string{"local", "auto"}, Help: "with --run: local | auto | <remote name> | a,b (first that fits) (default: [proof] remote, else local)"},
 				jsonFlag("machine-readable output")}},
 			{Name: "block", Args: "<id> \"needs: ...\"", Summary: "record what is missing and free the item"},
+			{Name: "sync", Summary: "tick the boxes of the items done in other work trees (see [items] tick)", Flags: []flagSpec{
+				jsonFlag("machine-readable output")}},
 		},
 		Notes: "Items are the checklist lines of .heavyq/anchor.md. Exit: 0 ok, 1 refused (held, unproven, too big, nothing to\nclaim), 2 usage.",
 		Docs:  "items.md",

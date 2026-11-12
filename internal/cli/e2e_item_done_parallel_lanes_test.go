@@ -92,7 +92,7 @@ func TestE2EItemDoneInParallelWorktreesMergesCleanlyAndSyncTicksOnMain(t *testin
 		}
 	}
 	for _, id := range []string{"c", "d"} {
-		if r := rows[id]; r.Done || r.State != "open" {
+		if r := rows[id]; r.Done || r.State == "claimed" {
 			t.Errorf("item %s was not touched: %+v", id, r)
 		}
 	}

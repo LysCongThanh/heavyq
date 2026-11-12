@@ -77,9 +77,6 @@ func TestE2EItemSyncTicksWhatDoneLeftAndNeverPlanFiles(t *testing.T) {
 		}
 	}
 	for _, id := range []string{"a", planID} {
-		if rc, _, errOut := h.inDir(app, nil, "item", "claim", id); rc != 0 {
-			t.Fatalf("claim %s rc=%d\n%s", id, rc, errOut)
-		}
 		if rc, out, errOut := h.inDir(app, nil, "item", "done", id, "--run"); rc != 0 {
 			t.Fatalf("done %s rc=%d\n%s%s", id, rc, out, errOut)
 		}

@@ -22,13 +22,9 @@ type doneJSON struct {
 	Item   string `json:"item"`
 	State  string `json:"state"` // always "done"
 	Commit string `json:"commit"`
-	Ticked bool   `json:"ticked"` // the box in the anchor file was ticked (false for plan-file items)
+	Ticked bool   `json:"ticked"` // the box in the anchor file was ticked (false for plan-file items, and when [items] tick defers it)
 	Source string `json:"source"`
 }
-
-// tickRetries is how often the box is retried when the anchor file is edited
-// under us (anchor.ErrConcurrent).
-const tickRetries = 3
 
 // itemDone implements `heavyq item done <id> [--run [--remote WHERE]] [--json]`. It finishes an
 // item only on proof: the item's proof must pass on the code in this work tree
@@ -98,22 +94,21 @@ func (c *itemCtx) refuseUnproven(it anchor.Item, ev itemstatus.Evidence, ran boo
 	return 1
 }
 
-// finishDone ticks the box (anchor items), records the done event and releases
-// the lease, all under the lease store's lock.
+// finishDone ticks the box (anchor items, unless `[items] tick` defers it to
+// `item sync`), records the done event and releases the lease, all under the
+// lease store's lock.
 func (c *itemCtx) finishDone(it anchor.Item, ev itemstatus.Evidence, asJSON bool) int {
+	doTick, why := false, ""
+	if !it.ReadOnly {
+		doTick, why = c.tickBox()
+	}
 	tick := func() error {
-		if it.ReadOnly {
+		if !doTick {
 			return nil
 		}
-		var err error
-		for i := 0; i < tickRetries; i++ {
-			if err = anchor.SetItemChecked(c.root, it, true); !errors.Is(err, anchor.ErrConcurrent) {
-				break
-			}
-		}
-		return err
+		return tickItem(c.root, it)
 	}
-	err := c.store.Finish(it.ID, c.ownerFor(it.ID), lease.Event{Op: lease.OpDone, Commit: ev.Commit}, tick)
+	err := c.store.Finish(it.ID, c.ownerFor(it.ID), lease.Event{Op: lease.OpDone, Commit: ev.Commit, Deferred: !it.ReadOnly && !doTick}, tick)
 	var held *lease.HeldError
 	switch {
 	case errors.As(err, &held):
@@ -125,15 +120,18 @@ func (c *itemCtx) finishDone(it anchor.Item, ev itemstatus.Evidence, asJSON bool
 	if asJSON {
 		enc := json.NewEncoder(c.stdout)
 		enc.SetIndent("", "  ")
-		if err := enc.Encode(doneJSON{Item: it.ID, State: "done", Commit: ev.Commit, Ticked: !it.ReadOnly, Source: it.Source}); err != nil {
+		if err := enc.Encode(doneJSON{Item: it.ID, State: "done", Commit: ev.Commit, Ticked: doTick, Source: it.Source}); err != nil {
 			fmt.Fprintln(c.stderr, "heavyq:", err)
 			return 1
 		}
 		return 0
 	}
-	if it.ReadOnly {
+	switch {
+	case it.ReadOnly:
 		fmt.Fprintf(c.stdout, "done %s: proven at %s; recorded in heavyq's events log (%s is never rewritten)\n", it.ID, ev.Commit, it.Source)
-	} else {
+	case !doTick:
+		fmt.Fprintf(c.stdout, "done %s: proven at %s; recorded in heavyq's events log, %s left unticked (%s): heavyq item sync ticks it\n", it.ID, ev.Commit, it.Source, why)
+	default:
 		fmt.Fprintf(c.stdout, "done %s: proven at %s; ticked [x] in %s (commit it)\n", it.ID, ev.Commit, it.Source)
 	}
 	if c.terse {

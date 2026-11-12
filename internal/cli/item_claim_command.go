@@ -150,6 +150,9 @@ func claimRefusal(r itemRow, lane string) string {
 	if s.State == itemstatus.Claimed && s.Lane == lane {
 		return "" // already ours: the claim renews it
 	}
+	if s.Done && !r.Item.Checked && !r.Item.ReadOnly {
+		return "" // done only in the events log (a tick `item sync` still owes): a claim by name takes it back, like a block
+	}
 	byName, _ := itemstatus.Claimable(s, r.Item.Needs != "")
 	if byName {
 		return ""

@@ -32,6 +32,10 @@ func TestLoadRejectsInvalidItems(t *testing.T) {
 		{"iterations zero", "[items]\niterations = 0\n", "iterations 0 must be between 1 and 20"},
 		{"iterations huge", "[items]\niterations = 99\n", "iterations 99 must be between 1 and 20"},
 		{"unknown key", "[items]\nmax_share = 1\n", `unknown key "items.max_share"`},
+		{"tick unknown mode", "[items]\ntick = \"sometimes\"\n", `tick "sometimes" must be "auto", "always" or "never"`},
+		{"tick empty", "[items]\ntick = \"\"\n", `tick "" must be`},
+		{"tick upper case", "[items]\ntick = \"Never\"\n", `tick "Never" must be`},
+		{"tick bool", "[items]\ntick = false\n", "tick"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

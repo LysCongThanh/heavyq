@@ -13,9 +13,9 @@ func ShortCommit(c string) string {
 // Derive is the status of one item. The first rule that applies wins:
 //
 //  1. proven: the proof passes on the evaluated tree.
-//  2. believed done but not proven: the box is ticked, or a plan-file item was
-//     marked done. stale when the proof passed on an older tree, else
-//     claimed_done_unproven.
+//  2. believed done but not proven: the box is ticked, a plan-file item was
+//     marked done, or `item done` left the tick of an anchor item to `item sync`.
+//     stale when the proof passed on an older tree, else claimed_done_unproven.
 //  3. blocked: `item block` since the last claim, or a `needs:` in the file.
 //  4. claimed: a live lease holds it.
 //  5. stale: the proof passed on an older tree.
@@ -23,7 +23,7 @@ func ShortCommit(c string) string {
 //
 // An expired lease holds nothing: the item reads as open (and is reclaimable).
 func Derive(in Input) Status {
-	done := in.Item.Checked || (in.Item.ReadOnly && in.Mark.Done)
+	done := in.Item.Checked || (in.Mark.Done && (in.Item.ReadOnly || in.Mark.Deferred))
 	st := Status{ID: in.Item.ID, Reason: in.Proof.Reason, Done: done}
 	live := in.Lease != nil && !in.Lease.Stale && !in.Now.After(in.Lease.Expires)
 	if live {
@@ -74,13 +74,17 @@ func blockNeeds(in Input) string {
 }
 
 func unprovenReason(in Input) string {
+	what := "ticked"
+	if !in.Item.Checked {
+		what = "marked done"
+	}
 	switch {
 	case !in.Proof.Declared:
-		return "ticked, but the item declares no proof"
+		return what + ", but the item declares no proof"
 	case in.Proof.Reason != "":
-		return "ticked, but unproven: " + in.Proof.Reason
+		return what + ", but unproven: " + in.Proof.Reason
 	}
-	return "ticked, but its proof has not passed on this code"
+	return what + ", but its proof has not passed on this code"
 }
 
 // Claimable reports whether `claim <id>` may take the item, and whether

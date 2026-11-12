@@ -93,8 +93,22 @@ const (
 	MaxIterations        = 20
 )
 
-// Items is the [items] section: the limits `heavyq item claim` holds an item to.
+// The values of [items] tick: whether `heavyq item done` ticks the box in the anchor file.
+const (
+	// TickAuto ticks unless the repository has more than one work tree: parallel lanes
+	// ticking adjacent lines of one file conflict when their branches merge (#119).
+	TickAuto = "auto"
+	// TickAlways ticks whatever the work trees are.
+	TickAlways = "always"
+	// TickNever only records the done in the events log; `heavyq item sync` ticks.
+	TickNever = "never"
+)
+
+// Items is the [items] section: the limits `heavyq item claim` holds an item to,
+// and whether `heavyq item done` ticks the box.
 type Items struct {
+	// Tick is TickAuto (the default), TickAlways or TickNever.
+	Tick string
 	// MaxProofShare is the share of the lease budget (30 min) that the expected
 	// proof time may use, in (0, 1].
 	MaxProofShare float64
@@ -105,7 +119,7 @@ type Items struct {
 
 // DefaultItems are the limits when [items] is absent or leaves a key out.
 func DefaultItems() Items {
-	return Items{MaxProofShare: DefaultMaxProofShare, Iterations: DefaultIterations}
+	return Items{MaxProofShare: DefaultMaxProofShare, Iterations: DefaultIterations, Tick: TickAuto}
 }
 
 // ItemLimits is the [items] limits of r, the defaults when r is nil (no
@@ -154,6 +168,7 @@ type rawProof struct {
 type rawItems struct {
 	MaxProofShare *float64 `toml:"max_proof_share"`
 	Iterations    *int     `toml:"iterations"`
+	Tick          *string  `toml:"tick"`
 }
 
 type rawGate struct {

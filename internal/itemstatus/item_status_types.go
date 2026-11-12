@@ -46,8 +46,9 @@ type Status struct {
 	At     time.Time `json:"at,omitzero"`
 	Dirty  bool      `json:"dirty,omitempty"` // the proven code had uncommitted edits
 	Needs  string    `json:"needs,omitempty"`
-	// Done: the box is ticked, or a plan-file item was marked done. It says
-	// nothing about the proof: a done item can be proven, stale or unproven.
+	// Done: the box is ticked, or the done was recorded in the events log only
+	// (a plan-file item, or an anchor item whose tick `item sync` still owes).
+	// It says nothing about the proof: a done item can be proven, stale or unproven.
 	Done bool `json:"done,omitempty"`
 	// Reason explains a proof that is not there: no proof declared, it failed
 	// on this code, it never ran, or its gate does not exist.
@@ -71,6 +72,10 @@ type Mark struct {
 	Done    bool   // `item done` was recorded (the only record for plan-file items)
 	Commit  string // the commit a done was proven on
 	At      time.Time
+	// Deferred: the done was recorded without ticking the box (`[items] tick`,
+	// or parallel work trees) and `item sync` has not ticked it yet: until then
+	// the event is the only record of the done of an anchor item.
+	Deferred bool
 }
 
 // Evidence is the proof state of one item on one tree.
