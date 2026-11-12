@@ -41,7 +41,7 @@ func TestListenLocalhostNeverAsksResolver(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 	if asked != "127.0.0.1:0" {
 		t.Fatalf("listened on %q, want 127.0.0.1:0", asked)
 	}
