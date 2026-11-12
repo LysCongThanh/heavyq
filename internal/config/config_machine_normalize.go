@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"unicode"
 )
 
 // normalizeCommon fills the defaults the local machine and remotes share and
@@ -58,12 +59,13 @@ func (m *MachineConfig) normalizeRemote() error {
 	if err := validateEnvPath(m.EnvPath); err != nil {
 		return err
 	}
+	// ssh also builds the default git_url when transport is customised.
+	if m.SSH != "" && !sshAliasPattern.MatchString(m.SSH) {
+		return fmt.Errorf("ssh %q must be a plain host alias (put options in ~/.ssh/config)", m.SSH)
+	}
 	if len(m.Transport) == 0 {
 		if m.SSH == "" {
 			return errors.New("set ssh (an ssh alias) or transport")
-		}
-		if !sshAliasPattern.MatchString(m.SSH) {
-			return fmt.Errorf("ssh %q must be a plain host alias (put options in ~/.ssh/config)", m.SSH)
 		}
 		m.Transport = defaultTransport(m.SSH)
 	}
@@ -72,6 +74,10 @@ func (m *MachineConfig) normalizeRemote() error {
 			return errors.New("git_url is required when transport is customised without ssh")
 		}
 		m.GitURL = m.SSH + ":" + strings.TrimSuffix(m.WorkDir, "/") + "/git"
+	}
+	// git push reads an argument that starts with '-' as an option.
+	if strings.HasPrefix(m.GitURL, "-") || strings.ContainsFunc(m.GitURL, unicode.IsControl) {
+		return fmt.Errorf("git_url %q must not start with '-' or contain control characters", m.GitURL)
 	}
 	return nil
 }
