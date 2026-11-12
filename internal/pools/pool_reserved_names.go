@@ -18,7 +18,7 @@ var reservedNames = []string{
 	"flow", "flow_gh", "flow_quota_grace",
 	// The remote job protocol (internal/remote) and what a cache hook is given.
 	"cmd_b64", "subdir", "with", "watch_stdin", "base_ref", "base_sha", "env_path", "hook_b64",
-	"job_id", "worktree", "cache_dir",
+	"job_id", "worktree", "cache_dir", "cmd_len",
 	// Test switches, the installer and the example hook script.
 	"test", "test_fake_metrics", "test_norace", "test_network", "test_mac_remote", "test_mac_env_path",
 	"update_golden", "lease_test_helper", "lease_test_helper_exit", "release_base", "hook_pattern",
