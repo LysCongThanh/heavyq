@@ -10,8 +10,11 @@ var (
 	// -u user:password / --user user:password (curl, wget, httpie...);
 	// maskUserPassword decides from the value
 	userPassword = regexp.MustCompile(`(^|` + sep + `)(-u|--user|--proxy-user)(=|` + sep + `*)(` + word + `)`)
-	// a mysql-family command up to the end of its pipeline stage
-	mysqlLine = regexp.MustCompile(`\b(?:mysql[a-z]*|mariadb[a-z-]*)\b[^|;&\n]*`)
+	// a mysql-family command up to the end of its pipeline stage. An attached
+	// -pPASSWORD is taken whole first: in argv the shell already removed the
+	// quotes, so a '&', ';' or '|' in it is part of the password, not the end
+	// of the stage
+	mysqlLine = regexp.MustCompile(`\b(?:mysql[a-z]*|mariadb[a-z-]*)\b(?:` + sep + `-p` + word + `|[^|;&\n])*`)
 	// its -pPASSWORD: attached, as a bare -p prompts and -p db names a database
 	mysqlPassword = regexp.MustCompile(`(` + sep + `-p)` + word)
 )
