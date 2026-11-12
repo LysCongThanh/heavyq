@@ -1,10 +1,14 @@
 package slots
 
 import (
+	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 // Busy is called by status, dash and why without the queue mutex, and by
@@ -46,6 +50,73 @@ func TestBusyNeverTakesAFreeSlot(t *testing.T) {
 	wg.Wait()
 	if refused > 0 {
 		t.Fatalf("a free slot was refused %d times while Busy probed it", refused)
+	}
+}
+
+// A legacy `flock -n <file> cmd` user must get a free slot while status or
+// the dashboard keep probing it.
+func TestLegacyFlockNSucceedsWhileBusyProbes(t *testing.T) {
+	if _, err := exec.LookPath("flock"); err != nil {
+		t.Skip("flock(1) not installed")
+	}
+	p := filepath.Join(t.TempDir(), "heavy-1.lock")
+	if err := os.WriteFile(p, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var stop atomic.Bool
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for !stop.Load() {
+			Busy(p)
+		}
+	}()
+	defer func() { stop.Store(true); <-done }()
+	for i := 0; i < 40; i++ {
+		if err := exec.Command("flock", "-n", p, "true").Run(); err != nil {
+			t.Fatalf("flock -n failed on a free slot (attempt %d): %v", i, err)
+		}
+	}
+}
+
+// On Linux and macOS the kernel answers; the take-and-release probe is only
+// the fallback, so it must not be what answers here.
+func TestHeldByAnyoneAnswersWithoutTheProbe(t *testing.T) {
+	if runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
+		t.Skip("no lock-free look on " + runtime.GOOS)
+	}
+	p := filepath.Join(t.TempDir(), "heavy-1.lock")
+	if err := os.WriteFile(p, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if busy, known := heldByAnyone(p); !known || busy {
+		t.Fatalf("free file: busy=%v known=%v", busy, known)
+	}
+	l, err := TryLock(p)
+	if err != nil || l == nil {
+		t.Fatalf("lock: %v %v", l, err)
+	}
+	if busy, known := heldByAnyone(p); !known || !busy {
+		t.Fatalf("held file: busy=%v known=%v", busy, known)
+	}
+	l.Release()
+	if _, err := exec.LookPath("flock"); err != nil {
+		return
+	}
+	cmd := exec.Command("flock", p, "sleep", "5")
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = cmd.Process.Kill(); _ = cmd.Wait() }()
+	deadline := time.Now().Add(3 * time.Second)
+	for {
+		if busy, known := heldByAnyone(p); known && busy {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("heldByAnyone never saw flock(1) hold the file")
+		}
+		time.Sleep(20 * time.Millisecond)
 	}
 }
 
