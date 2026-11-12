@@ -193,7 +193,9 @@ of the untracked listing.
 its own `.git` (a linked work tree of this repository, a clone, any nested repository) and everything under
 `.claude/worktrees/`, where Claude Code puts the work trees of its agents. Their files are not files of this
 checkout, so an agent editing there never makes the main checkout dirty or unprovable. A submodule recorded in
-the index is not one of these: changes inside it still make the tree unknown. `git status` still lists such
+the index is not one of these: changes inside it still make the tree unknown, and a submodule that is not
+checked out (as in every new `git worktree add`) makes the tree dirty with an id of its own, so a pass there
+never proves the checkout that has the submodule's files. `git status` still lists such
 directories; `heavyq doctor` and `heavyq init` print the line that hides them from it:
 `echo '.claude/worktrees/' >> "$(git rev-parse --git-path info/exclude)"`.
 
@@ -221,7 +223,10 @@ fixture outside `paths` would stay proven when that file changes. Without `paths
 - `heavyq.toml` is not in the scope unless a pattern names it. The bookkeeping files (see above) are never in it.
 - Patterns that match no committed file give a gate that no code can be proven on (`gate status` says why, and
   `gate run` refuses): a typo must not make a gate that is proven forever.
-- A nested repository or submodule with changes of its own still makes the tree unknown, whatever `paths` say.
+- A nested repository or submodule with changes of its own still makes the tree unknown, whatever `paths` say,
+  once a file they name is edited too (a scope with no edits keeps its clean id).
+  A file they name that is flagged assume-unchanged or skip-worktree (or left out by a sparse checkout) makes it
+  unknown too, and a submodule among them that is not checked out makes it dirty; flags outside `paths` do not count.
 - The result cache stays keyed by the whole tree (a cache hit is recorded on the scoped id of the code it
   replays). `--remote` ships the committed `HEAD`: a work tree whose edits are all outside `paths` still runs on a
   remote, and the run is recorded on the scoped id of the commit it ran.
@@ -293,8 +298,9 @@ A gate is proven when every command is. Everything else fails closed:
 
 - A command with no matching record is `missing`.
 - If the tree cannot be identified (not a repository, no commit yet, a submodule with
-  changes of its own, more untracked content than heavyq can digest) nothing is provable. `gate status` says
-  why and exits 1, and `gate run` refuses to start.
+  changes of its own, a file flagged assume-unchanged or skip-worktree, which includes every path outside a
+  sparse checkout's cone, here or in a checked-out submodule, more untracked content than heavyq can digest)
+  nothing is provable. `gate status` says why and exits 1, and `gate run` refuses to start.
 - An older record without `run_id` does not prove a command when `cache.env` is set (see Run identity).
 - A command longer than 200 bytes whose only runs are older records (no `cmd_hash`) is `missing`: the ledger
   only kept a cut-off form of it, and two different long commands could look alike. Run it again (`gate run`)

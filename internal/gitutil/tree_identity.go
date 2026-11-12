@@ -36,6 +36,17 @@ func cleanTreeAt(repo, head string, exclude []string) (string, error) {
 	case !clean:
 		return "", ErrDirty
 	}
+	// git status trusts the index: it hides flagged entries and submodules
+	// that are not checked out. Neither is HEAD's tree (see dirtyTreeAt).
+	idx, err := scanIndex(repo, excludeSpecs(exclude))
+	switch {
+	case err != nil:
+		return "", fmt.Errorf("%w (%v)", ErrDirty, err)
+	case idx.hidden:
+		return "", fmt.Errorf("%w (an index entry is assume-unchanged or skip-worktree)", ErrDirty)
+	case len(idx.absent) > 0:
+		return "", fmt.Errorf("%w (submodule %s is not checked out)", ErrDirty, idx.absent[0])
+	}
 	tree, err := effectiveTreeOf(repo, head, exclude)
 	if err != nil {
 		return "", err
@@ -62,9 +73,11 @@ type TreeID struct {
 	// id, any edit changes it, and undoing them restores the clean id.
 	//
 	// ID is "" (with Dirty set) when the tree cannot be identified reliably:
-	// a submodule or nested repository with changes of its own, more untracked
-	// content than the identification budget allows, or a HEAD that moved
-	// meanwhile. An unknown tree must never be used as proof of anything.
+	// a submodule or nested repository with changes of its own, an index
+	// entry flagged assume-unchanged or skip-worktree (sparse checkout flags
+	// every path outside its cone), more untracked content than the
+	// identification budget allows, or a HEAD that moved meanwhile. A
+	// submodule that is not checked out gives a dirty id, never the clean one. An unknown tree must never be used as proof of anything.
 	ID    string
 	Dirty bool
 }
