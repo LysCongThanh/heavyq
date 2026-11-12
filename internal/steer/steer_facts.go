@@ -1,6 +1,10 @@
 package steer
 
-import "sort"
+import (
+	"sort"
+	"strings"
+	"unicode/utf8"
+)
 
 // FailedCmd is a proof command whose latest conclusive run on this tree
 // failed. Only structured fields: the command text and the exit code.
@@ -97,9 +101,20 @@ func (f Facts) AllFailing() []string {
 }
 
 // clipCmd bounds a command for storage and comparison (both sides use it).
+// The result is always valid UTF-8 and cut on a rune boundary: the baseline is
+// stored as JSON, which rewrites invalid bytes as U+FFFD, so a clip that split
+// a rune (or kept a stray byte) would no longer equal its reloaded self and a
+// pre-existing failure would be blamed on the session.
 func clipCmd(s string) string {
+	if !utf8.ValidString(s) {
+		s = strings.ToValidUTF8(s, "")
+	}
 	if len(s) <= maxBaselineCmdLen {
 		return s
 	}
-	return s[:maxBaselineCmdLen]
+	n := maxBaselineCmdLen
+	for n > 0 && !utf8.RuneStart(s[n]) {
+		n--
+	}
+	return s[:n]
 }
