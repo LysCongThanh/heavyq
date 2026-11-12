@@ -155,7 +155,7 @@
         },
         "binary": {
           "type": "string",
-          "pattern": "^[^'\"`\\$\\\\;\u0026\\|\u003c\u003e\\(\\)\n]*$",
+          "pattern": "^$|^(/|~/)[^'\"`\\$\\\\;\u0026\\|\u003c\u003e\\(\\)\n\\x00-\\x1f\\x7f]*$|^[^'\"`\\$\\\\;\u0026\\|\u003c\u003e\\(\\)\n\\x00-\\x1f\\x7f\\s/~][^'\"`\\$\\\\;\u0026\\|\u003c\u003e\\(\\)\n\\x00-\\x1f\\x7f\\s/]*$",
           "description": "Binary is how the rewritten command calls heavyq (\"\" = \"heavyq\" when it\nis on PATH, else the absolute path of the running binary)."
         },
         "rule": {
@@ -243,15 +243,11 @@
           "type": "array",
           "uniqueItems": true,
           "description": "Local only: lock files shared with legacy `flock \u003cfile\u003e cmd` users,\nabsolute paths with distinct base names. When set they replace the\ngenerated heavy slot files."
-        },
-        "observe_only": {
-          "type": "boolean",
-          "description": "ObserveOnly: heavyq never runs anything there; `heavyq fleet` only probes it (load, RAM, processes,\nforeign slots). Such a remote takes only name and ssh (or transport)."
         }
       },
       "additionalProperties": false,
       "type": "object",
-      "description": "This machine: slots and RAM budgets. With no slot key set it has 2 heavy slots and 1 light slot (0 means the default)."
+      "description": "This machine: slots and RAM budgets. An absent heavy_slots is 2 and an absent light_slots 1 (0 with legacy_lock_files); an explicit 0 is kept."
     },
     "MentorConfig": {
       "properties": {
@@ -390,8 +386,88 @@
             "transport",
             "git_url"
           ]
+        },
+        {
+          "properties": {
+            "transport": {
+              "minItems": 1
+            },
+            "observe_only": {
+              "const": true
+            }
+          },
+          "required": [
+            "transport",
+            "observe_only"
+          ]
         }
       ],
+      "if": {
+        "properties": {
+          "observe_only": {
+            "const": true
+          }
+        },
+        "required": [
+          "observe_only"
+        ]
+      },
+      "then": {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "heavy_slots"
+              ]
+            },
+            {
+              "required": [
+                "light_slots"
+              ]
+            },
+            {
+              "required": [
+                "max_load_ratio"
+              ]
+            },
+            {
+              "required": [
+                "job_mb"
+              ]
+            },
+            {
+              "required": [
+                "light_mb"
+              ]
+            },
+            {
+              "required": [
+                "reserve_mb"
+              ]
+            },
+            {
+              "required": [
+                "git_url"
+              ]
+            },
+            {
+              "required": [
+                "cache_hook"
+              ]
+            },
+            {
+              "required": [
+                "env_path"
+              ]
+            },
+            {
+              "required": [
+                "work_dir"
+              ]
+            }
+          ]
+        }
+      },
       "properties": {
         "name": {
           "not": {
@@ -445,7 +521,7 @@
         },
         "work_dir": {
           "not": {
-            "pattern": "\\.\\."
+            "pattern": "\\.\\.|^~([^/]|$)|^~/+$"
           },
           "type": "string",
           "pattern": "^[^'\"`\\$\\\\\n ]*$",
@@ -453,6 +529,7 @@
         },
         "git_url": {
           "type": "string",
+          "pattern": "^$|^[^-\\x00-\\x1f\\x7f-\\x9f][^\\x00-\\x1f\\x7f-\\x9f]*$",
           "description": "where bare repos live, as seen by `git push`"
         },
         "cache_hook": {

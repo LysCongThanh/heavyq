@@ -54,7 +54,9 @@ func patchUserConfig(root *jsonschema.Schema) {
 func patchHookConfig(root *jsonschema.Schema) {
 	hook := def(root, "HookConfig")
 	prop(hook, "permission").Enum = []any{"", "allow"}
-	prop(hook, "binary").Pattern = noneOf(config.HookBinaryUnsafe, "")
+	// One word: "" (the default), an absolute or "~/" path, or a command name on PATH (no "/", no space).
+	safe := `[^` + regexp.QuoteMeta(config.HookBinaryUnsafe) + `\x00-\x1f\x7f`
+	prop(hook, "binary").Pattern = `^$|^(/|~/)` + safe + `]*$|^` + safe + `\s/~]` + safe + `\s/]*$`
 	rule := def(root, "HookRule")
 	rule.Required = []string{"match"}
 	match := prop(rule, "match")

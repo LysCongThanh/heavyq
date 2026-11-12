@@ -55,7 +55,8 @@ func schemaKeys(root, s map[string]any, section string, out map[string][]string)
 }
 
 var (
-	exampleHeader = regexp.MustCompile(`^\[\[?\s*([a-z_.]+)\s*\]\]?`)
+	// A commented-out table header starts a commented example of that table (the fleet tables).
+	exampleHeader = regexp.MustCompile(`^(?:#\s*)?\[\[?\s*([a-z_.]+)\s*\]\]?`)
 	exampleKey    = regexp.MustCompile(`^\s*(?:#\s*)?([a-z_]+)\s*=`)
 )
 

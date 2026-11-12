@@ -118,6 +118,7 @@ env = []                 # variables whose values are part of the key, e.g. ["CI
 # [[foreign]]
 # name = "bashq"
 # history = "/var/tmp/bashq/history.tsv"   # TSV, one finished run per line
+# format = "tsv"                          # the default, and the one layout supported
 # columns = ["end_epoch", "machine", "lane", "prio", "light", "wait_s", "run_s", "exit"]   # the default
 # tickets = "/var/tmp/bashq"               # <prio>-<20-digit ns>-<pid>-<lane>, ".run" while running
 # infra_exits = [97, 124]                  # this queue's own infrastructure exits (127, 137, 255 always are)

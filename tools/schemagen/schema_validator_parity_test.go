@@ -60,6 +60,17 @@ func TestUserConfigSchemaRefusesWhatTheLoaderRefuses(t *testing.T) {
 		"env_path of colons only":    box + "env_path = \"::\"\n",
 		"legacy locks on a remote":   box + "legacy_lock_files = [\"/tmp/x.lock\"]\n",
 		"need_gh repo listed twice":  "[run]\nneed_gh_repos = [\"app\", \"app\"]\n",
+		"remote named auto":          "[[remote]]\nname = \"auto\"\nssh = \"box\"\n",
+		"relative legacy lock":       "[local]\nlegacy_lock_files = [\"build-1.lock\"]\n",
+		"legacy lock listed twice":   "[local]\nlegacy_lock_files = [\"/tmp/a.lock\", \"/tmp/a.lock\"]\n",
+		"git_url as an option":       "[[remote]]\nname = \"box\"\ntransport = [\"ssh\", \"box\"]\ngit_url = \"--upload-pack=x\"\n",
+		"work_dir of another home":   box + "work_dir = \"~other/x\"\n",
+		"work_dir of the home":       box + "work_dir = \"~/\"\n",
+		"binary with an argument":    "[hook]\nbinary = \"heavyq --x\"\n",
+		"binary relative path":       "[hook]\nbinary = \"bin/heavyq\"\n",
+		"local observe_only":         "[local]\nobserve_only = true\n",
+		"observe-only with slots":    "[[remote]]\nname = \"watch\"\nssh = \"watch\"\nobserve_only = true\nheavy_slots = 2\n",
+		"observe-only with git_url":  "[[remote]]\nname = \"watch\"\nssh = \"watch\"\nobserve_only = true\ngit_url = \"watch:x\"\n",
 	} {
 		if err := loadConfig(t, doc); err == nil {
 			t.Errorf("%s: heavyq accepts it; this case belongs in the valid list", name)
@@ -71,8 +82,14 @@ func TestUserConfigSchemaRefusesWhatTheLoaderRefuses(t *testing.T) {
 	}
 	for name, doc := range map[string]string{
 		"defaults":               "",
-		"zero means default":     "[local]\nheavy_slots = 0\nmax_load_ratio = 0.0\njob_mb = 0\n[mentor]\nmin_events = 0\n",
-		"edges":                  "[local]\nheavy_slots = 64\n[mentor]\nholdout_pct = 100\nmin_lift_pp = 0.0\n",
+		"zero means default":     "[local]\nmax_load_ratio = 0.0\njob_mb = 0\n[mentor]\nmin_events = 0\n",
+		"explicit zero slots":    "[local]\nlight_slots = 0\n" + box + "heavy_slots = 0\nlight_slots = 1\n",
+		"edges":                  "[local]\nheavy_slots = 64\nlight_slots = 0\n[mentor]\nholdout_pct = 100\nmin_lift_pp = 0.0\n",
+		"work_dir under ~/":      box + "work_dir = \"~/cache/heavyq\"\n",
+		"binary under ~/":        "[hook]\nbinary = \"~/bin/heavyq\"\n",
+		"binary on PATH":         "[hook]\nbinary = \"heavyq\"\n",
+		"observe-only by ssh":    "[[remote]]\nname = \"watch\"\nssh = \"watch\"\nobserve_only = true\n",
+		"observe-only transport": "[[remote]]\nname = \"watch\"\ntransport = [\"ssh\", \"watch\"]\nobserve_only = true\n",
 		"empty lane and ref":     "[queue]\nbase_ref = \"\"\n[[hook.rule]]\nmatch = [\" bun  test \", \"make\"]\nlane = \"\"\n",
 		"base ref":               "[queue]\nbase_ref = \"origin/release/1.2\"\n",
 		"no base ref":            "[queue]\nbase_ref = \"none\"\n",
