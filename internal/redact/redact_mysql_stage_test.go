@@ -20,6 +20,9 @@ func TestMysqlPasswordAfterOperatorCharsInEarlierArgs(t *testing.T) {
 		{[]string{"docker", "exec", "c", "mysql", "-e", "a&b", "-pS3cretpw"}, "docker exec c mysql -e a&b -p***"},                           // gitleaks:allow (fake test fixture)
 		{[]string{"sh", "-c", "mysql -e 'USE app; SHOW TABLES' -pS3cretpw db"}, "sh -c mysql -e 'USE app; SHOW TABLES' -p*** db"},           // gitleaks:allow (fake test fixture)
 		{[]string{"sh", "-c", `mysql -e "a|b" -pS3cretpw db`}, `sh -c mysql -e "a|b" -p*** db`},                                             // gitleaks:allow (fake test fixture)
+		// a password with a space is one argv element: still hidden whole
+		{[]string{"mysql", "-e", "a;b", "-pab cd", "db"}, "mysql -e a;b -p*** db"},                                     // gitleaks:allow (fake test fixture)
+		{[]string{"mysql", "-e", "USE app; SHOW TABLES", "-pS3cr et", "db"}, "mysql -e USE app; SHOW TABLES -p*** db"}, // gitleaks:allow (fake test fixture)
 		// a bare -p still prompts; a -p before the mysql word is not mysql's
 		{[]string{"mysql", "-e", "a;b", "-p", "db"}, "mysql -e a;b -p db"},
 		{[]string{"make", "-pq", "mysql"}, "make -pq mysql"},

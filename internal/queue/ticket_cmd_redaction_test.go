@@ -23,6 +23,8 @@ func TestTruncateCmdHidesWholeArgvValues(t *testing.T) {
 		// ';', '&' and '|' in an earlier argument (-e SQL) do not end the mysql command
 		{[]string{"mysql", "-e", "USE app; SHOW TABLES", "-pS3cretpw", "db"}, "mysql -e USE app; SHOW TABLES -p*** db"},           // gitleaks:allow (fake test fixture)
 		{[]string{"mysql", "-h", "db", "-e", "select 1;", "-pS3cretpw"}, "mysql -h db -e select 1; -p***"},                        // gitleaks:allow (fake test fixture)
+		{[]string{"mysql", "-e", "a;b", "-pab cd", "db"}, "mysql -e a;b -p*** db"},                                                // gitleaks:allow (fake test fixture)
+		{[]string{"mysql", "-e", "USE app; SHOW TABLES", "-pS3cr et", "db"}, "mysql -e USE app; SHOW TABLES -p*** db"},            // gitleaks:allow (fake test fixture)
 		{[]string{"sh", "-c", "mysql -e 'USE app; SHOW TABLES' -pS3cretpw db"}, "sh -c mysql -e 'USE app; SHOW TABLES' -p*** db"}, // gitleaks:allow (fake test fixture)
 		{[]string{"curl", "-H", "Authorization: token abc def", "u"}, "curl -H Authorization: token *** u"},
 		// no scheme: the raw value is hidden, the URL after it stays readable

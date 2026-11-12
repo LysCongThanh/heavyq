@@ -23,7 +23,6 @@ var shellScriptFlag = regexp.MustCompile(`^-[A-Za-z]*c$`)
 func Argv(argv []string) string {
 	parts := make([]string, len(argv))
 	copy(parts, argv)
-	maskMysqlArgvPasswords(parts)
 	encoded := false
 	if !anyHasNUL(argv) { // NUL cannot be in a real argv; never confuse one with a space
 		for i, a := range argv {
@@ -32,6 +31,9 @@ func Argv(argv []string) string {
 			}
 		}
 	}
+	// after the encoding, which rewrites parts from argv: masked first, a
+	// -pPASSWORD with a space would get its raw value back
+	maskMysqlArgvPasswords(parts)
 	s := Command(strings.Join(parts, " "))
 	if encoded {
 		s = strings.ReplaceAll(s, "\x00", " ")

@@ -70,6 +70,7 @@ func FuzzArgv(f *testing.F) {
 		"mysql\x1f-e\x1fUSE app; SHOW TABLES\x1f-pS3cretpw\x1fdb",   // gitleaks:allow (fake test fixture)
 		"mysql\x1f-h\x1fdb\x1f-e\x1fselect 1;\x1f-pS3cretpw",        // gitleaks:allow (fake test fixture)
 		"sh\x1f-c\x1fmysql -e 'USE app; SHOW TABLES' -pS3cretpw db", // gitleaks:allow (fake test fixture)
+		"mysql\x1f-e\x1fa;b\x1f-pab cd\x1fdb",                       // gitleaks:allow (fake test fixture)
 	} {
 		f.Add(s)
 	}
