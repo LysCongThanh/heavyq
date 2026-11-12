@@ -90,3 +90,33 @@ func TestSurveyReportsLiveDeadAndStoppedProcesses(t *testing.T) {
 		})
 	}
 }
+
+// The queue prunes through Survey, not Alive, so Survey must treat an exited,
+// unreaped owner (a zombie) as gone too: it runs nothing and holds no locks,
+// yet its ticket would keep its place or a slot for as long as its parent lives.
+func TestSurveyDropsZombie(t *testing.T) {
+	for name, p := range surveySources(t) {
+		t.Run(name, func(t *testing.T) {
+			cmd := exec.Command("true")
+			if err := cmd.Start(); err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = cmd.Wait() }()
+			pid := cmd.Process.Pid
+			deadline := time.Now().Add(5 * time.Second)
+			for p.Running(pid) { // not waited for: once it exits it stays a zombie
+				if time.Now().After(deadline) {
+					t.Fatal("child never exited")
+				}
+				time.Sleep(20 * time.Millisecond)
+			}
+			got, ok := p.Survey([]int{pid})
+			if !ok {
+				t.Fatal("survey failed on a healthy process table")
+			}
+			if o, live := got[pid]; live {
+				t.Fatalf("zombie %d surveyed as live: %+v", pid, o)
+			}
+		})
+	}
+}
