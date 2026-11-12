@@ -6,3 +6,5 @@
     muted itself.
   - a `[[remote]]` named `auto`: `--remote auto` and `[proof] remote = "auto"` meant the scheduler, so the machine
     could never be targeted by its name.
+  - a `hook.binary` with arguments, a relative path or a `~` other than a leading `~/`: the hook writes it quoted as
+    one word, so every rewritten agent command exited 127. A leading `~/` is now expanded to your home.

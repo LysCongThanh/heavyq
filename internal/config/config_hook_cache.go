@@ -69,9 +69,11 @@ func (h *HookConfig) normalize() error {
 	if h.Permission != "" && h.Permission != "allow" {
 		return fmt.Errorf("hook.permission %q must be \"\" or \"allow\"", h.Permission)
 	}
-	if strings.ContainsAny(h.Binary, "'\"`$\\;&|<>()\n") {
-		return fmt.Errorf("hook.binary %q contains shell metacharacters", h.Binary)
+	bin, err := normalizeHookBinary(h.Binary)
+	if err != nil {
+		return err
 	}
+	h.Binary = bin
 	for i := range h.Rules {
 		r := &h.Rules[i]
 		if err := r.Normalize(); err != nil {

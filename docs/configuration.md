@@ -39,7 +39,7 @@ Every key is optional; keys this heavyq does not know are ignored with a warning
 | `hook.enabled` | `true` | `false` = the Claude Code hook never rewrites |
 | `hook.permission` | `""` | `""` = rewritten commands go through Claude Code's permission flow; `"allow"` = approve them |
 | `hook.max_wait` | `"5m"` | `--max-wait` added to rewritten commands (and to the Bash tool timeout) |
-| `hook.binary` | `""` | how rewritten commands call heavyq (default `heavyq` if on PATH, else the absolute path) |
+| `hook.binary` | `""` | how rewritten commands call heavyq (default `heavyq` if on PATH, else the absolute path): a command name on PATH or an absolute path, no arguments; a leading `~/` is your home |
 | `hook.default_rules` | `true` | apply the built-in rules after yours |
 | `hook.rule.match` | required | word prefixes, e.g. `["bun test", "deno task check"]` |
 | `hook.rule.priority` / `light` / `lane` / `cache` | `4` / `false` / `""` / `false` | what the rewritten command gets |
