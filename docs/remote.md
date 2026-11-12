@@ -35,6 +35,23 @@ What a remote run sees, and what it doesn't:
 
 - **Only committed code.** The exact SHA of `--ref` is pushed with `git push` (it doesn't need to be on
   GitHub). Uncommitted edits and ignored files (`.env.test`, `dist/`) stay behind.
+- **Edits left behind are named.** A run admitted to a remote while the work tree holds uncommitted changes to
+  tracked files, or untracked files that git does not ignore, says how many files it leaves behind, once. A run
+  that passes on the shipped files says nothing about a test file that exists only as an edit, so the line is the
+  reminder. A person gets a line of its own
+  (`heavyq: warning: 3 uncommitted files are not shipped: buildbox runs the committed tree only (commit them, or use --remote local)`);
+  in [agent mode](agent-mode.md#what-a-run-prints) it is the end of the running line
+  (`..., tree 3f2a9c1d7b0e, 3 uncommitted files not shipped)`), so the three-line budget holds. Nothing is
+  said for a local run, for `--ref` other than `HEAD` (you chose what to ship), for a clean tree or one with
+  only ignored files. Files are counted one by one (an untracked directory counts its files; a rename counts
+  once), and nested repositories and `.claude/worktrees` are not counted. Only the run path counts them: hooks,
+  `why` and `gate status` do not.
+- **No git hook runs while shipping.** `git push` runs with `--no-verify`, so the repository's own `pre-push`
+  never runs, whatever it prints or checks. The bare repo on the remote gets `core.hooksPath=/dev/null` in its
+  own config each time a commit is shipped, so hooks of the remote machine (a global `core.hooksPath`, a
+  `init.templateDir` that carries hooks) do not run in it either: not on the receiving side of the push, not in
+  the `git worktree add` of the job. A hook that declines or prints can therefore neither fail a ship (exit
+  77) nor add lines to a run's output.
 - **Environment variables don't travel.** `FOO=1 heavyq ... -- npm test` sets `FOO` only locally. Put them
   inside the command: `heavyq 3 -- env FOO=1 npm test`.
 - **The same subdirectory.** If you run from `repo/packages/web`, the command runs in `packages/web` of the

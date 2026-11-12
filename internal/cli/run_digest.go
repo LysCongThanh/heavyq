@@ -19,13 +19,20 @@ const nextRetryLater = "retry later; don't bypass heavyq"
 // run was placed and the turn it got. For an agent: the one line that opens
 // the run, with the command, lane and tree, so it sits at the head of the
 // output (agents that truncate a failing command's output keep head and tail).
+// A run that goes to a remote with uncommitted edits says they stay behind (see
+// run_unshipped_edits.go): a line of its own for a person, a part of the running
+// line for an agent, whose three-line budget has no room for another.
 func (r *run) announceAdmitted(c *claim, waited time.Duration, co gitutil.Checkout) {
+	left := r.unshippedEdits(c.machine)
 	if !r.out.mode.Terse() {
 		if r.pl.defaultMode && c.machine != config.LocalName {
 			fmt.Fprintf(r.stderr, "heavyq: placed on %s by score (clean repo, commit %.12s; force local with --remote local)\n", c.machine, r.pl.sha)
 		}
 		fmt.Fprintf(r.stderr, "heavyq: our turn after %s (prio %d, lane %s, %s/%s): %s\n",
 			fmtDur(waited), r.me.Prio, r.me.Lane, c.machine, c.slot, r.me.Cmd)
+		if left > 0 {
+			fmt.Fprint(r.stderr, unshippedWarning(left, c.machine))
+		}
 		return
 	}
 	extra := ""
@@ -34,6 +41,9 @@ func (r *run) announceAdmitted(c *claim, waited time.Duration, co gitutil.Checko
 	}
 	if r.out.nar.queued {
 		extra += ", waited " + fmtDur(waited)
+	}
+	if left > 0 {
+		extra += ", " + uncommittedFiles(left) + " not shipped"
 	}
 	fmt.Fprintf(r.stderr, "heavyq: running %s (p%d, lane %s, %s/%s%s)\n",
 		r.me.Cmd, r.me.Prio, r.me.Lane, c.machine, c.slot, extra)

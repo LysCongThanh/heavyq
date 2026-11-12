@@ -49,6 +49,11 @@ heavyq: PASS go test ./... · tree 3f2a9c1d7b0e · 41s (waited 2m5s)
 
 - **The running line opens the output.** Claude Code keeps only about 10,000 characters (head and tail)
   of a failing command's output, so the first line and the digest are the parts that survive.
+- **Edits a remote leaves behind are in the running line.** A run admitted to a remote with uncommitted
+  tracked changes or untracked files that git does not ignore ends the running line with
+  `, 3 uncommitted files not shipped` (before the closing parenthesis): the remote runs the committed tree, so a
+  pass says nothing about those files. It is part of the line, not a line of its own, so the budget below holds.
+  See [remote.md](remote.md).
 - **Waiting is quiet.** The first progress line comes after 2 s of waiting; a heartbeat
   (`heavyq: still queued #2 of 4 after 5m0s ...`) follows at 5 minutes and every 5 minutes after. An admission
   within 2 s says nothing but the running line. The heartbeat starts at 5 minutes, not 60 s: a 60 s one makes a
