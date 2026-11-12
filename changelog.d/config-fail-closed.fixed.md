@@ -1,3 +1,6 @@
 - **The user config refuses values that loaded but could not work.** Each is now a load error that names the key:
   - a `git_url` that starts with `-` or holds control characters (`git push` read it as an option), and an `ssh`
     that is not a plain host alias when `transport` is customised (it still builds the default `git_url`).
+  - `max_load_ratio = nan` and `mentor.min_lift_pp = nan` (TOML has `nan`, and every range check let it through):
+    the load gate was silently off, `status --json` and history records failed to encode, and every mentor rule
+    muted itself.

@@ -19,8 +19,10 @@ func (m *MachineConfig) normalizeCommon() error {
 	if m.MaxLoadRatio == 0 {
 		m.MaxLoadRatio = defaultLoadRatio
 	}
-	if m.MaxLoadRatio < 0 || m.MaxLoadRatio > 64 {
-		return errors.New("max_load_ratio must be in (0, 64]")
+	// Written as "not inside" so TOML's nan, for which every comparison is
+	// false, is refused too (it would switch the load gate off).
+	if !(m.MaxLoadRatio > 0 && m.MaxLoadRatio <= 64) {
+		return fmt.Errorf("max_load_ratio %v must be in (0, 64]", m.MaxLoadRatio)
 	}
 	for _, v := range []*int{&m.JobMB, &m.LightMB, &m.ReserveMB} {
 		if *v < 0 {
