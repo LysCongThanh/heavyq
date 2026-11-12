@@ -249,7 +249,7 @@ heavyq 3 --tools envsubst,initdb -- bash scripts/e2e.sh   # argv[0] is bash: nam
 This machine is not checked: a local run uses your own PATH, where a missing command is the usual exit 127.
 
 Remote requirements: `bash`, `git`, `base64`, `awk`, and either Linux with `flock` and `setsid` (util-linux) or
-macOS (below). Nothing is installed. Everything lives under `work_dir` (default `~/.heavyq`).
+macOS (below). Nothing is installed. Everything lives under `work_dir` (default `.heavyq`, relative to the remote home; a leading `~/` means the same).
 
 ## A spare Mac as a remote
 

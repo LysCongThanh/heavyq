@@ -20,7 +20,7 @@ Every key is optional; keys this heavyq does not know are ignored with a warning
 | `*.job_mb` / `light_mb` / `reserve_mb` | `3072` / `1024` / `2048` | RAM budget per heavy / light job, and headroom |
 | `remote.name`, `remote.ssh` | required | name and ssh alias (`ssh` may be replaced by `transport` + `git_url`) |
 | `remote.transport` | `["ssh","-o","BatchMode=yes","-o","ConnectTimeout=10","-o","ServerAliveInterval=15","-o","ServerAliveCountMax=4",ssh]` | argv prefix; the remote script is appended as one argument. A custom ssh transport should keep the `ServerAlive*` options: they end a run about a minute after its link dies silently |
-| `remote.work_dir` | `".heavyq"` | remote directory (relative to the remote home) |
+| `remote.work_dir` | `".heavyq"` | remote directory, relative to the remote home (a leading `~/` means the same; any other `~` is refused) |
 | `remote.git_url` | `"<ssh>:<work_dir>/git"` | where bare repos are pushed |
 | `remote.cache_hook` | `""` | shell run in the worktree before the command; gets `HEAVYQ_CACHE_DIR`, `HEAVYQ_WORKTREE` |
 | `remote.env_path` | `""` | directories put first on the remote command's PATH, `:`-separated, `~/` = remote home. See [a spare Mac](remote.md#a-spare-mac-as-a-remote). Placement checks a run's tools on that same PATH and skips a remote that lacks one ([`--tools`](remote.md#placed-where-its-tools-are---tools)) |

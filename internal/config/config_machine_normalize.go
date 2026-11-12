@@ -50,12 +50,11 @@ func (m *MachineConfig) normalizeRemote() error {
 	if len(m.LegacyLockFiles) > 0 {
 		return errors.New("legacy_lock_files is only valid in [local]")
 	}
-	if m.WorkDir == "" {
-		m.WorkDir = defaultRemoteWorkDir
+	dir, err := normalizeWorkDir(m.WorkDir)
+	if err != nil {
+		return err
 	}
-	if strings.ContainsAny(m.WorkDir, "'\"`$\\\n ") || strings.Contains(m.WorkDir, "..") {
-		return fmt.Errorf("work_dir %q contains unsafe characters", m.WorkDir)
-	}
+	m.WorkDir = dir
 	if err := validateEnvPath(m.EnvPath); err != nil {
 		return err
 	}
@@ -75,6 +74,30 @@ func (m *MachineConfig) normalizeRemote() error {
 		m.GitURL = m.SSH + ":" + strings.TrimSuffix(m.WorkDir, "/") + "/git"
 	}
 	return nil
+}
+
+// normalizeWorkDir defaults work_dir and turns a leading "~/" into the path
+// relative to the remote home it means. The remote scripts get work_dir
+// quoted and read a relative path from $HOME, so a kept "~" would be a
+// directory literally named "~", while git push expands the "~/" of the
+// default git_url to the home: the bare repo and the push would differ.
+func normalizeWorkDir(dir string) (string, error) {
+	if dir == "" {
+		return defaultRemoteWorkDir, nil
+	}
+	if rest, ok := strings.CutPrefix(dir, "~/"); ok {
+		dir = strings.TrimLeft(rest, "/")
+		if dir == "" {
+			return "", errors.New(`work_dir "~/" is the remote home itself; name a directory under it`)
+		}
+	}
+	if strings.HasPrefix(dir, "~") {
+		return "", fmt.Errorf(`work_dir %q: only a leading "~/" (the remote home) is understood; a relative path is already relative to it`, dir)
+	}
+	if strings.ContainsAny(dir, "'\"`$\\\n ") || strings.Contains(dir, "..") {
+		return "", fmt.Errorf("work_dir %q contains unsafe characters", dir)
+	}
+	return dir, nil
 }
 
 // defaultTransport is the argv prefix of a remote that sets only ssh. A job's
