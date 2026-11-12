@@ -9,6 +9,7 @@ import (
 	"github.com/LysCongThanh/heavyq/internal/config"
 	"github.com/LysCongThanh/heavyq/internal/pools"
 	"github.com/LysCongThanh/heavyq/internal/repoconfig"
+	"github.com/LysCongThanh/heavyq/internal/toolcheck"
 )
 
 // The Go types say which keys exist and their types. What only the validators know (required keys, ranges,
@@ -61,6 +62,9 @@ func patchRepoFile(root *jsonschema.Schema) {
 	with.Description = `Sibling repositories every command needs next to this one, "name@ref" (a directory next to the repository, or a path containing "/"; ref defaults to HEAD). Passed to the run as --with: pinned to a commit, shipped with it on remote runs, and part of the proof identity.`
 	with.Items.MinLength = u64(1)
 	prop(gate, "need_gh").Description = "The commands use the GitHub CLI with this machine's login, so the gate runs here only (--need-gh). Not combinable with a named remote."
+	tools := prop(gate, "tools")
+	tools.Description = `Commands every command of the gate needs on the machine it runs on, besides the one it starts, for example ["envsubst", "initdb"]. Passed to the run as --tools: a remote without one on the PATH its jobs get is skipped.`
+	tools.Items.Pattern = toolcheck.NamePattern
 
 	proof := def(root, "rawProof")
 	proof.Description = "Where `heavyq item done --run` and `heavyq gate run` run proofs for this repository; the user config has the same table."

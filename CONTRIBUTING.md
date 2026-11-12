@@ -29,7 +29,8 @@ The remote path is tested through a `sh -c` transport, which runs the same code 
 | `internal/slots` | `flock(2)` slot files (compatible with `flock <file> cmd`) |
 | `internal/procinfo` | process identity and per-lane CPU attribution from `/proc` (Linux) or `ps` (macOS) |
 | `internal/metrics` | RAM / load / cores from `/proc` or `sysctl` + `vm_stat` (macOS), placement score |
-| `internal/remote` | transport, probe, `git push` of exact commits, the embedded remote job script |
+| `internal/remote` | transport, probe, `git push` of exact commits, the embedded remote job script, the tool probe (runs the job script's own PATH block) |
+| `internal/toolcheck` | placement by tools: the command names a command line starts (`FromArgv`, through `env` and `sh -c`; the cli unwraps the gate wrapper first), `--tools`/gate `tools` names, the per-remote answer cache with a TTL in the state directory |
 | `internal/config` | TOML config, defaults, validation |
 | `internal/history` | the run ledger: JSONL records (commit, tree, session, ...), ULIDs, monthly rotation; `ReadTail` reads the newest records backwards, `Each`/`EachFrom` stream; `historytest` makes synthetic ledgers for tests |
 | `internal/ledgerindex` | rebuildable indexes beside the ledger (per lane, per tree), written under a lock where a record is appended (`Append`); hot-path reads (`TreeRuns`, `LastOfLane`, `Recent`) with a bounded-tail fallback; `heavyq doctor --reindex`. See `docs/ledger.md` |
@@ -92,8 +93,8 @@ The remote path is tested through a `sh -c` transport, which runs the same code 
 ## Fuzzing
 
 The parsers that read input heavyq does not control have Go fuzz tests (`Fuzz*` in `*_fuzz_test.go`): the
-hook's shell-command parser and rewrite, `internal/redact`, `internal/anchor`, `heavyq.toml`, the user config, and the
-ledger reader. CI fuzzes each for 20 s on pull requests that touch its package and for 2 minutes every night.
+hook's shell-command parser and rewrite, `internal/redact`, `internal/anchor`, `heavyq.toml`, the user config, the
+ledger reader, and the command words placement reads (`internal/toolcheck`). CI fuzzes each for 20 s on pull requests that touch its package and for 2 minutes every night.
 
 ```bash
 go test ./internal/anchor -run '^$' -fuzz '^FuzzSetChecked$' -fuzztime 30s   # one target at a time

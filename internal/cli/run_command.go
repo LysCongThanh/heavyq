@@ -98,12 +98,16 @@ func runCommand(cfg *config.Config, args []string, stderr io.Writer) int {
 	// Probe remotes once before enqueuing, outside the mutex, so a hanging
 	// ssh never delays anyone else's scheduling round.
 	r.probes.refresh(cfg, pl.candidates)
-	repo, commit := pl.shipped() // what a later move to a remote (heavyq retarget) would ship
+	repo, commit := pl.shipped()             // what a later move to a remote (heavyq retarget) would ship
+	if err := r.placeByTools(); err != nil { // before queueing: nothing is shipped to a remote that cannot run it
+		return r.toolsFail(err)
+	}
 	r.me = &queue.Ticket{
 		Pid: os.Getpid(), Start: start, Lane: o.Lane, Prio: o.Prio, Light: o.Light,
 		Target: pl.target, Candidates: pl.candidates, Since: r.t0, Cmd: queue.TruncateCmd(o.Argv), With: siblingLabels(pl.siblings),
 		ConfigSum: cfg.Origin.Sum,
 		Repo:      repo, Commit: commit,
+		Lacks: pl.lacking,
 	}
 	if err := r.preparePools(); err != nil {
 		return usageFail(stderr, mode, err)

@@ -10,6 +10,7 @@ import (
 
 	"github.com/LysCongThanh/heavyq/internal/config"
 	"github.com/LysCongThanh/heavyq/internal/pools"
+	"github.com/LysCongThanh/heavyq/internal/toolcheck"
 )
 
 // gateName is the shape of a gate name: short, lower case, safe to use in
@@ -125,6 +126,10 @@ func (rg rawGate) validate() (Gate, error) {
 		seenWith[repo] = true
 	}
 	g.With = rg.With
+	if err := toolcheck.CheckList(rg.Tools); err != nil {
+		return Gate{}, fmt.Errorf("tools: %w", err)
+	}
+	g.Tools = rg.Tools
 	return g, nil
 }
 

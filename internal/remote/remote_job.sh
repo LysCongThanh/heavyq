@@ -21,6 +21,8 @@ safe "$REPO" && [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] && safe "$LABEL" && safe "$SLOT" 
 
 # PATH. macOS: a non-interactive ssh command gets a bare PATH, so ask the user's login shell for theirs
 # (a hung profile is cut off after 10 s). Both: HEAVYQ_ENV_PATH (the remote's env_path) goes first; "~/" is $HOME.
+# The tool probe (tool_probe.go) runs this block, between the two markers, as it is: keep it self-contained.
+# >>> job PATH
 if [[ "$(uname -s 2> /dev/null)" == Darwin ]]; then
   _sh="${SHELL:-/bin/zsh}"; case "${_sh##*/}" in zsh | bash) ;; *) _sh=/bin/zsh ;; esac
   _lp="$({ command -v perl > /dev/null 2>&1 && perl -e 'alarm 10; exec @ARGV' "$_sh" -lc 'printf "\nheavyq-path:%s\n" "$PATH"'; } 2> /dev/null < /dev/null | sed -n 's/^heavyq-path://p' | tail -n 1)"
@@ -36,6 +38,7 @@ if [[ -n "${HEAVYQ_ENV_PATH:-}" ]]; then
   PATH="$_pre$PATH"
 fi
 export PATH
+# <<< job PATH
 
 mkdir -p "$W/git" "$W/wt" "$W/slots" "$W/cache" || fail "cannot create $W"
 exec 9> "$W/slots/$SLOT.lock" || fail "cannot open slot lock"

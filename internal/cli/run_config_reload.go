@@ -15,7 +15,9 @@ package cli
 // keeps its last good config (fail closed). So does an edit whose pools cannot
 // be read because the repository's heavyq.toml does not load; that one is
 // retried on every poll, since fixing heavyq.toml does not touch the config
-// file. It returns a non-zero exit code when the ticket must give up.
+// file. Which of its remotes lack a tool it needs is asked again when the edit
+// changes what that answer was about (run_tools_recheck.go). It returns a
+// non-zero exit code when the ticket must give up.
 func (r *run) reloadConfig() int {
 	fresh, err := r.cfgWatch.Changed(r.cfg)
 	if err != nil {
@@ -44,8 +46,9 @@ func (r *run) reloadConfig() int {
 		}
 		r.poolSet = set
 	}
+	old := r.cfg
 	r.cfg = &next
 	r.probes.setTimeout(next.Queue.ProbeTimeout.Duration)
 	r.note("config changed while waiting; this ticket now follows it")
-	return 0
+	return r.recheckToolsAfterEdit(old) // a changed env_path: what its tools answered is about another PATH
 }

@@ -93,6 +93,7 @@ func printStatusText(w io.Writer, cfg *config.Config, q *queue.Dir, probes *prob
 		fmt.Fprintf(w, "  %d. %-10s p%d  %-13s %8s  pid %-7d %s\n", i+1, t.Lane, t.Prio, kind,
 			fmtDur(now.Sub(t.Since)), t.Pid, t.Cmd)
 		printWith(w, t.With)
+		printLacks(w, t.Lacks)
 	}
 	printCoalesced(w, now)
 

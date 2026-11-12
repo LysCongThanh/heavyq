@@ -58,6 +58,7 @@ func printHeadReasons(w io.Writer, cfg *config.Config, snap queue.Snapshot, prob
 	for m, why := range blocked {
 		reasons[m] = why
 	}
+	addLacksReasons(reasons, head.Lacks)
 	fmt.Fprintf(w, "HEAD TICKET %s (p%d, %s) waits because:\n", head.Lane, head.Prio, head.Target)
 	if c != nil {
 		reasons[c.machine] = startReason(cfg, head)

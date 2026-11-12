@@ -39,6 +39,9 @@ type Ticket struct {
 	// only can never be moved to a remote (heavyq retarget): it has no commit.
 	Repo   string `json:"repo,omitempty"`
 	Commit string `json:"commit,omitempty"`
+	// Lacks are the remotes left out of Candidates because a tool the run needs is not on the PATH a job
+	// gets there: remote -> those tools. Status and why read them; nothing probes for them.
+	Lacks map[string][]string `json:"lacks,omitempty"`
 
 	Machine   string    `json:"machine,omitempty"`
 	Slot      string    `json:"slot,omitempty"`

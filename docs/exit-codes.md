@@ -3,12 +3,12 @@
 | Code | Meaning |
 |---|---|
 | *command's own* | the command ran; this is its exit code (128+n if killed by signal n) |
-| 2 | usage or setup error (nothing ran); also a waiting ticket whose `--needs` no longer fit the pools after a config edit ([configuration](configuration.md#editing-the-config-while-tickets-wait)) |
+| 2 | usage or setup error (nothing ran), including a run that no machine of its target can run because a tool it needs does not resolve there (`--tools`, [remote](remote.md#placed-where-its-tools-are---tools)); refused before anything is shipped. Also a waiting ticket whose `--needs` no longer fit the pools, or whose tools no machine of its target has any more, after a config edit ([configuration](configuration.md#editing-the-config-while-tickets-wait)) |
 | 75 | `--max-wait` elapsed before the ticket's turn (EX_TEMPFAIL: retry later) |
 | 76 | the ticket can only run remotely and its remotes were unreachable for `remote_down_max` (a remote removed from the config while the ticket waits counts as unreachable, see [configuration](configuration.md#editing-the-config-while-tickets-wait)) |
 | 77 | remote preparation failed (push, worktree, cache hook, or a slot taken outside the queue) |
 | 78 | cancelled by an operator (`heavyq cancel` or the dashboard) |
-| 127 / 126 | command not found / not executable. Also 127 under `--strict`, in gates and in item proofs when a run exited 0 but its output has a shell "command not found" line (see below) |
+| 127 / 126 | command not found / not executable. Also 127 under `--strict`, in gates and in item proofs when a run exited 0 but its output has a shell "command not found" line (see below). A 127 on a remote adds a line naming the remote and its `env_path` |
 | 255 | connection to the remote lost mid-run (the remote side stops the command) |
 
 The control commands exit 2 when they refuse a request, and nothing changes then: `heavyq cancel` and `reprio` for no

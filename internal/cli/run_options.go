@@ -32,6 +32,8 @@ type runOptions struct {
 	NeedGH bool
 	// Needs are the pool values the run holds while it runs (--needs).
 	Needs []pools.Need
+	// Tools are commands the run needs where it runs, besides its own (--tools): remotes without them are skipped.
+	Tools []string
 	Cache bool
 	// Session, Item and Gate tag the run in the ledger: who ran it and why.
 	// Session and Item default to $HEAVYQ_SESSION and $HEAVYQ_ITEM.
@@ -100,7 +102,7 @@ func parseRunArgs(args []string, cfg *config.Config) (runOptions, error) {
 			}
 			continue
 		case "--lane", "--max-wait", "--remote", "--repo", "--ref", "--base-ref", "--with",
-			"--session", "--item", "--gate", "--needs":
+			"--session", "--item", "--gate", "--needs", "--tools":
 			if v, err = takeVal(); err != nil {
 				return o, err
 			}
@@ -126,6 +128,10 @@ func parseRunArgs(args []string, cfg *config.Config) (runOptions, error) {
 			o.With = append(o.With, v)
 		case "--needs":
 			if err := o.addNeeds(v); err != nil {
+				return o, err
+			}
+		case "--tools":
+			if err := o.addTools(v); err != nil {
 				return o, err
 			}
 		case "--session", "--item", "--gate":

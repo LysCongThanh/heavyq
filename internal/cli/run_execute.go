@@ -149,6 +149,8 @@ func (r *run) runRemote(c *claim) int {
 		return ExitRemoteSetup
 	case remote.ExitConnectionLost:
 		fmt.Fprintf(r.stderr, "heavyq: connection to %s lost; the remote side stops the command\n", c.machine)
+	case 127:
+		r.remoteNotFound(c.machine)
 	}
 	return rc
 }

@@ -68,6 +68,7 @@ heavyq 4 --session "$ID" --item T-12 -- npm test  # tag the run in history: who 
 heavyq 4 --needs port:2,pg -- npm run e2e         # hold 2 ports and a database while it runs (docs/pools.md)
 heavyq 4 --with shared-schema -- make contract    # sibling repo ../shared-schema, pinned to its HEAD, shipped with a remote run (docs/remote.md)
 heavyq 4 --need-gh -- ./scripts/open-release-pr   # uses this machine's GitHub CLI login: runs here only (docs/remote.md)
+heavyq 4 --tools envsubst -- bash scripts/e2e.sh  # never on a remote where envsubst is missing (docs/remote.md)
 heavyq 4 --digest -- npm test                     # end with the result digest an agent gets (always on in agent mode)
 
 heavyq status      # what runs, what waits, and why (opens with a short story in plain words)

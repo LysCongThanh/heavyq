@@ -23,7 +23,7 @@ Every key is optional; keys this heavyq does not know are ignored with a warning
 | `remote.work_dir` | `".heavyq"` | remote directory (relative to the remote home) |
 | `remote.git_url` | `"<ssh>:<work_dir>/git"` | where bare repos are pushed |
 | `remote.cache_hook` | `""` | shell run in the worktree before the command; gets `HEAVYQ_CACHE_DIR`, `HEAVYQ_WORKTREE` |
-| `remote.env_path` | `""` | directories put first on the remote command's PATH, `:`-separated, `~/` = remote home. See [a spare Mac](remote.md#a-spare-mac-as-a-remote) |
+| `remote.env_path` | `""` | directories put first on the remote command's PATH, `:`-separated, `~/` = remote home. See [a spare Mac](remote.md#a-spare-mac-as-a-remote). Placement checks a run's tools on that same PATH and skips a remote that lacks one ([`--tools`](remote.md#placed-where-its-tools-are---tools)) |
 | `run.need_gh_repos` | `[]` | `[run]`: repository directory names whose commands call the GitHub CLI with this machine's login; runs there behave as if `--need-gh` were given (this machine only). See [remote](remote.md#the-github-cli---need-gh) |
 | `pool.name` | required | `[[pool]]`: a named resource handed out with `--needs`; `[a-z][a-z0-9_]{0,31}`. See [pools](pools.md) |
 | `pool.values` / `pool.size` | one required | a range `"4100-4199"` or a list of names or integers / a capacity (values `1..size`) |
@@ -72,7 +72,9 @@ get, never who goes first.
   its cache key and run identity were made with. Admission settings (`[queue]`, `[local]`, the `[[remote]]`
   entries of its candidates, `[[pool]]`) come from the edited file. A ticket moved by `heavyq retarget` keeps the
   machines it moved to in the same way (`auto` then means the remotes of the config at the move; see
-  [remote.md](remote.md#moving-a-waiting-ticket-heavyq-retarget)).
+  [remote.md](remote.md#moving-a-waiting-ticket-heavyq-retarget)). What placement by tools found (`--tools`) is kept
+  too, until an edit changes the `env_path` or transport of one of its remotes: the ticket then asks those remotes
+  again, and gives up with exit 2 when none of its machines has the tools any more.
 - **A candidate remote removed from the file** is no longer used: status and `why` say `not in this config` for
   it. A ticket that can only run remotely counts it as unreachable from its next poll, so when none of its
   remotes is left (or reachable) it exits 76 after `remote_down_max`, with `<name> (not in the config)

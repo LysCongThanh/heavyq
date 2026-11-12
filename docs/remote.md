@@ -31,6 +31,7 @@ heavyq 3 --remote buildbox -- npm run lint:changed                          # or
 heavyq 3 --remote buildbox --base-ref origin/develop -- npm run lint:changed   # another base ref instead
 heavyq 3 --remote buildbox --base-ref none -- npm test                      # no base ref at all
 heavyq 3 --remote buildbox --with ../shared-lib@v2.1.0 -- npm test          # sibling repo pinned to a commit
+heavyq 3 --tools envsubst,psql -- bash scripts/e2e.sh   # only on a machine where both resolve (see below)
 ```
 
 What a remote run sees, and what it doesn't:
@@ -136,6 +137,7 @@ move is refused. A refused move changes nothing:
 | a ticket queued to run on this machine only, moved to anything but `local`: `--remote local`, or default placement that stayed here (uncommitted changes, a path outside the repository, no git repository), `--need-gh` | it recorded no commit a remote could run. Cancel it (`heavyq cancel`) and queue it again with `--remote WHERE` inside a git repository |
 | a ticket with `--needs`, moved to anything but `local` | pool values belong to this machine |
 | a target whose machines are all paused | a paused machine admits nothing new: `heavyq resume` it first. In a list or `auto`, paused machines are skipped until they resume, as for every ticket |
+| a target whose machines all lack a tool the run needs (its argv[0] or `--tools`, see [placement by tools](#placed-where-its-tools-are---tools)) | the ticket's own process asks the new remotes and refuses it, naming the tools and each remote's `env_path`. In a list or `auto`, a remote that lacks one is skipped and `why` says so |
 | `local` for a ticket this machine cannot run: a `--ref` that is not checked out here, a `--with` sibling off its pin | the ticket's own process refuses it and says why |
 
 The dashboard's control API files the same request: `POST tickets/{id}/target` (see [dashboard.md](dashboard.md)).
@@ -185,6 +187,53 @@ need_gh_repos = ["app", "billing-api"]   # repository directory names
 
 A run in one of them behaves as if `--need-gh` were given and prints one stderr line saying why. A `[[gate]]` can
 say `need_gh = true` (see [gates](gates.md)).
+
+## Placed where its tools are: `--tools`
+
+A free slot is not enough: a remote whose PATH lacks `npx`, `envsubst` or `initdb` turns a run red for a reason that
+has nothing to do with the code. Before a ticket is queued, heavyq asks each candidate remote whether the commands
+the run needs resolve on the PATH a job gets there (the job script's own PATH code: the login shell's PATH on macOS,
+then `env_path` first), and leaves out a remote that lacks one.
+
+```bash
+heavyq 3 --remote auto -- npx vitest run                  # npx is checked on every candidate remote
+heavyq 3 --tools envsubst,initdb -- bash scripts/e2e.sh   # argv[0] is bash: name what the script calls
+```
+
+- **What is checked.** The command's argv[0], seen through `env` (`-i`, `NAME=VALUE`), `nice`/`nohup`/`time`/`exec`
+  without options, a shell's `-c` script (its first command after leading assignments, read only up to the first
+  quote, `$`, separator or redirect) and the wrapper `heavyq gate run` adds: `sh -c 'cd web && pnpm test'` checks
+  `sh` and `cd`, not `pnpm`. A path (`./gradlew`, `/opt/x/bin/x`) is not checked. Name everything else in `--tools
+  a,b` (repeatable) or in a gate's `tools = [...]` ([gates](gates.md)). Tool names are plain command names
+  (`[A-Za-z0-9_][A-Za-z0-9._+-]{0,63}`, at most 32): a path, a space or shell syntax is exit 2.
+- **Skipped, and said so.** A remote that lacks a tool is not a candidate of the ticket. `heavyq why <lane>` and
+  `heavyq status` say `box: lacks envsubst (see its env_path)`, `status --json` has it in the ticket's `reasons`, and a
+  person also gets one stderr line when the run is queued. `why`, `status` and the hook never probe: the reason is
+  stored on the ticket.
+- **Refused before shipping.** When no machine is left (`--remote box`, a list, or `auto` while this machine is not
+  eligible), the run exits 2 before anything is pushed, naming each remote, the tools it lacks and its `env_path`.
+  An agent gets that as the usual digest (`heavyq: NOT RUN ...`, the remotes and tools in the first lines, `next:`).
+- **Cached.** Answers are kept per remote in `remote-tools/<remote>.json` in the state directory (beside the ledger):
+  "found" for an hour, "missing" for two minutes; a changed `env_path` or transport starts over. Before refusing a run
+  on a cached "missing", heavyq asks that remote again. A probe also asks about `go`, `node`, `npx`, `pnpm`,
+  `python3`, `cargo` and `docker`, so most later runs need no probe. Only remotes the metrics probe reached are asked;
+  a remote that cannot be asked keeps its place (unknown is not missing). A tool counts as found when it is a shell
+  builtin or an executable file on that PATH, not when a file of that name is there without the execute bit.
+- **Not known in advance.** A tool the `cache_hook` installs, or one in a relative `env_path` directory (resolved in
+  the job's worktree, which a probe does not have: a tool missing there counts as unknown).
+- **While it waits.** A ticket keeps what placement by tools found, except where that changes. A move (`heavyq
+  retarget`) is placed by tools as a run is: a remote of the new target that lacks a tool is skipped (`why` says so),
+  and a move that leaves no machine is refused by the ticket, naming the tools and `env_path`; it keeps its machines.
+  An edit of the config that changes the `env_path` or transport of one of its remotes makes it ask again: a remote
+  that now has the tool is a candidate again, one that lost it is skipped, and a ticket no machine is left for exits
+  2, as it would have been refused when queued.
+- **`heavyq doctor`** asks every remote now and lists which of those common tools, and of the tools the gates of the
+  current repository's `heavyq.toml` declare, resolve there (`box: go, node | missing: pnpm`). Its answers refresh
+  the cache.
+- **Exit 127 on a remote** (the shell's "command not found") ends with one line naming the remote and its `env_path`
+  (for an agent, the digest's `next:` line), and drops what was cached about that remote, so the next run asks again.
+
+This machine is not checked: a local run uses your own PATH, where a missing command is the usual exit 127.
 
 Remote requirements: `bash`, `git`, `base64`, `awk`, and either Linux with `flock` and `setsid` (util-linux) or
 macOS (below). Nothing is installed. Everything lives under `work_dir` (default `~/.heavyq`).

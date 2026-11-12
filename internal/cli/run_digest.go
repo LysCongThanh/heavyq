@@ -104,6 +104,8 @@ const (
 // failNext is the one thing to do after a command failed.
 func (r *run) failNext(rc int, machine string) string {
 	switch {
+	case rc == 127 && machine != config.LocalName:
+		return "command not found on " + machine + "; install it there or add its directory to that remote's env_path (heavyq doctor lists its tools), then re-run"
 	case rc == 127:
 		return "command not found; check its name and PATH, then re-run"
 	case rc == 126:
