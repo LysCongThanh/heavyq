@@ -1,6 +1,7 @@
 package remote
 
 import (
+	"crypto/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -21,14 +22,27 @@ func isolateGitConfig(t *testing.T, global string) {
 	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 }
 
-// Two runs gated on the same new commit and admitted together on one remote both ship it. receive-pack
-// creates the ref against the old value the push saw (none), so the slower push used to be refused with
-// "reference already exists" and its run exited 77 although the commit was there.
+// Runs gated on the same new commit and admitted together on one remote all ship it. receive-pack creates
+// the ref against the old value the push saw (none), so the slower push used to be refused with "reference
+// already exists" and its run exited 77 although the commit was there. On a remote with no bare repo yet
+// (the first `gate run --parallel` of a repo) the runs also race on `git init --bare`: the losers used to
+// spend their first attempt on "could not lock config file" and their only retry on the ref race. The pack
+// is not trivial so the winner's push is still going while the others start theirs.
 func TestConcurrentFirstPushesOfOneCommitAllSucceed(t *testing.T) {
-	repo, sha := newRepo(t, t.TempDir(), "app", "f", "x")
-	const pushes = 4
-	for round := 0; round < 6; round++ {
-		m := fakeRemote(t) // a fresh remote: the commit and its ref are new to it
+	repo, _ := newRepo(t, t.TempDir(), "app", "f", "x")
+	big := make([]byte, 2<<20)
+	if _, err := rand.Read(big); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(repo, "blob.bin"), big, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gitRun(t, repo, "add", ".")
+	gitRun(t, repo, "commit", "-q", "-m", "big")
+	sha := gitRun(t, repo, "rev-parse", "HEAD")
+	const pushes = 6
+	for round := 0; round < 8; round++ {
+		m := fakeRemote(t) // a fresh remote: no bare repo, and the commit and its ref are new to it
 		errs := make(chan error, pushes)
 		for i := 0; i < pushes; i++ {
 			go func() { errs <- Push(m, repo, "app", sha, sha[:12], 20*time.Second) }()
@@ -38,6 +52,23 @@ func TestConcurrentFirstPushesOfOneCommitAllSucceed(t *testing.T) {
 				t.Fatalf("round %d: a concurrent push of the same commit failed: %v", round, err)
 			}
 		}
+	}
+}
+
+// Waiting out a lost race for the bare repo must not hide a real failure of git init: a path that cannot
+// become a repository still fails the ship, with git's own message.
+func TestPushReportsAGitInitThatCannotSucceed(t *testing.T) {
+	repo, sha := newRepo(t, t.TempDir(), "app", "f", "x")
+	m := fakeRemote(t)
+	if err := os.MkdirAll(filepath.Join(m.WorkDir, "git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(m.WorkDir, "git", "app.git"), []byte("not a repo"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err := Push(m, repo, "app", sha, sha[:12], 20*time.Second)
+	if err == nil || !strings.Contains(err.Error(), "prepare bare repo") || !strings.Contains(err.Error(), "app.git") {
+		t.Fatalf("a bare repo that cannot be created must fail the ship with git's reason, got %v", err)
 	}
 }
 

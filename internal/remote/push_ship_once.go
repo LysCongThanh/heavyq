@@ -14,7 +14,9 @@ import (
 )
 
 const (
-	// shipRetryPause separates the two attempts of a ship (see PushContext).
+	// shipAttempts bounds the attempts of a ship (see PushContext), and
+	// shipRetryPause times the attempt number separates them.
+	shipAttempts   = 3
 	shipRetryPause = 200 * time.Millisecond
 	// pushDeadline is the most one git push may take. It is a backstop: the
 	// keepalives of gitSSHCommand end a push over a dead link within a minute,

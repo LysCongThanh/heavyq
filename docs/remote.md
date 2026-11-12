@@ -70,7 +70,7 @@ What a remote run sees, and what it doesn't:
   (`push.pushOption`). Unless you chose an ssh for git (`GIT_SSH_COMMAND`, `GIT_SSH`, `core.sshCommand`), the push's
   ssh gets `BatchMode`, `ConnectTimeout` and keepalives, so a link that goes silent ends the push within a minute.
   Ctrl-C, SIGTERM and `heavyq cancel` stop a push at once (exit 130/143 or 78, not 77). Several runs of one
-  new commit admitted to one remote together all ship it.
+  new commit admitted to one remote together all ship it, also the first runs of a repo on a remote.
 - **Not every repository ships.** A SHA-256 repository or a shallow clone cannot be shipped (the remote side is
   SHA-1; its bare repo refuses a shallow push). Default placement, `--remote auto` and a list with `local`
   keep such a run on this machine; a remote-only target is refused with exit 2.
