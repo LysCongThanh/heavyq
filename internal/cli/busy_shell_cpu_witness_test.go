@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -42,14 +43,25 @@ func (h *rig) busyShellScript(name string) string {
 		filepath.Join(h.root, name+".times"), filepath.Join(h.root, name+".pid"))
 }
 
-// busyShellOf waits until the shell started by busyShellScript(name) publishes its pid.
+// busyShellOf waits until the shell started by busyShellScript(name) publishes its pid. The shell
+// spins until killed, and only a test that gets to its end stops it (through `heavyq run`), so a
+// cleanup kills it on every other exit (a skip, a failure): the rig's own cleanup SIGKILLs `heavyq
+// run`, which then relays nothing, and the shell would spin on, orphaned. Registered after the rig's,
+// the cleanup runs before it. It kills the pid only while that pid is still this shell: its command
+// line names its own pid file, so a pid the system has handed to another process is left alone.
 func (h *rig) busyShellOf(name string) *busyShell {
 	h.t.Helper()
+	pidFile := filepath.Join(h.root, name+".pid")
 	h.until(name+" pid", func() bool { return strings.HasSuffix(h.read(name+".pid"), "\n") })
 	pid, err := strconv.Atoi(strings.TrimSpace(h.read(name + ".pid")))
 	if err != nil {
 		h.t.Fatal(err)
 	}
+	h.t.Cleanup(func() {
+		if args, err := exec.Command("ps", "-o", "args=", "-p", strconv.Itoa(pid)).Output(); err == nil && strings.Contains(string(args), pidFile) {
+			_ = syscall.Kill(pid, syscall.SIGKILL)
+		}
+	})
 	return &busyShell{t: h.t, pid: pid, report: filepath.Join(h.root, name+".times")}
 }
 
