@@ -20,5 +20,7 @@ wired and compressed pages hold live data and are not counted. It is an estimate
 Two macOS limits. `ps` prints CPU time with centisecond precision, so CPU% is as exact as on Linux, but each
 sample costs one `ps` run (tens of ms). And with no subreaper, a cancel signals every descendant that is still
 attached to its parent; a process whose parent already exited (a daemon the command started, or an orphan
-left by a command that died on SIGTERM) re-parents to `launchd` and can be missed. If a command fails to run,
-the metrics are reported unknown and the gate falls back to slots only, as before.
+left by a command that died on SIGTERM) re-parents to `launchd` and can be missed. The sampler calls
+`/usr/sbin/sysctl` and `/usr/bin/vm_stat` by absolute path (a `PATH` lookup only if they are missing), so a stripped
+`PATH` such as cron's `/usr/bin:/bin` still measures the Mac. If a command fails to run, the metrics are reported
+unknown and the gate falls back to slots only, as before.
