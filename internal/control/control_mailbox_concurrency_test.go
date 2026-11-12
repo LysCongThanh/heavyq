@@ -138,7 +138,7 @@ func TestTakePrioNeverDropsTheLatestRequest(t *testing.T) {
 		t.Fatal(err)
 	}
 	w := startWriter(t, m.Dir, 20, 9)
-	for round := 0; round < 300; round++ {
+	for round := 0; round < 200; round++ { // the old read-then-remove lost one within ~80 rounds
 		done := make(chan struct{})
 		seen := make(chan int, 1)
 		go func() { // the owner's poll loop

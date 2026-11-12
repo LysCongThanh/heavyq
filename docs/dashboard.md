@@ -131,6 +131,7 @@ Fields may be added within schema 1; renaming or removing one bumps `schema`.
 
 Requests are files in `<queue dir>/ctl/`: `<ticket>.cancel`, `<ticket>.prio`, `<ticket>.target`, `pause-<machine>`.
 They are what `heavyq cancel|reprio|retarget|pause|resume` and the dashboard write, and what each job's heavyq process
-reads about once per poll interval. Scripts may write them directly. `<ticket>` is the `id` field of the snapshot
-without its leading `<prio>-`, so a request still reaches a ticket whose priority changed. A job answers a `.target`
-request in `<ticket>.target-done`: empty when it moved, else why it kept its machines.
+reads about once per poll interval. Scripts may write them directly; write a uniquely named temporary file in the same
+directory and rename it into place, so two writers never share a half-written file. `<ticket>` is the `id` field of the
+snapshot without its leading `<prio>-`, so a request still reaches a ticket whose priority changed. A job answers a
+`.target` request in `<ticket>.target-done`: empty when it moved, else why it kept its machines.

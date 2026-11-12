@@ -24,6 +24,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync/atomic"
 )
 
 // Mailbox is the control directory.
@@ -42,20 +43,35 @@ func key(ticket string) string { return ticket[2:] }
 
 func (m Mailbox) path(name string) string { return filepath.Join(m.Dir, name) }
 
+// put stores a request atomically. Every writer has a temporary file of its
+// own: the dashboard (whose handlers run concurrently) and the CLI may write
+// to one ticket at the same moment, and a shared name would let one writer
+// rename the other's half-written file away.
 func (m Mailbox) put(name, content string) error {
 	if err := os.MkdirAll(m.Dir, 0o700); err != nil {
 		return err
 	}
-	tmp := m.path("." + name + ".tmp")
-	if err := os.WriteFile(tmp, []byte(content), 0o600); err != nil {
+	f, err := os.CreateTemp(m.Dir, "."+name+".*.tmp") // mode 0600
+	if err != nil {
 		return err
 	}
-	if err := os.Rename(tmp, m.path(name)); err != nil {
+	tmp := f.Name()
+	_, err = f.WriteString(content)
+	if cerr := f.Close(); err == nil {
+		err = cerr
+	}
+	if err == nil {
+		err = os.Rename(tmp, m.path(name))
+	}
+	if err != nil {
 		_ = os.Remove(tmp)
 		return err
 	}
 	return nil
 }
+
+// claims makes the names TakePrio moves a request to unique per call.
+var claims atomic.Uint64
 
 func (m Mailbox) exists(name string) bool {
 	_, err := os.Stat(m.path(name))
@@ -87,15 +103,24 @@ func (m Mailbox) RequestPrio(ticket string, prio int) error {
 }
 
 // TakePrio returns and consumes a pending priority request for ticket.
+//
+// It claims the request by renaming it to a name of its own before reading
+// it, so a newer request written meanwhile stays in place for the next poll
+// instead of being deleted unseen.
 func (m Mailbox) TakePrio(ticket string) (int, bool) {
 	if !ticketRe.MatchString(ticket) {
 		return 0, false
 	}
-	b, err := os.ReadFile(m.path(key(ticket) + ".prio"))
+	name := key(ticket) + ".prio"
+	claimed := m.path(fmt.Sprintf(".%s.%d-%d.taken", name, os.Getpid(), claims.Add(1)))
+	if err := os.Rename(m.path(name), claimed); err != nil {
+		return 0, false
+	}
+	b, err := os.ReadFile(claimed)
+	_ = os.Remove(claimed)
 	if err != nil {
 		return 0, false
 	}
-	_ = os.Remove(m.path(key(ticket) + ".prio"))
 	p, err := strconv.Atoi(strings.TrimSpace(string(b)))
 	if err != nil || p < 1 || p > 9 {
 		return 0, false
