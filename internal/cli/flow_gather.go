@@ -13,6 +13,7 @@ import (
 	"github.com/LysCongThanh/heavyq/internal/gitutil"
 	"github.com/LysCongThanh/heavyq/internal/history"
 	"github.com/LysCongThanh/heavyq/internal/lease"
+	"github.com/LysCongThanh/heavyq/internal/proof"
 	"github.com/LysCongThanh/heavyq/internal/redact"
 	"github.com/LysCongThanh/heavyq/internal/repoconfig"
 	"github.com/LysCongThanh/heavyq/internal/sessionmeta"
@@ -111,9 +112,14 @@ func flowItems(cfg *config.Config, root string, recent []history.Record, now tim
 		st.Needs, st.Reason = redact.Command(st.Needs), redact.Command(st.Reason)
 		f := flow.ItemFact{Status: st}
 		if name, cmds, why := proofCommands(set, r.Item.Proof); r.Item.Proof.Kind != "" && why == "" {
-			f.Gate = name
+			if r.Item.Proof.Kind == anchor.ProofGate { // the ledger tags a gate's runs with its name: a command proof has no gate
+				f.Gate = name
+			}
 			for _, c := range cmds {
 				f.ProofCmds = append(f.ProofCmds, redact.Command(c))
+				if f.Gate != "" {
+					f.ProofHashes = append(f.ProofHashes, history.CmdHash(proof.Argv(c)))
+				}
 			}
 		}
 		facts = append(facts, f)

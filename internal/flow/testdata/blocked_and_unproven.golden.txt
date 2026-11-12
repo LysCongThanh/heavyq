@@ -12,4 +12,4 @@ needs_you item="" lane=api since=11:50:00 reason="idle_prompt: Claude is waiting
 lane api state=blocked_human item="" since=11:50:00
 lane db state=blocked_human item="db-1" since=11:20:00
 constraint blocked_human share=0.59 significant=true
-items {Total:2 Proven:0 Running:0 Blocked:1 ClaimedUnproven:1 Open:0}
+items {Total:2 Proven:0 Running:0 Blocked:1 ClaimedUnproven:1 DoneStale:0 Open:0}

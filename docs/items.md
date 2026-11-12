@@ -60,15 +60,16 @@ Exit codes: 0 done; **1** refused (held by another lane, not proven, nothing to 
 | `open` | nobody holds it and nothing proves it (an expired lease holds nothing) |
 | `claimed` | a live lease holds it: `lane`, `session`, `expires` |
 | `proven` | its proof passes on the code it was judged on: `commit` (short) and `at` |
-| `stale` | its proof passed on an older tree of this repository and the code has changed since |
+| `stale` | its proof passed on an older tree of this repository and the code has changed since (for a gate with `paths`, "the code" is the files they name, so a docs-only commit does not make it stale, see [gates](gates.md#a-gate-with-paths)) |
 | `blocked` | `needs` says what a human must provide |
 | `claimed_done_unproven` | the box is ticked (or a plan-file item was marked done) but nothing proves it |
 
 The first rule that applies wins (`itemstatus.Derive`, a pure function): proven; done but not proven (`stale`
 if it passed on an older tree, else `claimed_done_unproven`); blocked; claimed; stale; open. `done: true`
 accompanies every state of an item whose box is ticked or that was marked done, so a ticked, proven item is
-`proven` + `done`, and a ticked item whose code has since changed is `stale` + `done`. Done items are never
-handed out again by `claim`.
+`proven` + `done`, and a ticked item whose code has since changed is `stale` + `done`: `heavyq recap` lists it
+as `done · stale`, `heavyq flow show` counts it as `done-stale` (never as `open`) and `item ls` shows `stale
+(<commit>, done, older tree)`, with `item done <id> --run` as the action. Done items are never handed out again by `claim`.
 
 **Which tree.** An item with a live lease is judged on the work tree of the lane that holds it (the work tree
 named like the lane, else the one its latest ledger run was in): its proof counts where the agent works. Every

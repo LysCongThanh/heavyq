@@ -128,7 +128,7 @@ func placeGate(cfg *config.Config, t *gateTarget, remoteFlag string, stderr io.W
 		fmt.Fprintf(stderr, "heavyq: gate %s needs this machine's GitHub login (need_gh): running locally, not on %s (%s)\n", g.Name, pl.Remote, pl.From)
 		pl = proofPlace{config.LocalName, pl.From}
 	}
-	pl, why := fitProofToTree(t.repo.Root, pl, stderr)
+	pl, why := fitProofToTree(t.repo.Root, g.Paths, pl, stderr)
 	if why != "" {
 		fmt.Fprintln(stderr, "heavyq:", why)
 		if outputMode(stderr).Terse() {

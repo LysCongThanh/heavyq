@@ -7,6 +7,7 @@ import (
 	"github.com/invopop/jsonschema"
 
 	"github.com/LysCongThanh/heavyq/internal/config"
+	"github.com/LysCongThanh/heavyq/internal/gatepaths"
 	"github.com/LysCongThanh/heavyq/internal/pools"
 	"github.com/LysCongThanh/heavyq/internal/repoconfig"
 	"github.com/LysCongThanh/heavyq/internal/toolcheck"
@@ -65,6 +66,13 @@ func patchRepoFile(root *jsonschema.Schema) {
 	tools := prop(gate, "tools")
 	tools.Description = `Commands every command of the gate needs on the machine it runs on, besides the one it starts, for example ["envsubst", "initdb"]. Passed to the run as --tools: a remote without one on the PATH its jobs get is skipped.`
 	tools.Items.Pattern = toolcheck.NamePattern
+	paths := prop(gate, "paths")
+	paths.Description = `The files the gate's proof is made of, as globs relative to the repository root: "**/*.go", "go.mod", "docs/**". A commit or an edit that changes none of the files they name keeps the gate proven. Without paths the whole tree counts. * and ? stay inside one path component, ** is a whole component, a path without a wildcard names a file or a directory with everything below it. A list that matches no committed file proves nothing.`
+	paths.MaxItems = u64(gatepaths.MaxEntries)
+	paths.UniqueItems = true
+	paths.Items.MinLength = u64(1)
+	paths.Items.MaxLength = u64(gatepaths.MaxLen)
+	paths.Items.Pattern = `^[^/:!\\\[\]]([^\\\[\]]*[^/\\\[\]])?$`
 
 	proof := def(root, "rawProof")
 	proof.Description = "Where `heavyq item done --run` and `heavyq gate run` run proofs for this repository; the user config has the same table."

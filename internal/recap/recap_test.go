@@ -47,6 +47,7 @@ func fixtureFacts(t *testing.T) Facts {
 		{ID: "api-3", State: itemstatus.Proven, Lane: "api", Commit: "c0ffee1", At: at(13, 40), Done: true, Text: "Rate limiting", Session: "s1"},
 		{ID: "old-1", State: itemstatus.Proven, Commit: "aaaaaaa", At: at(9, 0), Done: true, Text: "Before the window"},
 		{ID: "ui-1", State: itemstatus.Proven, Lane: "ui", Commit: "d00d123", At: at(13, 55), Text: "Form\x1b[31m markup", Session: "s3"},
+		{ID: "api-4", State: itemstatus.Stale, Done: true, Lane: "api", Commit: "9a8b7c6", At: at(11, 20), Text: "Audit log"},
 		{ID: "doc-3", State: itemstatus.ClaimedDoneUnproven, Lane: "docs", Reason: "no proof declared", Text: "Write the guide"},
 		{ID: "doc-7", State: itemstatus.Blocked, Lane: "docs", Needs: "a Stripe test key", Text: "Billing docs"},
 		{ID: "web-1", State: itemstatus.Claimed, Lane: "web", Expires: at(14, 30), Text: "E2E suite"},
@@ -107,7 +108,7 @@ func TestGoldenRecap(t *testing.T) {
 
 func TestRecapContent(t *testing.T) {
 	r := Build(fixtureFacts(t))
-	if r.Progress.Proven != 5 || r.Progress.Total != 9 {
+	if r.Progress.Proven != 5 || r.Progress.Total != 10 {
 		t.Errorf("progress %+v", r.Progress)
 	}
 	if len(r.Merged) != 2 || len(r.ProvenNotMerged) != 2 {
@@ -122,7 +123,10 @@ func TestRecapContent(t *testing.T) {
 	if r.NeedsYou != 2 {
 		t.Errorf("needs you = %d: the blocked item and the permission prompt, no double count", r.NeedsYou)
 	}
-	for name, lines := range map[string][]Line{"merged": r.Merged, "proven": r.ProvenNotMerged, "claimed": r.ClaimedUnproven,
+	if len(r.DoneStale) != 1 || r.DoneStale[0].ID != "api-4" || len(r.ClaimedUnproven) != 1 || r.ClaimedUnproven[0].ID != "doc-3" {
+		t.Errorf("done_stale %+v, claimed_unproven %+v: the ticked item proven on older code is not claimed", r.DoneStale, r.ClaimedUnproven)
+	}
+	for name, lines := range map[string][]Line{"merged": r.Merged, "proven": r.ProvenNotMerged, "claimed": r.ClaimedUnproven, "done stale": r.DoneStale,
 		"blocked": r.Blocked, "wasted": r.Wasted, "in flight": r.InFlight} {
 		for _, l := range lines {
 			if l.Action == "" {

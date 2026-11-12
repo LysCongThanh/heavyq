@@ -143,6 +143,18 @@
           },
           "type": "array",
           "description": "Commands every command of the gate needs on the machine it runs on, besides the one it starts, for example [\"envsubst\", \"initdb\"]. Passed to the run as --tools: a remote without one on the PATH its jobs get is skipped."
+        },
+        "paths": {
+          "items": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[^/:!\\\\\\[\\]]([^\\\\\\[\\]]*[^/\\\\\\[\\]])?$"
+          },
+          "type": "array",
+          "maxItems": 64,
+          "uniqueItems": true,
+          "description": "The files the gate's proof is made of, as globs relative to the repository root: \"**/*.go\", \"go.mod\", \"docs/**\". A commit or an edit that changes none of the files they name keeps the gate proven. Without paths the whole tree counts. * and ? stay inside one path component, ** is a whole component, a path without a wildcard names a file or a directory with everything below it. A list that matches no committed file proves nothing."
         }
       },
       "additionalProperties": false,

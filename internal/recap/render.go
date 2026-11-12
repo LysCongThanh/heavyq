@@ -37,6 +37,7 @@ func Render(r Recap, o RenderOptions) string {
 	}
 	bucket(&b, title, r.ProvenNotMerged, o)
 	bucket(&b, "claimed, unproven", r.ClaimedUnproven, o)
+	bucket(&b, "done · stale", r.DoneStale, o)
 	bucket(&b, "blocked", r.Blocked, o)
 	bucket(&b, "wasted", r.Wasted, o)
 	bucket(&b, "in flight", r.InFlight, o)
@@ -80,7 +81,7 @@ func forecastText(r Recap, th statusline.Theme) string {
 	f, dot := r.Forecast, " "+statusline.Pick(th, statusline.GlyphDot)+" "
 	conf := ""
 	if f.Confidence != "none" {
-		conf = fmt.Sprintf(" (%s confidence, %d proofs)", f.Confidence, f.Samples)
+		conf = fmt.Sprintf(" (%s confidence, %d finishes)", f.Confidence, f.Samples)
 	}
 	switch {
 	case f.Done:
@@ -103,7 +104,7 @@ func bucket(b *strings.Builder, title string, lines []Line, o RenderOptions) {
 	if len(lines) == 0 {
 		return
 	}
-	fmt.Fprintf(b, "\n%s (%d)\n", title, len(lines))
+	fmt.Fprintf(b, "\n%s (%d)\n", txt(title, o), len(lines))
 	texts := make([]string, len(lines))
 	pad := 0
 	for i, l := range lines {

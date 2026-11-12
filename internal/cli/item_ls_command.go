@@ -134,6 +134,9 @@ func statusDetail(s itemstatus.Status) string {
 		}
 		return d
 	case itemstatus.Stale:
+		if s.Done { // ticked: it needs one more proof run, the same "done, stale" the recap and flow show say
+			return fmt.Sprintf(" (%s, done, older tree)", s.Commit)
+		}
 		return fmt.Sprintf(" (%s, older tree)", s.Commit)
 	case itemstatus.Blocked:
 		return " (needs: " + oneLine(s.Needs, 40) + ")"

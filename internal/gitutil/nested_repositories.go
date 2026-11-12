@@ -36,9 +36,9 @@ func isNestedRepo(repo, entry string) bool {
 // onlyNestedRepos reports whether every untracked entry below dir (a "dir/"
 // entry of `git status`, which collapses untracked directories) is a nested
 // repository, so the directory holds no untracked file of this work tree.
-func onlyNestedRepos(repo, dir string, exclude []string) (bool, error) {
-	args := append([]string{"ls-files", "--others", "--exclude-standard", "-z"}, untrackedSpecs(exclude)...)
-	args = append(args, ":(top,literal)"+dir)
+// specs are the pathspecs of the listing (untrackedSpecs, or scopeSpecs).
+func onlyNestedRepos(repo, dir string, specs []string) (bool, error) {
+	args := append(append([]string{"ls-files", "--others", "--exclude-standard", "-z"}, specs...), ":(top,literal)"+dir)
 	list, err := gitRaw(repo, args...)
 	if err != nil {
 		return false, err

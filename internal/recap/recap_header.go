@@ -15,6 +15,7 @@ func headerFacts(f Facts, remaining, running int, lastProof time.Time) (Forecast
 	if st := f.State; st != nil {
 		t := st.Throughput
 		in.N, in.P50 = t.N, time.Duration(t.P50ClaimToProofS*float64(time.Second))
+		in.PerHour = t.ProvenPerHour
 		if t.LastProof != nil {
 			in.LastProof = *t.LastProof
 		}
@@ -36,7 +37,8 @@ func headerFacts(f Facts, remaining, running int, lastProof time.Time) (Forecast
 
 // best picks the single action that would help most, in the order a person
 // would triage: unblock, then what is slowing everything, then repeats, then
-// the work that is nearly done, then start the next.
+// the work that is nearly done (ticked and unproven, ticked and stale, proven
+// and not ticked), then start the next.
 func best(r Recap, firstOpen string) *Best {
 	switch {
 	case len(r.Blocked) > 0:
@@ -49,6 +51,9 @@ func best(r Recap, firstOpen string) *Best {
 		return &Best{Command: w.Action, Why: "the same failure repeated: " + w.Text}
 	case len(r.ClaimedUnproven) > 0:
 		c := r.ClaimedUnproven[0]
+		return &Best{Command: c.Action, Why: c.Text}
+	case len(r.DoneStale) > 0:
+		c := r.DoneStale[0]
 		return &Best{Command: c.Action, Why: c.Text}
 	}
 	for _, p := range append(append([]Line{}, r.ProvenNotMerged...), r.Merged...) {

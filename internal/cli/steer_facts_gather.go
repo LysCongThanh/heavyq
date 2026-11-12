@@ -53,7 +53,7 @@ func gatherSteerFacts(cfg *config.Config, dir, lane string) (steer.Facts, error)
 	}
 	if repo != nil {
 		if g, ok := pickGate(repo, "", io.Discard); ok {
-			f.Gate = gateFact(g, subj, recs)
+			f.Gate = gateFact(g, subjectOfWith(cfg, root, g.Paths, nil), recs)
 		}
 	}
 	if set == nil {
@@ -116,7 +116,7 @@ func itemFact(set *itemSet, r itemRow, recs []history.Record, memo map[string][]
 	if st.Lane != "" {
 		root = set.laneTree(st.Lane, recs)
 	}
-	subj := set.subject(root)
+	subj := set.proofSubject(root, r.Item.Proof)
 	tr, ok := memo[subj.Tree]
 	if !ok {
 		tr = treeRecords(subj)

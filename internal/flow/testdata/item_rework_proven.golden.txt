@@ -9,4 +9,4 @@ item login-api lane=api session=s1 final=done_proven@10:35:00
   10:35:00-10:36:00 working       1m0s
 lane api state=working item="login-api" since=10:35:00
 constraint rework share=0.29 significant=false
-items {Total:1 Proven:1 Running:0 Blocked:0 ClaimedUnproven:0 Open:0}
+items {Total:1 Proven:1 Running:0 Blocked:0 ClaimedUnproven:0 DoneStale:0 Open:0}

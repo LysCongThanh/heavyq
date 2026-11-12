@@ -51,7 +51,7 @@ func (c *evidenceCache) evaluate(p anchor.Proof, root string) itemstatus.Evidenc
 	if why != "" {
 		return itemstatus.Unprovable(why)
 	}
-	subj := c.set.subject(root)
+	subj := c.set.proofSubject(root, p)
 	recs, err := proofRecords(subj)
 	if err != nil { // fail closed: an unreadable ledger proves nothing
 		recs = nil

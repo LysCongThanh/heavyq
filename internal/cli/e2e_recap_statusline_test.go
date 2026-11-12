@@ -140,7 +140,7 @@ func TestE2EStatuslineAndRecapShareTheFlowState(t *testing.T) {
 	}
 
 	rc, rec, errOut := h.inDir(app, nil, "recap")
-	if rc != 0 || !strings.Contains(rec, "CI wait") || !strings.Contains(rec, "needs you") || !strings.Contains(rec, "(medium confidence, 9 proofs)") {
+	if rc != 0 || !strings.Contains(rec, "CI wait") || !strings.Contains(rec, "needs you") || !strings.Contains(rec, "(medium confidence, 9 finishes)") {
 		t.Errorf("recap with a flow state: rc=%d\n%s%s", rc, rec, errOut)
 	}
 }

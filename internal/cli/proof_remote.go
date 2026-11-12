@@ -66,9 +66,9 @@ func resolveProofRemote(cfg *config.Config, repo *repoconfig.Repo, gate *repocon
 //
 // A gate's own remote key is left alone (it predates [proof]). refusal is a
 // message for the caller to print ("" when the placement stands).
-func fitProofToTree(root string, pl proofPlace, stderr io.Writer) (proofPlace, string) {
+func fitProofToTree(root string, paths []string, pl proofPlace, stderr io.Writer) (proofPlace, string) {
 	// A gate's own remote key predates [proof] and keeps its behaviour.
-	if pl.Remote == config.LocalName || pl.From == proofFromGate || committedTreeIsWorkTree(root) {
+	if pl.Remote == config.LocalName || pl.From == proofFromGate || committedTreeIsWorkTree(root, paths) {
 		return pl, ""
 	}
 	if config.TargetMayRunLocally(pl.Remote) {
@@ -79,12 +79,13 @@ func fitProofToTree(root string, pl proofPlace, stderr io.Writer) (proofPlace, s
 }
 
 // committedTreeIsWorkTree reports whether the code a remote would run (HEAD)
-// is exactly the code in the work tree at root. Any doubt is "no".
-func committedTreeIsWorkTree(root string) bool {
-	here, err := gitutil.Identify(root)
+// is exactly the code in the work tree at root: the whole tree, or for a gate that declares paths, the files
+// they name (an edit elsewhere is not code the proof depends on). Any doubt is "no".
+func committedTreeIsWorkTree(root string, paths []string) bool {
+	here, err := gitutil.IdentifyScoped(root, paths)
 	if err != nil || here.Tree == "" {
 		return false
 	}
-	pinned, err := gitutil.Pinned(root, "HEAD")
+	pinned, err := gitutil.PinnedScoped(root, "HEAD", paths)
 	return err == nil && pinned.Tree == here.Tree
 }

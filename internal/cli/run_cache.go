@@ -145,7 +145,7 @@ func (r *run) replayCached(m *cache.Meta, coalesced bool, lane string) (int, boo
 // key's when the work tree still has it, and unknown ("") when it changed.
 func (r *run) replayedCheckout() gitutil.Checkout {
 	co := r.checkoutFor(config.LocalName)
-	if co.Tree != r.cache.tree {
+	if r.wholeTree(co) != r.cache.tree {
 		r.verbosef("ledger: the work tree changed since the cache key was computed; no tree identity recorded")
 		co.Tree = ""
 	}
