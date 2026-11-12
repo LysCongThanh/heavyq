@@ -33,7 +33,8 @@ Claude Code has one `statusLine`. In `~/.claude/settings.json` (or the project's
 
 That replaces any status line you have. To **keep yours**, wrap it: `--wrap` runs your command with the same stdin
 and appends heavyq's segment to the last line of its output, behind a `│`. Your command is not edited, copied or
-reimplemented; heavyq only runs it the way Claude Code would have (`sh -c`, 5 s at most).
+reimplemented; heavyq only runs it the way Claude Code would have (`sh -c`, 5 s at most). Past 5 s the command is
+killed with everything it started (it runs in its own process group), so a slow refresh leaves nothing behind.
 
 ```json
 { "statusLine": { "type": "command", "command": "heavyq statusline --wrap 'node \"$HOME/.claude/statusline.cjs\"'" } }

@@ -5,8 +5,10 @@ import (
 	"context"
 	"errors"
 	"io"
+	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -32,6 +34,12 @@ func runWrapped(command string, stdin []byte, dir string, stderr io.Writer) (str
 	var out bytes.Buffer
 	cmd.Stdout = &limitedBuffer{buf: &out, max: maxWrapped}
 	cmd.Stderr = stderr
+	// Its own process group, killed as one on timeout: a script or pipeline
+	// forks children that the shell's death alone would leave running, and a
+	// blocked, silent one never dies of the closed pipe either. Only the
+	// timeout kills; a command that ends on its own keeps what it started.
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	cmd.Cancel = func() error { return killGroup(cmd.Process.Pid) }
 	cmd.WaitDelay = 200 * time.Millisecond
 	err := cmd.Run()
 	code := 0
@@ -43,6 +51,18 @@ func runWrapped(command string, stdin []byte, dir string, stderr io.Writer) (str
 		code = 1
 	}
 	return strings.TrimRight(out.String(), "\r\n"), code
+}
+
+// killGroup SIGKILLs the process group led by pid. A group that is already
+// gone is reported as done, so os/exec treats it like a process that exited.
+func killGroup(pid int) error {
+	if err := syscall.Kill(-pid, syscall.SIGKILL); err != nil {
+		if errors.Is(err, syscall.ESRCH) {
+			return os.ErrProcessDone
+		}
+		return err
+	}
+	return nil
 }
 
 // limitedBuffer keeps at most max bytes and swallows the rest.
