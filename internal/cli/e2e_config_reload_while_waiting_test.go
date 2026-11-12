@@ -17,13 +17,14 @@ import (
 
 // reloadConfig is a local machine with the given heavy slot lock files and
 // load ratio. The load reading is pinned with fakeMetrics(busyReading) (load 9
-// on 8 cores): a ratio of 0.5 refuses a second job, 1.875 admits it.
+// on 8 cores): a ratio of 0.5 refuses a second job, 1.875 admits it. The RAM
+// budget and headroom are 1 MB, so the free RAM of the test machine never decides.
 func reloadConfig(locks []string, ratio string) string {
 	quoted := make([]string, len(locks))
 	for i, l := range locks {
 		quoted[i] = fmt.Sprintf("%q", l)
 	}
-	return "[queue]\npoll = \"50ms\"\nforce_after = \"1h\"\n[local]\nlight_slots = 1\njob_mb = 1\nlight_mb = 1\n" +
+	return "[queue]\npoll = \"50ms\"\nforce_after = \"1h\"\n[local]\nlight_slots = 1\njob_mb = 1\nlight_mb = 1\nreserve_mb = 1\n" +
 		"max_load_ratio = " + ratio + "\nlegacy_lock_files = [" + strings.Join(quoted, ", ") + "]\n"
 }
 
