@@ -10,27 +10,33 @@ import (
 // processTree is everything a local command started. On Linux heavyq is a
 // child subreaper, so the tree is simply heavyq's own descendants: orphans
 // re-parent to us and stay reachable. Elsewhere (macOS has no subreaper) it
-// is the command's descendants as seen at signal time, found by walking the
-// ppid map of `ps`: a cancel reaches every grandchild still attached to its
-// parent, but a process whose parent already exited has re-parented to
-// launchd and can be missed (typically a daemon started by the command, or
-// a grandchild that outlived a command that died on SIGTERM before the
-// SIGKILL pass).
+// is the command's descendants found by walking the ppid map of `ps`, plus
+// every process seen in an earlier scan for as long as it runs (lifelineTree):
+// a grandchild that outlives a command that died on SIGTERM re-parents to
+// launchd but stays in the tree, so it still gets the SIGKILL pass and heavyq
+// keeps the slot until it is gone. A process that was already re-parented
+// before the first scan (a daemon the command started and left) can still be
+// missed.
 type processTree struct {
-	root int // heavyq itself (subreaper) or the command's pid
+	root  int           // heavyq itself (subreaper) or the command's pid
+	track *lifelineTree // without a subreaper: the pids seen so far
 }
 
 func newProcessTree(child int, subreaper bool) *processTree {
 	if subreaper {
 		return &processTree{root: os.Getpid()}
 	}
-	return &processTree{root: child}
+	return &processTree{root: child, track: &lifelineTree{self: child, seen: map[int]bool{}}}
 }
 
-// pids lists the live descendants of the root.
+// pids lists the live descendants of the root (and, without a subreaper, the
+// processes an earlier scan saw that still run).
 func (t *processTree) pids() []int {
 	if t == nil {
 		return nil
+	}
+	if t.track != nil {
+		return t.track.live()
 	}
 	return procinfo.Default.Descendants(t.root)
 }

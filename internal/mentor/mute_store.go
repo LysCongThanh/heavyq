@@ -78,8 +78,26 @@ func (s *Store) EvaluateAutoMute(p AutoMute, now time.Time) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	mutes := s.Mutes()
 	var muted []string
+	for _, m := range autoMutes(p, entries, s.Mutes()) {
+		if err := s.SetMute(m.rule, true, MutedByAuto, m.why, now); err != nil {
+			return muted, err
+		}
+		muted = append(muted, m.rule)
+	}
+	return muted, nil
+}
+
+// autoMute is a rule policy p mutes, and why.
+type autoMute struct{ rule, why string }
+
+// autoMutes is the decision of EvaluateAutoMute on entries and the current
+// mutes, without writing anything.
+func autoMutes(p AutoMute, entries []Entry, mutes map[string]MuteEntry) []autoMute {
+	if !p.Enabled {
+		return nil
+	}
+	var out []autoMute
 	for _, rule := range Rules() {
 		m := mutes[rule]
 		if m.Muted {
@@ -92,13 +110,10 @@ func (s *Store) EvaluateAutoMute(p AutoMute, now time.Time) ([]string, error) {
 			}
 		}
 		if mute, why := p.ShouldMute(rs); mute {
-			if err := s.SetMute(rule, true, MutedByAuto, why, now); err != nil {
-				return muted, err
-			}
-			muted = append(muted, rule)
+			out = append(out, autoMute{rule: rule, why: why})
 		}
 	}
-	return muted, nil
+	return out
 }
 
 // StatsWithMutes is ComputeStats over the whole log plus the mute state of

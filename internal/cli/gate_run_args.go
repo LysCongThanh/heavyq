@@ -11,7 +11,7 @@ import (
 // gateRunArgs is the argument list of `heavyq <prio> ...` for one gate
 // command. The command is the exact argv proof.Argv names, so what runs is
 // what the ledger is later matched against. fresh leaves out --cache, for the
-// re-run that confirms a flaky command.
+// re-run that confirms a flaky command or re-runs one that failed under load.
 func gateRunArgs(g repoconfig.Gate, cmd, lane string, fresh bool) []string {
 	args := []string{strconv.Itoa(g.Prio), "--gate", g.Name, "--remote", g.Remote, "--strict"}
 	if !fresh {

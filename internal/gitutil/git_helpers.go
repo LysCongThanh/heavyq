@@ -84,6 +84,16 @@ func TreeOf(repo, ref string) (string, error) {
 	return sha, nil
 }
 
+// HasDir reports whether commit rev of repo has a directory at path (relative
+// to the repository root, "/"-separated).
+func HasDir(repo, rev, path string) bool {
+	if strings.HasPrefix(rev, "-") {
+		return false
+	}
+	kind, err := git(repo, "cat-file", "-t", rev+":"+path)
+	return err == nil && kind == "tree"
+}
+
 // IsClean reports whether the work tree has no modified or untracked files.
 func IsClean(repo string) bool {
 	clean, err := workTreeClean(repo)

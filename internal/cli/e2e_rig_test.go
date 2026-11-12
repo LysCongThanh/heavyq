@@ -126,7 +126,26 @@ func newSerialRig(t *testing.T, config string) *rig {
 	env = append(env, "HEAVYQ_DIR="+filepath.Join(root, "q"), "HEAVYQ_CONFIG="+cfg,
 		"HEAVYQ_HISTORY="+filepath.Join(root, "history.jsonl"), "HEAVYQ_FLOW=off", "XDG_CACHE_HOME="+filepath.Join(root, "cache"),
 		"GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@example.com", "GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@example.com")
+	// The developer's global and system git config (hooksPath, excludesFile, templates) must not reach the
+	// rig's repositories: an empty global file of the rig's own, no system file.
+	gitconfig := filepath.Join(root, "gitconfig")
+	if err := os.WriteFile(gitconfig, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	env = append(env, "GIT_CONFIG_GLOBAL="+gitconfig, "GIT_CONFIG_NOSYSTEM=1")
 	return &rig{t: t, root: root, cwd: root, env: env}
+}
+
+// ownGroup starts cmd in a process group of its own and, when the test ends,
+// kills that whole group: whatever cmd started (a shell's children, a loop)
+// goes with it, even when the test failed half way.
+func ownGroup(t *testing.T, cmd *exec.Cmd) {
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	t.Cleanup(func() {
+		if cmd.Process != nil {
+			_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+		}
+	})
 }
 
 // proc is a started heavyq process.
@@ -165,11 +184,11 @@ func (h *rig) startWith(attr *syscall.SysProcAttr, args ...string) *proc {
 	cmd.Dir, cmd.Env, cmd.SysProcAttr = h.cwd, h.env, attr
 	p := &proc{cmd: cmd, out: &lockedBuf{}, done: make(chan int, 1)}
 	cmd.Stdout, cmd.Stderr = p.out, p.out
+	ownGroup(h.t, cmd)
 	if err := cmd.Start(); err != nil {
 		h.t.Fatal(err)
 	}
 	go func() { p.done <- processExit(cmd.Wait()) }()
-	h.t.Cleanup(func() { _ = cmd.Process.Signal(syscall.SIGKILL) })
 	return p
 }
 
@@ -227,7 +246,9 @@ func (h *rig) running(n int) {
 
 // gateFile returns a shell snippet that blocks until file name exists in root.
 func (h *rig) gateFile(name string) string {
-	return fmt.Sprintf(`while [ ! -e %q ]; do sleep 0.02; done`, filepath.Join(h.root, name))
+	// It also ends once the rig's directory is gone: a loop a failed test left
+	// behind must not spin forever.
+	return fmt.Sprintf(`while [ -d %q ] && [ ! -e %q ]; do sleep 0.02; done`, h.root, filepath.Join(h.root, name))
 }
 
 func (h *rig) touch(name string) {

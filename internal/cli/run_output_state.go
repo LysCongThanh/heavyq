@@ -41,11 +41,11 @@ type runOutput struct {
 
 // newRunOutput sets up the output of a run that started at t0 in lane.
 func newRunOutput(mode agentmode.Mode, wantDigest bool, errw io.Writer, t0 time.Time, lane string) runOutput {
-	o := runOutput{mode: mode, digest: mode.Terse() || wantDigest, stdout: os.Stdout, stderr: os.Stderr,
+	o := runOutput{mode: mode, digest: mode.Terse() || wantDigest, stdout: outputSink(os.Stdout), stderr: outputSink(os.Stderr),
 		nar: waitNarrator{w: errw, terse: mode.Terse(), t0: t0}}
 	if o.digest {
 		o.capture = agentmode.NewCapture(logDir(), agentmode.LogName(t0, os.Getpid(), lane))
-		o.stdout, o.stderr = o.capture.Wrap(os.Stdout), o.capture.Wrap(os.Stderr)
+		o.stdout, o.stderr = o.capture.Wrap(o.stdout), o.capture.Wrap(o.stderr)
 	}
 	return o
 }

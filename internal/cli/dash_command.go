@@ -89,7 +89,7 @@ func dashCommand(cfg *config.Config, args []string, stdout, stderr io.Writer) in
 			fmt.Fprintln(stderr, "heavyq: --open:", err)
 		}
 	}
-	hs := &http.Server{Handler: srv.Handler(), ReadHeaderTimeout: 5 * time.Second}
+	hs := dash.NewHTTPServer(srv.Handler())
 	if err := hs.Serve(ln); err != nil && err != http.ErrServerClosed {
 		fmt.Fprintln(stderr, "heavyq:", err)
 		return 1

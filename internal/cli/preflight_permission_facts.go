@@ -62,8 +62,11 @@ func hookRewriter(cfg *config.Config, root string) preflight.Rewriter {
 	if cfg.HookDefaultRules() {
 		rules = append(rules, hook.DefaultRules...)
 	}
-	bin := cfg.Hook.Binary
-	if bin == "" {
+	// The binary the hook writes into its rewrite, decided as the hook does
+	// (claudePreToolUse): hook.binary, "heavyq" when PATH finds this binary,
+	// else its absolute path, which a rule for `heavyq ...` does not match.
+	bin, err := resolveBinary(cfg)
+	if err != nil {
 		bin = "heavyq"
 	}
 	opts := hook.Options{Rules: rules, Permission: cfg.Hook.Permission, MaxWait: cfg.Hook.MaxWait.Duration,

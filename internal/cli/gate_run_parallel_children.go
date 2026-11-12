@@ -44,7 +44,8 @@ func (s *childSet) childArgs(runArgs []string) []string {
 // it could not be started.
 func (s *childSet) runAll(keys []int, runArgs map[int][]string) map[int]int {
 	sigs := make(chan os.Signal, 4)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGQUIT)
+	survivePipeReaderGone() // a reader of our output that left must not orphan the children
 	defer signal.Stop(sigs)
 	done := make(chan struct{})
 	defer close(done)
@@ -89,10 +90,14 @@ func (s *childSet) forward(sig os.Signal) {
 
 func (s *childSet) runOne(n int, runArgs []string) int {
 	cmd := exec.Command(s.exe, s.childArgs(runArgs)...)
-	// Its own process group: a terminal Ctrl-C reaches only the parent, which
+	// Its own session: a terminal Ctrl-C reaches only the parent, which
 	// forwards it once, instead of every child getting it twice. No stdin: the
-	// children must not fight over the parent's.
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	// children must not fight over the parent's. Not just a process group: in a
+	// background group of the terminal's session, a command that opens /dev/tty
+	// to prompt (git credentials, a passphrase) would be stopped by SIGTTIN and
+	// hang the gate with its slot held. With no controlling terminal the open
+	// fails at once instead.
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
 	cmd.Stdin = nil
 	out, err := cmd.StdoutPipe()
 	if err != nil {

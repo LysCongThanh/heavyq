@@ -13,6 +13,7 @@ import (
 	"github.com/LysCongThanh/heavyq/internal/history"
 	"github.com/LysCongThanh/heavyq/internal/ledgerindex"
 	"github.com/LysCongThanh/heavyq/internal/queue"
+	"github.com/LysCongThanh/heavyq/internal/runident"
 	"github.com/LysCongThanh/heavyq/internal/slots"
 )
 
@@ -92,7 +93,7 @@ func (r *run) cachePhase(lane string) (rc int, done bool) {
 		if !waited {
 			waited = true
 			leader, _ := cs.flight.Leader(key)
-			fmt.Fprintf(r.stderr, "heavyq: an identical run is in progress (lane %s); waiting for its result instead of running it again\n", leader.Lane)
+			r.note("an identical run is in progress (lane %s); waiting for its result instead of running it again", leader.Lane) // an agent sees the wait in the digest
 			if unfollow, err = cs.flight.Follow(me); err != nil {
 				r.verbosef("cannot register as waiting: %v", err)
 			}
@@ -103,6 +104,7 @@ func (r *run) cachePhase(lane string) (rc int, done bool) {
 			return ExitMaxWait, true
 		}
 		if s := r.pollOrSignal(followerPoll); s != nil {
+			r.interrupted = true
 			r.digestNotRun(signalExit(s))
 			return signalExit(s), true
 		}
@@ -145,7 +147,7 @@ func (r *run) replayCached(m *cache.Meta, coalesced bool, lane string) (int, boo
 // key's when the work tree still has it, and unknown ("") when it changed.
 func (r *run) replayedCheckout() gitutil.Checkout {
 	co := r.checkoutFor(config.LocalName)
-	if r.wholeTree(co) != r.cache.tree {
+	if r.wholeTree(config.LocalName, co) != r.cache.tree {
 		r.verbosef("ledger: the work tree changed since the cache key was computed; no tree identity recorded")
 		co.Tree = ""
 	}
@@ -153,8 +155,11 @@ func (r *run) replayedCheckout() gitutil.Checkout {
 }
 
 // cacheFinish stores the leader's result (when the command really ran on
-// the same clean tree) and hands leadership back.
-func (r *run) cacheFinish(machine string, rc int, ran bool, runSecs float64) {
+// the same clean tree, with the base the key names) and hands leadership back. tree is the whole tree the
+// command ran on ("" when unknown, or when a local work tree changed during the run): the key is computed
+// before the queue wait, so a tree edited during the wait and restored by the end has the key again, but the
+// result is of the edited tree and must not be stored under it.
+func (r *run) cacheFinish(machine string, rc int, ran bool, runSecs float64, tree string) {
 	cs := r.cache
 	if cs == nil || cs.lead == nil || cs.rec == nil {
 		return
@@ -173,6 +178,15 @@ func (r *run) cacheFinish(machine string, rc int, ran bool, runSecs float64) {
 	case key != cs.key:
 		rec.Abort()
 		cs.note = "the work tree changed during the run (" + orDefault(why, "different commit") + "); nothing stored"
+	case r.baseFixed && r.base != runident.BaseSHA(r.localDir(), r.opts.BaseRef):
+		// The key holds the local base (unchanged, or the case above caught it),
+		// but the command got another one or none (a base push failed): its
+		// result is not the key's, and a replay would record that base for it.
+		rec.Abort()
+		cs.note = "the command did not get the base ref the key was computed with; nothing stored"
+	case tree != cs.tree:
+		rec.Abort()
+		cs.note = "the command ran on another tree than the one the key was computed on; nothing stored"
 	case machine == config.LocalName && r.siblingDrift() != "":
 		rec.Abort()
 		cs.note = "a --with sibling changed during the run (" + r.siblingDrift() + "); nothing stored"

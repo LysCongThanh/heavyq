@@ -10,17 +10,18 @@ package pools
 // TestReservedCoversEveryVariableInTheRepository fails when a HEAVYQ_ variable
 // is written anywhere in the repository and is missing here.
 var reservedNames = []string{
-	// Set for every local command.
-	"machine", "slot", "lane", "active",
+	// Set for every local command, and the lifeline mode a local command runs under.
+	"machine", "slot", "lane", "active", "lifeline",
 	// Defaults and switches read from the environment (man page, docs/configuration.md).
 	"config", "dir", "remote", "auto", "session", "item", "output", "agent", "history",
 	"steer", "mentor", "mentor_seed", "notify", "notify_budget", "stances",
 	"flow", "flow_gh", "flow_quota_grace",
 	// The remote job protocol (internal/remote) and what a cache hook is given.
-	"cmd_b64", "subdir", "with", "watch_stdin", "base_ref", "base_sha", "env_path", "hook_b64",
+	"cmd_b64", "cmd_env_b64", "job_quiet", "subdir", "with", "watch_stdin", "base_ref", "base_sha", "env_path", "hook_b64",
 	"job_id", "worktree", "cache_dir", "cmd_len",
 	// Test switches, the installer and the example hook script.
 	"test", "test_fake_metrics", "test_norace", "test_network", "test_mac_remote", "test_mac_env_path",
+	"test_mentor_budget", "test_mentor_delay",
 	"update_golden", "lease_test_helper", "lease_test_helper_exit", "release_base", "hook_pattern",
 	"slots_pidns_helper", "control_test_writer", "control_test_target_writer",
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/LysCongThanh/heavyq/internal/cache"
 	"github.com/LysCongThanh/heavyq/internal/config"
 	"github.com/LysCongThanh/heavyq/internal/gitutil"
+	"github.com/LysCongThanh/heavyq/internal/redact"
 )
 
 // nextRetryLater is the instruction after a max-wait: the one thing an agent
@@ -29,7 +30,7 @@ func (r *run) announceAdmitted(c *claim, waited time.Duration, co gitutil.Checko
 			fmt.Fprintf(r.stderr, "heavyq: placed on %s by score (clean repo, commit %.12s; force local with --remote local)\n", c.machine, r.pl.sha)
 		}
 		fmt.Fprintf(r.stderr, "heavyq: our turn after %s (prio %d, lane %s, %s/%s): %s\n",
-			fmtDur(waited), r.me.Prio, r.me.Lane, c.machine, c.slot, r.me.Cmd)
+			fmtDur(waited), r.me.Prio, r.me.Lane, c.machine, c.slot, redact.OneLine(r.me.Cmd))
 		if left > 0 {
 			fmt.Fprint(r.stderr, unshippedWarning(left, c.machine))
 		}
@@ -46,7 +47,7 @@ func (r *run) announceAdmitted(c *claim, waited time.Duration, co gitutil.Checko
 		extra += ", " + uncommittedFiles(left) + " not shipped"
 	}
 	fmt.Fprintf(r.stderr, "heavyq: running %s (p%d, lane %s, %s/%s%s)\n",
-		r.me.Cmd, r.me.Prio, r.me.Lane, c.machine, c.slot, extra)
+		redact.OneLine(r.me.Cmd), r.me.Prio, r.me.Lane, c.machine, c.slot, extra)
 }
 
 // shortTreeID is the tree id as a digest shows it: 12 characters, and for a
@@ -84,6 +85,9 @@ func (r *run) digestRan(rc int, machine string, co gitutil.Checkout, ran, waited
 	case r.remoteSetupFailed: // heavyq's own 77, never a command's
 		res.Verdict, res.Why = agentmode.NotRun, "remote setup on "+machine+" failed; the command did not run"
 		res.Next = nextRemoteDown
+	case rc == ExitConnLost && machine != config.LocalName:
+		res.Verdict, res.Why = agentmode.Interrupted, "the connection to "+machine+" was lost; the remote stopped the command"
+		res.Next = r.failNext(rc, machine)
 	case r.distrust != "":
 		res.Verdict, res.Why, res.Next = agentmode.Suspect, r.distrust+"; this result proves nothing", nextUntrusted
 	case r.suspect != "":
@@ -95,6 +99,9 @@ func (r *run) digestRan(rc int, machine string, co gitutil.Checkout, ran, waited
 		}
 	case rc != 0:
 		res.Verdict, res.Next = agentmode.Fail, r.failNext(rc, machine)
+	}
+	if (res.Verdict == agentmode.Pass || res.Verdict == agentmode.Fail) && res.Detail == "" {
+		res.Detail = shellPipeNote(r.opts.Argv) // the warning a person reads as its own line
 	}
 	r.printDigest(res)
 }

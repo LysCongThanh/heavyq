@@ -117,5 +117,5 @@ fail when it and the code disagree.
 ## Uninstall
 
 `rm ~/.local/bin/heavyq` (or wherever you installed it). heavyq keeps its queue in `$XDG_RUNTIME_DIR/heavyq`
-(a temp directory), its ledger in `$XDG_STATE_HOME/heavyq` and its result cache in `$XDG_CACHE_HOME/heavyq`;
+(a temp directory; without a runtime directory, `heavyq-<uid>` in the per-user temp directory), its ledger in `$XDG_STATE_HOME/heavyq` and its result cache in `$XDG_CACHE_HOME/heavyq`;
 delete them if you want them gone.

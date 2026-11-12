@@ -59,8 +59,11 @@ heavyq: PASS go test ./... · tree 3f2a9c1d7b0e · 41s (waited 2m5s)
   within 2 s says nothing but the running line. The heartbeat starts at 5 minutes, not 60 s: a 60 s one makes a
   2-minute wait print four lines, over the budget below.
 - **No ANSI, ever.** heavyq never colours its own output (so `NO_COLOR` has nothing to switch off) and
-  strips escape sequences from every line it quotes. A command's own colours pass through untouched, as
-  before.
+  strips escape sequences from every line it quotes, the command line included: a newline, carriage return,
+  tab or escape byte in argv (a multi-line `sh -c` script) becomes a space, so each line stays one line. A
+  command's own colours pass through untouched, as before.
+- **Nothing else.** Notes a person gets as lines of their own (a `sh -c` pipe hides a failing first stage, a
+  remote job's banner, a remote's setup error in full) are in the digest for an agent, or left out.
 - A cache hit or a coalesced result replaces the "cached result from ..." sentences with the digest.
 
 ## The digest
@@ -82,11 +85,11 @@ next: fix the failure above, then re-run this command
 |---|---|---|
 | `PASS` | the command exited 0 | none |
 | `PASS?` | it exited 0, but its output has a shell "command not found" line (`sh: 1: tsc: not found`, `bash: line 1: tsc: command not found`, `zsh: command not found: tsc`): usually a pipeline (`a \| tail`) whose last stage succeeded. The second line quotes the offending line. The run is recorded as `suspect` (never as proof) and not cached. `--strict`, gates and item proofs make it `FAIL` with exit 127 | install the missing tool where it ran, or make the pipe fail (`bash -o pipefail -c`), then re-run |
-| `FAIL` | it exited non-zero (header shows `exit N`) | fix, then re-run (`... then run: heavyq gate run <name>` under `--gate`); 127 and 126 say what is wrong; 255 from a remote says the connection was lost (a remote command's own 255 is reported as 96); a remote run whose output says `origin/<branch>` is missing there says to re-run with `--base-ref origin/<branch>` ([remote](remote.md)) |
+| `FAIL` | it exited non-zero (header shows `exit N`) | fix, then re-run (`... then run: heavyq gate run <name>` under `--gate`); 127 and 126 say what is wrong (a remote command's own 255 is reported as 96, a `FAIL`); a remote run whose output says `origin/<branch>` is missing there says to re-run with `--base-ref origin/<branch>` ([remote](remote.md)) |
 | `REUSED` | the result of an identical run on this exact tree was replayed | none when it passed: the second line says `already passed on this exact tree at <time> (lane X); do not re-run`. A replayed failure says `already failed (exit N) ...` and ends with `next: change the code, then re-run this command` |
 | `NOT RUN` | heavyq gave up before the command ran: `--max-wait` (75), remotes down (76), remote setup failed (77; a command that exits 77 itself is a `FAIL`), the work tree changed while waiting or the queue itself failed (2) | 75: `retry later; don't bypass heavyq`. 76 and 77: retry later or add `--remote local`. 2: ``run it again; if that repeats, `heavyq why` explains the queue`` |
 | `CANCELLED` | an operator cancelled it (78) | `cancelled by operator; ask before re-running` |
-| `INTERRUPTED` | a signal stopped it (128+n) | `run it again if you still need the result` |
+| `INTERRUPTED` | a signal stopped it (128+n), or the connection to a remote was lost (255; the remote stopped the command, and the ledger line is `interrupted`) | 128+n: `run it again if you still need the result`. 255: retry, or add `--remote local` |
 
 Every verdict except `PASS` and a replayed pass ends with exactly one `next:` line, and it is the last
 line of the output.

@@ -49,11 +49,11 @@ func gatherSteerFacts(cfg *config.Config, dir, lane string) (steer.Facts, error)
 		if set, err = loadItemSet(cfg, root); err != nil {
 			return steer.Facts{}, err
 		}
-		f.Goal = set.file.Goal
+		f.Goal = redact.Command(set.file.Goal) // free text, as in notifications (flow_gather.go)
 	}
 	if repo != nil {
 		if g, ok := pickGate(repo, "", io.Discard); ok {
-			f.Gate = gateFact(g, subjectOfWith(cfg, root, g.Paths, nil), recs)
+			f.Gate = gateFact(g, gateSubject(cfg, root, g), recs) // its `paths` and its `with` siblings' pinned commits too
 		}
 	}
 	if set == nil {
@@ -98,7 +98,7 @@ func treeRecords(subj proof.Subject) []history.Record {
 // like its status; an item nobody works on, on the tree the items were read from.
 func itemFact(set *itemSet, r itemRow, recs []history.Record, memo map[string][]history.Record) steer.ItemFact {
 	st := r.Status
-	it := steer.ItemFact{ID: st.ID, Text: r.Item.Text, State: st.State, Lane: st.Lane, Needs: st.Needs,
+	it := steer.ItemFact{ID: st.ID, Text: r.Item.Text, State: st.State, Lane: st.Lane, Needs: redact.Command(st.Needs),
 		Commit: st.Commit, Done: st.Done, NoProof: r.Item.Proof.Kind == "", Reason: redact.Command(st.Reason)}
 	if !st.Expires.IsZero() {
 		it.Until = st.Expires.Local().Format("15:04")

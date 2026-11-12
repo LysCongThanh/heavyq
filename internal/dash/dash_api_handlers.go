@@ -31,7 +31,26 @@ func writeJSON(w http.ResponseWriter, code int, v any) {
 }
 
 func writeError(w http.ResponseWriter, code int, msg string) {
+	// Close the connection after a refusal instead of keeping it alive (and
+	// first draining a request body nobody reads): a local user without the
+	// token cannot hold sockets and goroutines with requests it never finishes.
+	// net/http still reads up to 256 KiB of an unread body when the handler
+	// ends: no more reading from this connection at all.
+	w.Header().Set("Connection", "close")
+	_ = http.NewResponseController(w).SetReadDeadline(time.Now())
 	writeJSON(w, code, map[string]string{"error": msg})
+}
+
+// IdleTimeout is how long a keep-alive connection may wait for its next
+// request (net/http has no limit unless one is set). Long enough for the
+// page's polling, short enough that idle sockets do not pile up.
+const IdleTimeout = time.Minute
+
+// NewHTTPServer is the http.Server that serves h: headers within 5 s, idle
+// connections closed after IdleTimeout. No ReadTimeout or WriteTimeout: they
+// would cut the long-lived event stream.
+func NewHTTPServer(h http.Handler) *http.Server {
+	return &http.Server{Handler: h, ReadHeaderTimeout: 5 * time.Second, IdleTimeout: IdleTimeout}
 }
 
 func (s *Server) meta(w http.ResponseWriter, _ *http.Request) {

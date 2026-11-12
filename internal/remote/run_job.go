@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -23,7 +24,8 @@ var jobScript string
 const (
 	ExitSlotBusy    = 97
 	ExitSetupFailed = 98
-	// ExitConnectionLost is what ssh returns when the connection drops.
+	// ExitConnectionLost is what ssh returns when the connection drops. The job
+	// never returns it for the command, so it always means the transport.
 	ExitConnectionLost = 255
 )
 
@@ -39,8 +41,41 @@ type JobSpec struct {
 	Siblings []string // "name@sha"
 	BaseRef  string
 	BaseSHA  string
-	Stdout   io.Writer
-	Stderr   io.Writer
+	// Env (NAME=value) is set and Unset is removed in the command's
+	// environment, whatever the remote's own environment holds: the variables
+	// that are part of the run's identity (cache.env). The job's own steps do
+	// not see them.
+	Env   []string
+	Unset []string
+	// Quiet leaves out the job's banner line (machine, commit, slot): an
+	// agent's run prints only heavyq's running line and digest.
+	Quiet  bool
+	Stdout io.Writer
+	Stderr io.Writer
+}
+
+var envName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
+
+// commandEnv is the shell code that gives the command Env and Unset ("" for
+// none). Names are checked (and the job's own HEAVYQ_ names refused), values
+// quoted.
+func commandEnv(set, unset []string) (string, error) {
+	var b strings.Builder
+	ok := func(n string) bool { return envName.MatchString(n) && !strings.HasPrefix(n, "HEAVYQ_") }
+	for _, kv := range set {
+		n, v, _ := strings.Cut(kv, "=")
+		if !ok(n) {
+			return "", fmt.Errorf("cannot pass the variable %q to a remote job", n)
+		}
+		b.WriteString("export " + n + "=" + ShellQuote(v) + "\n")
+	}
+	for _, n := range unset {
+		if !ok(n) {
+			return "", fmt.Errorf("cannot pass the variable %q to a remote job", n)
+		}
+		b.WriteString("unset " + n + "\n")
+	}
+	return b.String(), nil
 }
 
 // Started is a running remote job.
@@ -60,7 +95,14 @@ func StartJob(s JobSpec) (*Started, error) {
 		!config.SafeName.MatchString(s.Lane) || !config.SafeName.MatchString(s.Slot) {
 		return nil, errors.New("unsafe remote job parameters")
 	}
-	line := b64(jobCommandLine(s.Argv))
+	cmdEnv, err := commandEnv(s.Env, s.Unset)
+	if err != nil {
+		return nil, err
+	}
+	// The identity variables travel with the command line on stdin, not in an
+	// environment variable: everything in env goes into the transport's one
+	// exec argument, and their values could fill it as a long argv would.
+	line := b64(cmdEnv + jobCommandLine(s.Argv))
 	env := []string{
 		"HEAVYQ_CMD_LEN=" + strconv.Itoa(len(line)),
 		"HEAVYQ_SUBDIR=" + s.Subdir,
@@ -75,6 +117,11 @@ func StartJob(s JobSpec) (*Started, error) {
 		hook = b64(s.Machine.CacheHook)
 	}
 	env = append(env, "HEAVYQ_HOOK_B64="+hook)
+	quiet := ""
+	if s.Quiet {
+		quiet = "1"
+	}
+	env = append(env, "HEAVYQ_JOB_QUIET="+quiet)
 	cmd, err := Transport(s.Machine.Transport).Command(context.Background(), env, jobScript, s.Machine.WorkDir, s.Repo, s.SHA, s.Lane, s.Slot)
 	if err != nil {
 		return nil, err

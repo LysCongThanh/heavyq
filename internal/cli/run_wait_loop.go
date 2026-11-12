@@ -3,6 +3,7 @@ package cli
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -39,7 +40,10 @@ func (r *run) waitForTurn() (*claim, int) {
 				r.giveUp("code changed while waiting (%s); giving up", r.pl.localWhy)
 				return nil, ExitUsage
 			}
-			r.me.Candidates = r.pl.machines()
+			if ms := r.pl.machines(); !slices.Equal(ms, r.me.Candidates) {
+				// Other waiters schedule against the ticket file: round publishes it.
+				r.me.Candidates, r.candidatesMoved = ms, true
+			}
 		}
 		tried := time.Now()
 		c, pos, total, ahead, err := r.round(&headSince)
@@ -49,6 +53,10 @@ func (r *run) waitForTurn() (*claim, int) {
 			return nil, ExitUsage
 		}
 		if c != nil {
+			if rc, stop := r.stoppedDuringRound(); stop {
+				c.releaseAll()
+				return nil, rc
+			}
 			return c, 0
 		}
 		if r.moved { // heavyq retarget: the new machines get their own probe and remote-down clock
@@ -71,6 +79,7 @@ func (r *run) waitForTurn() (*claim, int) {
 			return nil, ExitMaxWait
 		}
 		if s := r.pollOrSignal(r.cfg.Queue.Poll.Duration); s != nil {
+			r.interrupted = true
 			return nil, signalExit(s)
 		}
 	}
@@ -116,11 +125,14 @@ func (r *run) round(headSince *time.Time) (*claim, int, int, []*queue.Ticket, er
 	} else if headSince.IsZero() {
 		*headSince = time.Now()
 	}
-	// Publish the anti-starvation clock and the config this round decides
-	// with, for status / why / dash.
-	if !was.Equal(*headSince) || r.me.ConfigSum != r.cfg.Origin.Sum {
+	// Publish the anti-starvation clock, the config this round decides with and
+	// the machines the ticket may use now, for status / why / dash and the other
+	// waiters, which schedule against the ticket file.
+	if !was.Equal(*headSince) || r.me.ConfigSum != r.cfg.Origin.Sum || r.candidatesMoved {
 		r.me.HeadSince, r.me.ConfigSum = *headSince, r.cfg.Origin.Sum
-		_ = r.q.Rewrite(r.me)
+		if r.q.Rewrite(r.me) == nil {
+			r.candidatesMoved = false
+		}
 	}
 	var waited time.Duration
 	if head {
@@ -143,12 +155,35 @@ func (r *run) round(headSince *time.Time) (*claim, int, int, []*queue.Ticket, er
 	return c, pos, len(snap.Waiting), ahead, nil
 }
 
+// stoppedDuringRound reports a cancel request or a signal that arrived during
+// the round that just claimed a slot (the probes alone can take seconds): the
+// ticket then leaves the queue with rc instead of starting its command.
+func (r *run) stoppedDuringRound() (rc int, stop bool) {
+	if controlBox().CancelRequested(r.me.Name) {
+		r.giveUp("cancelled by an operator while waiting")
+		r.cancelled = true
+		return ExitCancelled, true
+	}
+	select {
+	case s := <-r.sigs:
+		r.interrupted = true
+		return signalExit(s), true
+	default:
+		return 0, false
+	}
+}
+
 // stillSafeRemotely re-verifies an implicit auto ticket right before it goes
-// remote, and ships the commit that is checked out now.
+// remote, and ships the commit that is checked out now. A --ref other than
+// HEAD was pinned to its commit at enqueue and keeps it: that commit is what
+// the run was asked for.
 func (r *run) stillSafeRemotely() bool {
 	repo, why := autoEligible(r.pl.wd, &r.opts, r.pl.siblings)
 	if why != "" || repo != r.pl.repo {
 		return false
+	}
+	if !r.pl.refIsHead {
+		return true
 	}
 	sha, err := gitutil.ResolveCommit(repo, "HEAD")
 	if err != nil {

@@ -10,6 +10,7 @@ import (
 	"github.com/LysCongThanh/heavyq/internal/gitutil"
 	"github.com/LysCongThanh/heavyq/internal/history"
 	"github.com/LysCongThanh/heavyq/internal/itemstatus"
+	"github.com/LysCongThanh/heavyq/internal/redact"
 	"github.com/LysCongThanh/heavyq/internal/snapshot"
 )
 
@@ -91,7 +92,7 @@ func repoLaneItems(cfg *config.Config, root string, recs []history.Record, now t
 			at[s.Lane] = i
 			out = append(out, snapshot.LaneItems{Lane: s.Lane, Repo: filepath.Base(set.root), Items: []snapshot.ItemChip{}})
 		}
-		chip := snapshot.ItemChip{ID: s.ID, State: s.State, Needs: s.Needs, At: s.At}
+		chip := snapshot.ItemChip{ID: s.ID, State: s.State, Needs: redact.Command(s.Needs), At: s.At}
 		if s.State == itemstatus.Proven {
 			chip.Commit = s.Commit
 		}

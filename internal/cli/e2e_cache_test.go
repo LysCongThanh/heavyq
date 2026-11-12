@@ -84,10 +84,12 @@ func TestE2ECacheSkipsDirtyTreesButNotIgnoredFiles(t *testing.T) {
 		t.Fatalf("dirty tracked file: runs=%d\n%s", h.runs("d"), out)
 	}
 	gitIn(t, h, repo, "checkout", "marker.txt")
-	write("new.txt", "x") // untracked, not ignored
+	h.run(cacheArgs([]string{"--cache"}, argv)...) // the clean tree: runs, and its result is stored
+	write("new.txt", "x")                          // untracked, not ignored
 	h.run(cacheArgs([]string{"--cache"}, argv)...)
-	if h.runs("d") != 3 || !strings.Contains(h.read("history.jsonl"), `"cache":"skip"`) {
-		t.Fatalf("untracked file must disable the cache, runs=%d", h.runs("d"))
+	// Were the untracked file ignored, this would replay the clean tree's stored result.
+	if r := h.lastRecord(); h.runs("d") != 4 || r.Cache != "skip" || !strings.Contains(r.CacheNote, "untracked") {
+		t.Fatalf("untracked file must disable the cache, runs=%d %+v", h.runs("d"), r)
 	}
 	if err := os.Remove(filepath.Join(repo, "new.txt")); err != nil {
 		t.Fatal(err)
@@ -98,7 +100,7 @@ func TestE2ECacheSkipsDirtyTreesButNotIgnoredFiles(t *testing.T) {
 	write("debug.log", "ignored")
 	h.run(cacheArgs([]string{"--cache"}, argv)...)
 	h.run(cacheArgs([]string{"--cache"}, argv)...)
-	if h.runs("d") != 4 {
+	if h.runs("d") != 5 {
 		t.Fatalf("ignored files must not prevent caching, runs=%d", h.runs("d"))
 	}
 	gitIn(t, h, repo, "commit", "-q", "--allow-empty", "-m", "same tree") // same tree: still a hit
@@ -106,7 +108,7 @@ func TestE2ECacheSkipsDirtyTreesButNotIgnoredFiles(t *testing.T) {
 	write("marker.txt", "v2\n")
 	gitIn(t, h, repo, "commit", "-q", "-am", "new tree")
 	h.run(cacheArgs([]string{"--cache"}, argv)...)
-	if h.runs("d") != 5 {
+	if h.runs("d") != 6 {
 		t.Fatalf("key must follow the tree of HEAD, runs=%d", h.runs("d"))
 	}
 }

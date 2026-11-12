@@ -33,15 +33,12 @@ func gatePathsOf(dir, name string) []string {
 	return g.Paths
 }
 
-// wholeTree is the id of the whole tree co was identified on. A scoped run is recorded on the scoped id, but the
-// result cache is keyed by, and a replayed result proves, the whole tree: a replay is compared on that one.
-func (r *run) wholeTree(co gitutil.Checkout) string {
-	if len(r.gatePaths()) == 0 {
+// wholeTree is the id of the whole tree of the code co was identified on, on machine, or "" when co has no tree
+// (a local run whose work tree changed under it). A scoped run is recorded on the scoped id, but the result
+// cache is keyed by, and a replayed result proves, the whole tree: a store or a replay is compared on that one.
+func (r *run) wholeTree(machine string, co gitutil.Checkout) string {
+	if co.Tree == "" || len(r.gatePaths()) == 0 {
 		return co.Tree
 	}
-	whole, err := gitutil.Identify(r.localDir())
-	if err != nil {
-		return ""
-	}
-	return whole.Tree
+	return r.checkoutOn(machine, nil).Tree
 }

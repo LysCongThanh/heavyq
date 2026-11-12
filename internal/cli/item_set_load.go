@@ -70,15 +70,26 @@ func loadItemSet(cfg *config.Config, dir string) (*itemSet, error) {
 func (s *itemSet) subject(root string) proof.Subject { return s.scopedSubject(root, nil) }
 
 // proofSubject is the identity of the code in work tree root that proof p is judged on: the files named by the
-// `paths` of the gate p stands for, else the whole tree.
+// `paths` of the gate p stands for, else the whole tree. A gate with `with` siblings carries their pinned commits,
+// exactly as the gate's runs record them (gateSubject).
 func (s *itemSet) proofSubject(root string, p anchor.Proof) proof.Subject {
-	var scope []string
-	if p.Kind == anchor.ProofGate {
-		if g, ok := proofGate(s, p.Value); ok {
-			scope = g.Paths
-		}
+	if p.Kind != anchor.ProofGate {
+		return s.subject(root)
 	}
-	return s.scopedSubject(root, scope)
+	g, ok := proofGate(s, p.Value)
+	if !ok {
+		return s.subject(root)
+	}
+	if len(g.With) == 0 {
+		return s.scopedSubject(root, g.Paths)
+	}
+	key := root + "\x00gate:" + g.Name
+	if sub, ok := s.subjects[key]; ok {
+		return sub
+	}
+	sub := gateSubject(s.cfg, root, g)
+	s.subjects[key] = sub
+	return sub
 }
 
 // scopedSubject is subject for the code a gate's `paths` (scope) name, cached by work tree and scope.

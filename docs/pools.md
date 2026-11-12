@@ -33,7 +33,10 @@ The command gets one environment variable per value: `HEAVYQ_PORT_1`, `HEAVYQ_PO
   wants: no deadlock.
 - **Released with the run.** Each value is a `flock(2)` file under `<queue dir>/pools/<pool>/<value>.lock`, held by the
   heavyq process of the run, with the same liveness as a slot: if heavyq dies (even by `SIGKILL`), the kernel frees the
-  value and the dead ticket is pruned. The command never inherits the lock descriptors.
+  value and the dead ticket is pruned. The command never inherits the lock descriptors, and it does not outlive
+  heavyq: it runs under a lifeline process that stops its whole tree (SIGTERM, then SIGKILL after 2 s) as soon as
+  heavyq is gone, so a freed value is not still in use. A daemon the command leaves behind on purpose after it
+  exited is not tracked and holds nothing.
 - **Ports are probed.** A pool is a port pool when it is called `port` or ends in `_port` (or has `port = true`;
   `port = false` turns it off). heavyq never hands out a port that something listens on right now (a listen probe on
   `127.0.0.1` and `::1`), and never one inside the OS ephemeral range, where any outgoing connection may take it:

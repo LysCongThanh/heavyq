@@ -108,10 +108,17 @@ func ruleFor(cmd string) string {
 	if w := strings.Fields(cmd); len(w) > 0 && wrappers[w[0]] {
 		return "Bash(" + cmd + ")" // "sh -c:*" would allow anything: only the exact command
 	}
-	if pre, rest, ok := strings.Cut(cmd, " -- "); ok && strings.HasPrefix(pre, "heavyq ") {
+	// heavyq, or its absolute path when the hook writes that (not on PATH).
+	if pre, rest, ok := strings.Cut(cmd, " -- "); ok && isHeavyq(pre) {
 		return "Bash(" + pre + " -- " + firstWords(rest, 2) + " *)"
 	}
 	return "Bash(" + firstWords(cmd, 2) + ":*)"
+}
+
+// isHeavyq reports whether the words before a rewrite's "--" start with heavyq.
+func isHeavyq(pre string) bool {
+	w := strings.Fields(pre)
+	return len(w) > 1 && (w[0] == "heavyq" || strings.HasSuffix(w[0], "/heavyq"))
 }
 
 // wrappers run other commands: a prefix rule on them allows whatever follows.

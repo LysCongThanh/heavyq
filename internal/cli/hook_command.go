@@ -14,6 +14,7 @@ import (
 	"github.com/LysCongThanh/heavyq/internal/history"
 	"github.com/LysCongThanh/heavyq/internal/hook"
 	"github.com/LysCongThanh/heavyq/internal/queue"
+	"github.com/LysCongThanh/heavyq/internal/redact"
 )
 
 const hookUsage = `usage:
@@ -108,7 +109,7 @@ func claudePreToolUse(cfgPath string, explicit bool, stdin io.Reader, stdout io.
 		hookLog("error: write stdout: %v", err)
 		return 0
 	}
-	hookLog("%s", why)
+	hookLog("%s", redact.Command(why)) // the rewrite quotes the command line, env assignments included
 	return 0
 }
 

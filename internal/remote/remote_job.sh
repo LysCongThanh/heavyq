@@ -2,9 +2,12 @@
 # heavyq remote job. Runs ON the remote machine, started by heavyq through the
 # configured transport; not meant to be run by hand.
 #   args:  <work_dir> <repo> <sha> <label> <slot>
-#   stdin: the command line (shell syntax, base64, HEAVYQ_CMD_LEN bytes), then a lifeline
-#   env:   HEAVYQ_CMD_LEN     length of the command line on stdin (it is not an argument: one exec argument
-#                             holds at most 128 KiB, a command line as long as a local argv does not fit)
+#   stdin: the command (shell syntax, base64, HEAVYQ_CMD_LEN bytes): the export/unset lines of the run's
+#          identity variables (cache.env), if any, then the command line; after it, a lifeline
+#   env:   HEAVYQ_CMD_LEN     length of the command on stdin (it is not an argument: one exec argument holds
+#                             at most 128 KiB, a command line as long as a local argv does not fit, and the
+#                             identity variables' values count against that argument too)
+#          HEAVYQ_JOB_QUIET=1 leave out the banner line (an agent's run)
 #          HEAVYQ_SUBDIR      subdirectory of the repo to run in ("" = root)
 #          HEAVYQ_WITH        sibling repos "name@sha,name@sha"
 #          HEAVYQ_BASE_REF / HEAVYQ_BASE_SHA   create refs/remotes/<ref> in the job's checkout
@@ -195,7 +198,7 @@ if [[ -n "$SUB" ]]; then
   [[ "$SUB" =~ ^[A-Za-z0-9._/-]+$ && "$SUB" != *..* && -d "$WT/$SUB" ]] || fail "bad subdirectory '$SUB'"
 fi
 cd "$WT/$SUB" || fail "cannot enter the checkout"
-echo "heavyq-job: $(hostname 2> /dev/null || echo remote): $REPO@${SHA:0:12}, lane $LABEL, slot $SLOT" >&2
+[[ "${HEAVYQ_JOB_QUIET:-}" == 1 ]] || echo "heavyq-job: $(hostname 2> /dev/null || echo remote): $REPO@${SHA:0:12}, lane $LABEL, slot $SLOT" >&2
 export HEAVYQ_JOB_ID="$ID" HEAVYQ_WORKTREE="$WT" HEAVYQ_CACHE_DIR="$W/cache"
 
 # isolated starts "$@" in the background, in a session and process group of its own, and sets CHILD to its
@@ -220,10 +223,12 @@ if [[ -n "${HEAVYQ_HOOK_B64:-}" ]]; then
   wait "$CHILD"; rc=$?; CHILD=""
   [[ "$rc" -eq 0 ]] || fail "cache hook failed"
 fi
+# The command file sets or unsets the variables of the run's identity (cache.env) as heavyq recorded them,
+# for the command only, then runs the command line.
 { printf '%s' "$CMD_B64" | base64 "$B64D" > "$CMDF"; } 2> /dev/null && [[ -s "$CMDF" ]] || fail "cannot decode command"
 # The job's own inputs are not the command's: a heavyq (or a test of heavyq's job script) run by the
 # command would otherwise read this job's base ref, siblings or command as its own.
-unset CMD_B64 HEAVYQ_CMD_LEN HEAVYQ_SUBDIR HEAVYQ_WITH HEAVYQ_BASE_REF HEAVYQ_BASE_SHA HEAVYQ_HOOK_B64 HEAVYQ_WATCH_STDIN HEAVYQ_ENV_PATH
+unset CMD_B64 HEAVYQ_CMD_LEN HEAVYQ_JOB_QUIET HEAVYQ_SUBDIR HEAVYQ_WITH HEAVYQ_BASE_REF HEAVYQ_BASE_SHA HEAVYQ_HOOK_B64 HEAVYQ_WATCH_STDIN HEAVYQ_ENV_PATH
 isolated bash "$CMDF"
 wait "$CHILD"; rc=$?
 kill_group "$CHILD"; CHILD=""

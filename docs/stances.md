@@ -260,5 +260,6 @@ just cloned must not be able to do that. They work like `direnv allow`:
   dir in `stance-trust.json`, beside the ledger (mode 0600). Any edit, new file, removed file or rename changes
   the hash and asks again. `heavyq trust --list` shows what is trusted, `--revoke` forgets the repository.
 - `heavyq trust` is refused when it runs under a coding agent (`CLAUDECODE` and friends, see agent mode): a
-  stance file could talk an agent into granting itself trust. Read the files, then run it from your terminal.
+  stance file could talk an agent into granting itself trust. `HEAVYQ_OUTPUT` and `HEAVYQ_AGENT` only choose the
+  output style and do not change this. Read the files, then run it from your terminal.
 - An unreadable or damaged trust file trusts nothing.

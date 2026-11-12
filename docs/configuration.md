@@ -57,7 +57,9 @@ The remote-only keys (`ssh`, `transport`, `work_dir`, `git_url`, `cache_hook`, `
 | `cache.env` | `[]` | variable names whose values are part of the key, e.g. `["CI", "NODE_ENV"]` |
 
 Environment: `HEAVYQ_LANE` (default lane), `HEAVYQ_REMOTE` (default `--remote`), `HEAVYQ_AUTO=0` (never
-auto-place), `HEAVYQ_DIR` (queue dir; default `$XDG_RUNTIME_DIR/heavyq`, else `<temp dir>/heavyq-<uid>`, i.e. `$TMPDIR` or `/tmp`),
+auto-place), `HEAVYQ_DIR` (queue dir; default `$XDG_RUNTIME_DIR/heavyq`, else `/run/user/<uid>/heavyq` when that
+directory is yours, else `<tmp>/heavyq-<uid>` with `<tmp>` the per-user temp directory: `$TMPDIR`, which on macOS is
+`/var/folders/.../T/` even for a process started without it, such as cron; `/tmp` on Linux),
 `HEAVYQ_STEER` (`off|guard|destroy`: overrides the stored stop-gate mode; `off` is the kill switch, see [steer](steer.md)),
 `HEAVYQ_SESSION` / `HEAVYQ_ITEM` (default `--session` / `--item`), `HEAVYQ_OUTPUT` / `HEAVYQ_AGENT` (output
 mode), `HEAVYQ_HISTORY` (one history file;

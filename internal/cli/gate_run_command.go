@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/LysCongThanh/heavyq/internal/config"
 	"github.com/LysCongThanh/heavyq/internal/proof"
@@ -62,13 +63,15 @@ func gateRunCommand(cfg *config.Config, args []string, stdout, stderr io.Writer)
 	}
 	g := t.gate
 	var todo []int
-	fresh := map[int]bool{} // flaky commands: a re-run must really run, not replay a cached pass
+	// Flaky and under-load commands: the re-run that confirms (or the one advised
+	// before debugging) must really run, not replay a cached pass or failure.
+	fresh := map[int]bool{}
 	for i, c := range before.Commands {
 		if c.State == proof.Proven {
 			fmt.Fprintf(stderr, "heavyq: gate %s [%d/%d] proven: %s\n", g.Name, i+1, len(g.Run), redact.Command(c.Cmd))
 		} else {
 			todo = append(todo, i)
-			fresh[i] = c.Class == proof.ClassFlaky
+			fresh[i] = c.Class == proof.ClassFlaky || c.Class == proof.ClassUnderLoad
 		}
 	}
 	if len(todo) > 0 {
@@ -77,11 +80,9 @@ func gateRunCommand(cfg *config.Config, args []string, stdout, stderr io.Writer)
 			return rc
 		}
 	}
-	rcs := runGateCommands(cfg, cfgPath, g, *lane, todo, fresh, *parallel, *keepGoing, stdout, stderr)
-	for _, i := range todo {
-		if rc, ran := rcs[i]; ran && stoppedFromOutside(rc) {
-			return rc // stopped from outside: not a failure of the gate
-		}
+	rcs, stopRC := runGateCommands(cfg, cfgPath, g, *lane, todo, fresh, *parallel, *keepGoing, stdout, stderr)
+	if stopRC != 0 {
+		return stopRC // stopped from outside: not a failure of the gate
 	}
 	after := evaluateGate(cfg, t, stderr)
 	terse := outputMode(stderr).Terse()
@@ -140,10 +141,6 @@ func placeGate(cfg *config.Config, t *gateTarget, remoteFlag string, stderr io.W
 	return g, 0
 }
 
-// stoppedFromOutside reports whether rc says the run was ended by an operator
-// cancel or by SIGHUP/SIGINT/SIGTERM and friends (128+n), not by the command.
-func stoppedFromOutside(rc int) bool { return rc == ExitCancelled || (rc > 128 && rc < 160) }
-
 // allPassed reports whether every command that ran exited 0.
 func allPassed(rcs map[int]int) bool {
 	for _, rc := range rcs {
@@ -155,11 +152,14 @@ func allPassed(rcs map[int]int) bool {
 }
 
 // runGateCommands runs the commands at the indexes in todo and returns their
-// exit codes by index. Sequentially (in this process) it stops at the first
-// failure unless keepGoing. In parallel every command is its own child heavyq
-// process (see childSet), all started at once; the queue still limits how many
-// run.
-func runGateCommands(cfg *config.Config, cfgPath string, g repoconfig.Gate, lane string, todo []int, fresh map[int]bool, parallel, keepGoing bool, stdout, stderr io.Writer) map[int]int {
+// exit codes by index, and stopRC, the code to pass through when heavyq was
+// stopped from outside (a signal, an operator cancel; 0 when not). A command
+// that ends with 128+n or 78 itself (a crash, the OOM killer) simply failed.
+// Sequentially (in this process) it stops at the first failure unless
+// keepGoing. In parallel every command is its own child heavyq process (see
+// childSet), all started at once; the queue still limits how many run.
+func runGateCommands(cfg *config.Config, cfgPath string, g repoconfig.Gate, lane string, todo []int, fresh map[int]bool,
+	parallel, keepGoing bool, stdout, stderr io.Writer) (rcs map[int]int, stopRC int) {
 	say := func(i int, what string) {
 		fmt.Fprintf(stderr, "heavyq: gate %s [%d/%d] %s: %s\n", g.Name, i+1, len(g.Run), what, redact.Command(g.Run[i]))
 	}
@@ -171,35 +171,39 @@ func runGateCommands(cfg *config.Config, cfgPath string, g repoconfig.Gate, lane
 	if parallel {
 		return runGateInChildren(cfgPath, g, lane, todo, fresh, say, failed, stdout, stderr)
 	}
-	rcs := make(map[int]int, len(todo))
+	rcs = make(map[int]int, len(todo))
 	for n, i := range todo {
 		say(i, "running")
-		rc := runCommand(cfg, gateRunArgs(g, g.Run[i], lane, fresh[i]), stderr)
+		rc, stopped := runCommandStopped(cfg, gateRunArgs(g, g.Run[i], lane, fresh[i]), stderr)
 		failed(i, rc)
 		rcs[i] = rc
-		if stoppedFromOutside(rc) || (rc != 0 && !keepGoing) {
+		if stopped {
+			stopRC = rc
+		}
+		if stopped || (rc != 0 && !keepGoing) {
 			for _, j := range todo[n+1:] {
 				say(j, "not run")
 			}
 			break
 		}
 	}
-	return rcs
+	return rcs, stopRC
 }
 
 // runGateInChildren is the parallel mode: one child heavyq per command, output
 // prefixed `[cmd N]` with N the command's number in the gate (as in [N/total]).
 func runGateInChildren(cfgPath string, g repoconfig.Gate, lane string, todo []int, fresh map[int]bool,
-	say func(int, string), failed func(int, int), stdout, stderr io.Writer) map[int]int {
-	rcs := make(map[int]int, len(todo))
+	say func(int, string), failed func(int, int), stdout, stderr io.Writer) (rcs map[int]int, stopRC int) {
+	rcs = make(map[int]int, len(todo))
 	exe, err := os.Executable()
 	if err != nil {
 		fmt.Fprintln(stderr, "heavyq: cannot find my own executable to start the commands:", err)
 		for _, i := range todo {
 			rcs[i] = 1
 		}
-		return rcs
+		return rcs, 0
 	}
+	since := time.Now()
 	cs := &childSet{exe: exe, cfg: cfgPath, stdout: stdout, stderr: stderr}
 	args := make(map[int][]string, len(todo))
 	keys := make([]int, len(todo))
@@ -212,8 +216,14 @@ func runGateInChildren(cfgPath string, g repoconfig.Gate, lane string, todo []in
 	for _, i := range todo {
 		rcs[i] = byKey[i+1]
 		failed(i, rcs[i])
+		if stopRC == 0 && childStopped(g.Name, args[i+1], rcs[i], since) {
+			stopRC = rcs[i]
+		}
 	}
-	return rcs
+	if s := cs.signalled(); s != nil {
+		stopRC = signalExit(s) // the gate itself was stopped: its children only followed
+	}
+	return rcs, stopRC
 }
 
 // absConfigPath is the config file this process loaded, as an absolute path

@@ -139,7 +139,7 @@ func statusDetail(s itemstatus.Status) string {
 		}
 		return fmt.Sprintf(" (%s, older tree)", s.Commit)
 	case itemstatus.Blocked:
-		return " (needs: " + oneLine(s.Needs, 40) + ")"
+		return " (needs: " + oneLine(redact.Command(s.Needs), 40) + ")"
 	}
 	return ""
 }
