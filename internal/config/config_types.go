@@ -52,6 +52,10 @@ type Config struct {
 	// Observed are the [[remote]] tables with observe_only = true, moved out of Remotes: `heavyq fleet`
 	// probes them, nothing ever runs there.
 	Observed []MachineConfig `toml:"-"`
+
+	// localSlotKeys says which [local] slot keys the file sets (none for
+	// defaults only), so each absent one gets its own default.
+	localSlotKeys slotKeys
 }
 
 // QueueConfig holds queue-wide behaviour.
@@ -91,14 +95,15 @@ type MachineConfig struct {
 	LightMB      int     `toml:"light_mb"`
 	ReserveMB    int     `toml:"reserve_mb"`
 
-	// Local only: lock files shared with legacy `flock <file> cmd` users.
-	// When set they replace the generated heavy slot files.
+	// Local only: lock files shared with legacy `flock <file> cmd` users,
+	// absolute paths with distinct base names. When set they replace the
+	// generated heavy slot files.
 	LegacyLockFiles []string `toml:"legacy_lock_files"`
 
 	// Remote only.
 	SSH       string   `toml:"ssh"`        // ssh alias / host
 	Transport []string `toml:"transport"`  // argv prefix; the remote script is appended as ONE argument
-	WorkDir   string   `toml:"work_dir"`   // remote dir holding git/, wt/, slots/, cache/
+	WorkDir   string   `toml:"work_dir"`   // remote dir holding git/, wt/, slots/, cache/ (relative to the remote home; "~/" = the same)
 	GitURL    string   `toml:"git_url"`    // where bare repos live, as seen by `git push`
 	CacheHook string   `toml:"cache_hook"` // shell snippet run in the worktree before the command
 	EnvPath   string   `toml:"env_path"`   // directories put first on the remote command's PATH ("~/" = remote home)

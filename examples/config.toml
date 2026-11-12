@@ -36,7 +36,7 @@ light_mb = 1024
 reserve_mb = 2048
 work_dir = ".heavyq"     # remote dir (relative to the remote home): git/, wt/, slots/, cache/
 # git_url = "buildbox:.heavyq/git"   # default: <ssh>:<work_dir>/git
-# transport = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "buildbox"]   # default
+# transport = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=4", "buildbox"]   # default
 #
 # Directories put first on the remote command's PATH ("~/" = remote home). Mostly for a Mac
 # whose login shell does not already set it (example).

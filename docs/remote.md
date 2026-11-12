@@ -71,7 +71,19 @@ What a remote run sees, and what it doesn't:
   remote worktree.
 - **Clean teardown.** The remote side holds a lifeline on stdin. If heavyq dies, even by SIGKILL, or the
   connection drops, the remote stops the command's process group and removes the worktree. Exit 255 means
-  the connection was lost.
+  the connection was lost. A link that dies silently (a VPN drops, a NAT mapping expires, the remote loses
+  power) sends no close to either side. The default transport sets `ServerAliveInterval=15` and
+  `ServerAliveCountMax=4`, so the local ssh gives up about a minute later: heavyq exits 255 and frees the
+  ticket. A custom `transport` that runs ssh needs the same two options, or the local side waits for TCP
+  keepalive (about two hours). Those options free **only the local side**. If the remote is still up, its
+  sshd never sees the local ssh go, so the command keeps running and keeps its slot (the next run there
+  exits 77) until the remote sshd notices the dead connection itself, which by default can take hours. Set
+  this in the remote's `sshd_config` so it notices in about a minute too:
+
+  ```
+  ClientAliveInterval 15
+  ClientAliveCountMax 4
+  ```
 
 ## Machines heavyq only watches
 
@@ -245,7 +257,7 @@ heavyq 3 --tools envsubst,initdb -- bash scripts/e2e.sh   # argv[0] is bash: nam
 This machine is not checked: a local run uses your own PATH, where a missing command is the usual exit 127.
 
 Remote requirements: `bash`, `git`, `base64`, `awk`, and either Linux with `flock` and `setsid` (util-linux) or
-macOS (below). Nothing is installed. Everything lives under `work_dir` (default `~/.heavyq`).
+macOS (below). Nothing is installed. Everything lives under `work_dir` (default `.heavyq`, relative to the remote home; a leading `~/` means the same).
 
 ## A spare Mac as a remote
 

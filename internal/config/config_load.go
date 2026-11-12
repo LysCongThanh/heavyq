@@ -90,6 +90,7 @@ func parse(path string, data []byte) (*Config, error) {
 		cfg.Unknown = append(cfg.Unknown, UnknownKey{Key: key.String(), Line: tomlkeys.Line(data, key)})
 	}
 	cfg.Path, cfg.Origin.Sum = path, contentSum(data)
+	cfg.localSlotKeys = slotKeys{heavy: md.IsDefined("local", "heavy_slots"), light: md.IsDefined("local", "light_slots")}
 	if err := cfg.normalize(); err != nil {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
@@ -98,27 +99,11 @@ func parse(path string, data []byte) (*Config, error) {
 
 // normalize fills defaults and rejects unsafe or nonsensical values.
 func (c *Config) normalize() error {
-	q := &c.Queue
-	setDur(&q.Poll, defaultPoll)
-	setDur(&q.ForceAfter, defaultForceAfter)
-	setDur(&q.RemoteDownMax, defaultRemoteDownMax)
-	setDur(&q.HoldFor, defaultHoldFor)
-	setDur(&q.ProbeTimeout, defaultProbeTimeout)
-	if q.LoadWeightMB <= 0 {
-		q.LoadWeightMB = defaultLoadWeightMB
-	}
-	if q.BaseRef != "" && q.BaseRef != BaseRefNone && !validBaseRef(q.BaseRef) {
-		return fmt.Errorf("queue.base_ref %q must look like remote/branch (e.g. origin/main) or %q", q.BaseRef, BaseRefNone)
+	if err := c.Queue.normalize(); err != nil {
+		return err
 	}
 
-	c.Local.Name = LocalName
-	if c.Local.HeavySlots == 0 && c.Local.LightSlots == 0 && len(c.Local.LegacyLockFiles) == 0 {
-		c.Local.HeavySlots, c.Local.LightSlots = 2, 1
-	}
-	if n := len(c.Local.LegacyLockFiles); n > 0 {
-		c.Local.HeavySlots = n
-	}
-	if err := c.Local.normalizeCommon(); err != nil {
+	if err := c.normalizeLocal(); err != nil {
 		return fmt.Errorf("[local]: %w", err)
 	}
 	if err := c.Hook.normalize(); err != nil {
@@ -134,14 +119,13 @@ func (c *Config) normalize() error {
 	if c.Pools, err = pools.Build(c.PoolSpecs); err != nil {
 		return err
 	}
-	if c.Local.ObserveOnly {
-		return errors.New("[local]: observe_only is for a [[remote]]")
-	}
-	seen := map[string]bool{LocalName: true}
+	// "local" and "auto" are --remote keywords: a remote so named could never
+	// be targeted by its name.
+	seen := map[string]bool{LocalName: true, RemoteAuto: true}
 	for i := range c.Remotes {
 		r := &c.Remotes[i]
 		if !SafeName.MatchString(r.Name) || seen[r.Name] {
-			return fmt.Errorf("[[remote]] #%d: name %q must be unique, not %q, and match %s", i+1, r.Name, LocalName, SafeName)
+			return fmt.Errorf("[[remote]] #%d: name %q must be unique, not %q or %q, and match %s", i+1, r.Name, LocalName, RemoteAuto, SafeName)
 		}
 		seen[r.Name] = true
 		if r.ObserveOnly {
@@ -152,6 +136,9 @@ func (c *Config) normalize() error {
 		}
 	}
 	if err := c.splitObserved(); err != nil {
+		return err
+	}
+	if err := c.checkSomeHeavySlot(); err != nil {
 		return err
 	}
 	if err := c.Run.normalize(); err != nil {

@@ -59,7 +59,8 @@ func (m *MentorConfig) normalize() error {
 	if m.MinEvents < 0 {
 		return fmt.Errorf("mentor.min_events %d must be >= 0", m.MinEvents)
 	}
-	if m.MinLiftPP != nil && (*m.MinLiftPP < 0 || *m.MinLiftPP > 100) {
+	// "Not inside" also refuses nan, which every comparison lets through.
+	if m.MinLiftPP != nil && !(*m.MinLiftPP >= 0 && *m.MinLiftPP <= 100) {
 		return fmt.Errorf("mentor.min_lift_pp %v must be in [0, 100]", *m.MinLiftPP)
 	}
 	return nil

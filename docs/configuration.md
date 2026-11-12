@@ -2,10 +2,12 @@
 
 `--config FILE`, else `$HEAVYQ_CONFIG`, else `$XDG_CONFIG_HOME/heavyq/config.toml` (`~/.config/heavyq/config.toml`).
 Every key is optional; keys this heavyq does not know are ignored with a warning. [`examples/config.toml`](../examples/config.toml) has every key with comments.
+A duration, `load_weight_mb`, `max_load_ratio` or `*_mb` budget set to `0` means its default; a negative one is an error that names the key.
+The remote-only keys (`ssh`, `transport`, `work_dir`, `git_url`, `cache_hook`, `env_path`, `name`, `observe_only`) are an error under `[local]`, as `legacy_lock_files` is under `[[remote]]`.
 
 | Key | Default | Meaning |
 |---|---|---|
-| `queue.poll` | `"2s"` | how often a waiting ticket retries |
+| `queue.poll` | `"2s"` | how often a waiting ticket retries (at least `"50ms"`) |
 | `queue.force_after` | `"15m"` | head ticket waiting this long skips the load check (RAM must still fit); only for a ticket with one candidate machine |
 | `queue.resource_gate` | `true` | `false` = slots only |
 | `queue.auto` | `true` | score-based placement for tickets without `--remote` |
@@ -14,14 +16,15 @@ Every key is optional; keys this heavyq does not know are ignored with a warning
 | `queue.remote_down_max` | `"10m"` | remote-only ticket exits 76 after its remotes are unreachable this long |
 | `queue.probe_timeout` | `"5s"` | timeout of one remote metrics probe |
 | `queue.base_ref` | `""` | default `--base-ref`: `remote/branch` (e.g. `"origin/main"`) is recreated on the remote machine a run goes to and its commit is part of the run id; `""` = origin's default branch (`refs/remotes/origin/HEAD`, else `origin/main`) when the repository has one; `"none"` = no base ref. See [remote](remote.md) |
-| `local.heavy_slots` / `light_slots` | `2` / `1` | slots on this machine |
-| `local.legacy_lock_files` | `[]` | use these files as heavy slots (shared with `flock <file>` users) |
+| `local.heavy_slots` / `light_slots` | `2` / `1` | slots on this machine; each absent key gets its own default, an explicit `0` is kept. At least one machine needs a heavy slot: heavy runs (the default) cannot use light ones |
+| `remote.heavy_slots` / `light_slots` | `2` / `0` | slots on that remote, when neither key is set (`light_slots = 2` alone is a light-only remote) |
+| `local.legacy_lock_files` | `[]` | use these files as heavy slots (shared with `flock <file>` users): absolute paths, each with its own base name; `light_slots` then defaults to `0` |
 | `*.max_load_ratio` | `0.75` | admit while `load1 < ratio x cores` |
 | `*.job_mb` / `light_mb` / `reserve_mb` | `3072` / `1024` / `2048` | RAM budget per heavy / light job, and headroom |
-| `remote.name`, `remote.ssh` | required | name and ssh alias (`ssh` may be replaced by `transport` + `git_url`) |
-| `remote.transport` | `["ssh","-o","BatchMode=yes","-o","ConnectTimeout=10",ssh]` | argv prefix; the remote script is appended as one argument |
-| `remote.work_dir` | `".heavyq"` | remote directory (relative to the remote home) |
-| `remote.git_url` | `"<ssh>:<work_dir>/git"` | where bare repos are pushed |
+| `remote.name`, `remote.ssh` | required | name (not `local` or `auto`, which `--remote` reads as keywords) and ssh alias (`ssh` may be replaced by `transport` + `git_url`) |
+| `remote.transport` | `["ssh","-o","BatchMode=yes","-o","ConnectTimeout=10","-o","ServerAliveInterval=15","-o","ServerAliveCountMax=4",ssh]` | argv prefix; the remote script is appended as one argument. A custom ssh transport should keep the `ServerAlive*` options: they end the local side of a run about a minute after its link dies silently (the remote side needs `ClientAliveInterval` in its `sshd_config`, see docs/remote.md) |
+| `remote.work_dir` | `".heavyq"` | remote directory, relative to the remote home (a leading `~/` means the same; any other `~` is refused) |
+| `remote.git_url` | `"<ssh>:<work_dir>/git"` | where bare repos are pushed (never starts with `-`) |
 | `remote.cache_hook` | `""` | shell run in the worktree before the command; gets `HEAVYQ_CACHE_DIR`, `HEAVYQ_WORKTREE` |
 | `remote.env_path` | `""` | directories put first on the remote command's PATH, `:`-separated, `~/` = remote home. See [a spare Mac](remote.md#a-spare-mac-as-a-remote). Placement checks a run's tools on that same PATH and skips a remote that lacks one ([`--tools`](remote.md#placed-where-its-tools-are---tools)) |
 | `remote.observe_only` | `false` | `true` = a machine heavyq only watches: `heavyq fleet` probes it (load, RAM, processes, foreign slots), nothing ever runs there; it takes only `name` and `ssh`/`transport`. See [fleet](fleet.md#configuration) |
@@ -39,7 +42,7 @@ Every key is optional; keys this heavyq does not know are ignored with a warning
 | `hook.enabled` | `true` | `false` = the Claude Code hook never rewrites |
 | `hook.permission` | `""` | `""` = rewritten commands go through Claude Code's permission flow; `"allow"` = approve them |
 | `hook.max_wait` | `"5m"` | `--max-wait` added to rewritten commands (and to the Bash tool timeout) |
-| `hook.binary` | `""` | how rewritten commands call heavyq (default `heavyq` if on PATH, else the absolute path) |
+| `hook.binary` | `""` | how rewritten commands call heavyq (default `heavyq` if on PATH, else the absolute path): a command name on PATH or an absolute path, no arguments; a leading `~/` is your home |
 | `hook.default_rules` | `true` | apply the built-in rules after yours |
 | `hook.rule.match` | required | word prefixes, e.g. `["bun test", "deno task check"]` |
 | `hook.rule.priority` / `light` / `lane` / `cache` | `4` / `false` / `""` / `false` | what the rewritten command gets |

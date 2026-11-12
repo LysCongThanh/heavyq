@@ -65,13 +65,17 @@ func (c *Config) HookEnabled() bool { return c.Hook.Enabled == nil || *c.Hook.En
 func (c *Config) HookDefaultRules() bool { return c.Hook.DefaultRules == nil || *c.Hook.DefaultRules }
 
 func (h *HookConfig) normalize() error {
-	setDur(&h.MaxWait, defaultHookMaxWait)
+	if err := setDur(&h.MaxWait, defaultHookMaxWait, "hook.max_wait"); err != nil {
+		return err
+	}
 	if h.Permission != "" && h.Permission != "allow" {
 		return fmt.Errorf("hook.permission %q must be \"\" or \"allow\"", h.Permission)
 	}
-	if strings.ContainsAny(h.Binary, "'\"`$\\;&|<>()\n") {
-		return fmt.Errorf("hook.binary %q contains shell metacharacters", h.Binary)
+	bin, err := normalizeHookBinary(h.Binary)
+	if err != nil {
+		return err
 	}
+	h.Binary = bin
 	for i := range h.Rules {
 		r := &h.Rules[i]
 		if err := r.Normalize(); err != nil {
@@ -110,7 +114,9 @@ func (r *HookRule) Normalize() error {
 }
 
 func (c *CacheConfig) normalize() error {
-	setDur(&c.TTL, defaultCacheTTL)
+	if err := setDur(&c.TTL, defaultCacheTTL, "cache.ttl"); err != nil {
+		return err
+	}
 	if c.MaxSizeMB < 0 || c.MaxEntryMB < 0 {
 		return errors.New("cache.max_size_mb/max_entry_mb must be >= 0")
 	}
