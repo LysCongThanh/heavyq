@@ -56,7 +56,7 @@ What a remote run sees, and what it doesn't:
   the `git worktree add` of the job. A hook that declines or prints can therefore neither fail a ship (exit
   77) nor add lines to a run's output.
 - **The base ref travels too.** A command that diffs against `origin/main` (`git diff origin/main...`, a lint of
-  the changed files) needs that ref, and a remote worktree has no remote called origin. So unless you say
+  the changed files) needs that ref, and a remote checkout has no remote called origin. So unless you say
   otherwise, heavyq recreates `refs/remotes/<base ref>` there, pointing at the same commit as here: the base ref
   is, in order, `--base-ref`, `queue.base_ref`, or origin's default branch (`refs/remotes/origin/HEAD`, else
   `origin/main`) when this repository has one. `--base-ref none` (or `queue.base_ref = "none"`) ships none. The
@@ -65,20 +65,40 @@ What a remote run sees, and what it doesn't:
   note, not an error. If a command still fails on a remote saying `origin/<branch>` is missing, the agent
   digest ends with `next: the remote has no origin/<branch>; re-run with --base-ref origin/<branch>` (for a gate
   command: set `queue.base_ref`), when this repository has that ref.
+- **Shipping is plumbing.** Your push settings are for your own remotes and do not apply: no submodule is
+  pushed anywhere (`push.recurseSubmodules`), nothing is signed (`push.gpgSign`) and no push option is sent
+  (`push.pushOption`). Unless you chose an ssh for git (`GIT_SSH_COMMAND`, `GIT_SSH`, `core.sshCommand`), the push's
+  ssh gets `BatchMode`, `ConnectTimeout` and keepalives, so a link that goes silent ends the push within a minute.
+  Ctrl-C, SIGTERM and `heavyq cancel` stop a push at once (exit 130/143 or 78, not 77). Several runs of one
+  new commit admitted to one remote together all ship it.
+- **Not every repository ships.** A SHA-256 repository or a shallow clone cannot be shipped (the remote side is
+  SHA-1; its bare repo refuses a shallow push). Default placement, `--remote auto` and a list with `local`
+  keep such a run on this machine; a remote-only target is refused with exit 2.
+- **Submodules are not checked out.** Only the superproject's commit travels, so a submodule's directory is
+  empty on the remote. A command that needs one: `--remote local`.
 - **Environment variables don't travel.** `FOO=1 heavyq ... -- npm test` sets `FOO` only locally. Put them
   inside the command: `heavyq 3 -- env FOO=1 npm test`.
 - **The same subdirectory.** If you run from `repo/packages/web`, the command runs in `packages/web` of the
-  remote worktree.
+  remote checkout.
+- **A checkout of its own.** Each run gets a temporary repository of its own that borrows the objects of the
+  bare repo, so `--base-ref origin/main` is that run's `origin/main` only: a run started after a `git fetch`
+  cannot move it under a run already going, and a run without `--base-ref` has no `origin/main` at all.
+- **The command as you typed it.** Its first word is a command name, as it is locally: `time` is
+  `/usr/bin/time`, not the shell keyword, and `FOO=1 env` is not an assignment (use `env FOO=1 ...`). The
+  command line travels on the job's stdin, so an argv as long as a local one (`lint $(git ls-files)`) fits.
 - **Clean teardown.** The remote side holds a lifeline on stdin. If heavyq dies, even by SIGKILL, or the
-  connection drops, the remote stops the command's process group and removes the worktree. Exit 255 means
-  the connection was lost. A link that dies silently (a VPN drops, a NAT mapping expires, the remote loses
-  power) sends no close to either side. The default transport sets `ServerAliveInterval=15` and
-  `ServerAliveCountMax=4`, so the local ssh gives up about a minute later: heavyq exits 255 and frees the
-  ticket. A custom `transport` that runs ssh needs the same two options, or the local side waits for TCP
-  keepalive (about two hours). Those options free **only the local side**. If the remote is still up, its
-  sshd never sees the local ssh go, so the command keeps running and keeps its slot (the next run there
-  exits 77) until the remote sshd notices the dead connection itself, which by default can take hours. Set
-  this in the remote's `sshd_config` so it notices in about a minute too:
+  connection drops, the remote stops the process group of the command (or of the `cache_hook` running before
+  it), frees the slot and removes the checkout. Exit 255 means the connection was lost; a command that exits
+  255 (or 97, 98) itself is reported as 96. A job whose remote side dies without its cleanup (a reboot, a
+  SIGKILL there) is reclaimed by the next job on that machine. Shipped commits are kept as refs for 30 days
+  after their commit date, which keeps later pushes small. A link that dies silently (a VPN drops, a NAT
+  mapping expires, the remote loses power) sends no close to either side. The default transport sets
+  `ServerAliveInterval=15` and `ServerAliveCountMax=4`, so the local ssh gives up about a minute later: heavyq
+  exits 255 and frees the ticket. A custom `transport` that runs ssh needs the same two options, or the local
+  side waits for TCP keepalive (about two hours). Those options free **only the local side**. If the remote is
+  still up, its sshd never sees the local ssh go, so the command keeps running and keeps its slot (the next run
+  there exits 77) until the remote sshd notices the dead connection itself, which by default can take hours.
+  Set this in the remote's `sshd_config` so it notices in about a minute too:
 
   ```
   ClientAliveInterval 15
@@ -181,7 +201,7 @@ is unknown, the name has characters outside `A-Za-z0-9._-` (or is `.`/`..`, or s
 repository, or two `--with` land on the same name.
 
 - **Remote:** each sibling's commit is pushed the same way the main repository's is, and checked out as a directory
-  next to the main worktree with the same name, so `../shared-schema` resolves. Both are removed with the worktree.
+  next to the main checkout with the same name, so `../shared-schema` resolves. Both are removed with the run.
 - **Local:** the command runs in place, so this machine is eligible only when every sibling lives at
   `../<name>` (next to the main repository), has `HEAD` equal to the pinned commit and a clean work tree, and
   `--ref`, if given, is the main repository's `HEAD`. It is checked again when the ticket gets a slot, because
@@ -317,7 +337,7 @@ How each Linux-only piece is replaced:
 | --- | --- | --- |
 | Slot lock | `flock -w 5` | Perl `flock()`: the same `flock(2)` on the same lock file, so a held slot looks busy to the probe and to the next job exactly as on Linux, and the kernel drops it when the job dies. A mkdir lock with a pid file would need stale-lock recovery; this does not. |
 | Own process group | util-linux `setsid` | Perl `POSIX::setsid()` then `exec bash -c`: same pid, so the whole group is still stopped on teardown. |
-| Teardown on lost connection | stdin lifeline | unchanged: EOF on stdin stops the group and removes the worktree. |
+| Teardown on lost connection | stdin lifeline | unchanged: EOF on stdin stops the group and removes the checkout. |
 | Probe metrics | `/proc/meminfo`, `/proc/loadavg` | `sysctl` and `vm_stat`, parsed by the same code and formulas as the local macOS sampler (available = free + inactive + purgeable + speculative pages, capped at installed RAM). |
 
 **PATH.** A non-interactive `ssh` command gets a bare PATH (`/usr/bin:/bin:/usr/sbin:/sbin`), so user-local

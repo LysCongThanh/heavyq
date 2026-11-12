@@ -40,7 +40,7 @@ heavyq 3 --lane api -- npm test
   slot, why the head ticket waits, and *who holds the load*: CPU% per lane. It gets this by walking each
   process's ancestry in `/proc` to a ticket, and lists everything else as "outside the queue".
 - **Spare machines over SSH, by exact commit.** heavyq can run a job on another box. It pushes the exact
-  commit (`--ref`, default `HEAD`) to a bare repo there, creates a temporary worktree, runs the command,
+  commit (`--ref`, default `HEAD`) to a bare repo there, creates a temporary checkout, runs the command,
   streams the logs back, returns the exit code and cleans up. With no `--remote` flag, a ticket is placed
   by score (`free RAM - k x load`) only when the repo is clean and the command references nothing
   outside the repo. Otherwise it stays local.
