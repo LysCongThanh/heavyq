@@ -90,6 +90,7 @@ func parse(path string, data []byte) (*Config, error) {
 		cfg.Unknown = append(cfg.Unknown, UnknownKey{Key: key.String(), Line: tomlkeys.Line(data, key)})
 	}
 	cfg.Path, cfg.Origin.Sum = path, contentSum(data)
+	cfg.localSlotKeys = slotKeys{heavy: md.IsDefined("local", "heavy_slots"), light: md.IsDefined("local", "light_slots")}
 	if err := cfg.normalize(); err != nil {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
@@ -102,14 +103,7 @@ func (c *Config) normalize() error {
 		return err
 	}
 
-	c.Local.Name = LocalName
-	if c.Local.HeavySlots == 0 && c.Local.LightSlots == 0 && len(c.Local.LegacyLockFiles) == 0 {
-		c.Local.HeavySlots, c.Local.LightSlots = 2, 1
-	}
-	if n := len(c.Local.LegacyLockFiles); n > 0 {
-		c.Local.HeavySlots = n
-	}
-	if err := c.Local.normalizeCommon(); err != nil {
+	if err := c.normalizeLocal(); err != nil {
 		return fmt.Errorf("[local]: %w", err)
 	}
 	if err := c.Hook.normalize(); err != nil {
@@ -145,6 +139,9 @@ func (c *Config) normalize() error {
 		}
 	}
 	if err := c.splitObserved(); err != nil {
+		return err
+	}
+	if err := c.checkSomeHeavySlot(); err != nil {
 		return err
 	}
 	if err := c.Run.normalize(); err != nil {

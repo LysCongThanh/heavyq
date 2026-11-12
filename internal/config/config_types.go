@@ -52,6 +52,10 @@ type Config struct {
 	// Observed are the [[remote]] tables with observe_only = true, moved out of Remotes: `heavyq fleet`
 	// probes them, nothing ever runs there.
 	Observed []MachineConfig `toml:"-"`
+
+	// localSlotKeys says which [local] slot keys the file sets (none for
+	// defaults only), so each absent one gets its own default.
+	localSlotKeys slotKeys
 }
 
 // QueueConfig holds queue-wide behaviour.
