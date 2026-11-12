@@ -1,8 +1,6 @@
 package proof
 
 import (
-	"strings"
-
 	"github.com/LysCongThanh/heavyq/internal/history"
 	"github.com/LysCongThanh/heavyq/internal/queue"
 	"github.com/LysCongThanh/heavyq/internal/redact"
@@ -26,7 +24,7 @@ type wanted struct {
 func wantCommand(cmd string) wanted {
 	argv := Argv(cmd)
 	text := queue.TruncateCmd(argv)
-	return wanted{hash: history.CmdHash(argv), text: text, textOK: text == redact.Command(strings.Join(argv, " "))}
+	return wanted{hash: history.CmdHash(argv), text: text, textOK: text == redact.Argv(argv)}
 }
 
 // matches reports whether r is a run of the wanted command. A record with a

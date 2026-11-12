@@ -19,6 +19,13 @@ Each run appends one JSON line. These fields say what it ran on and who asked:
 - **Tags.** `--session ID`, `--item ID`, `--gate NAME`; `HEAVYQ_SESSION` and `HEAVYQ_ITEM` supply the first
   two when the flags are absent, and for `session` the Claude Code hook's file comes after them (see the
   hook section). Names are 1-80 characters of `A-Za-z0-9._:-`; anything else exits 2.
+- **`cmd` is redacted** (the same form tickets, `status --json`, `why`, the dashboard and recap show). Hidden:
+  `NAME=value` and `--password`/`--token`/`--secret`/`--api-key` values for secret-looking names (quoted
+  values whole), `user:password@` in URLs (up to the last `@` before the host), `-u`/`--user user:password`
+  (not a numeric `uid:gid`), any `Authorization:` header value, `X-Api-Key:`-style headers, mysql `-pPASSWORD`,
+  `sshpass -p`, `docker login -p`, `set <secret-looking key> <value>` and well-known token shapes. An argv
+  element with spaces after such a key is hidden as a whole: the shell already removed its quotes. Redaction
+  is a best-effort filter, so pass secrets through the environment or files rather than the command line.
 - **Dirty trees are identified, never cached.** `--cache` still skips them. Hashing the edits of a
   10,000-file repository takes about 35 ms (20 ms when clean).
 - **A tree that isn't certain isn't claimed.** The line keeps `commit` and `dirty` but records no `tree`
