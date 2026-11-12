@@ -135,7 +135,7 @@ people don't do the same work.
 ## CI tiers
 
 Every pull request runs the **fast tier** (under 5 minutes, `.github/workflows/ci.yml`): `test` (the required
-check: gofmt, vet, build, the ledger latency gate and every unit and end-to-end test through the gate `fast` in
+check: gofmt, vet, build, the hot-path latency gate and every unit and end-to-end test through the gate `fast` in
 `heavyq.toml`, without `-race`), `lint`, `schemas`, `gitleaks`, a 20-second fuzz of the packages the PR touched
 (`.github/fuzz-targets.txt`), and the `changelog` and PR-title checks. A PR that changes only documentation skips
 the Go jobs, and `test` still reports. The **full tier** (`ci-full.yml`: the whole suite under `-race`, macOS,
