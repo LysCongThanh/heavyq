@@ -9,7 +9,7 @@ func (p *Probe) applySample() {
 	}
 	secs := p.intervalNS / 1e9
 	if secs < 0.2 || secs > 30 {
-		secs = 1 // the script sleeps 1 s; a clock without nanoseconds gives no interval
+		secs = 1 // the script sleeps 1 s; without /proc/uptime it gives no interval
 	}
 	for i := range p.Procs {
 		p.Procs[i].CPU = round2(p.ticks[p.Procs[i].Pid] / p.clk / secs * 100)

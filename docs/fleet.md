@@ -50,7 +50,10 @@ their RAM, so they stay in their group at 0% CPU; their command lines are never 
 | worker cap | the suggested number of workers per heavy run, with the arithmetic shown |
 
 %CPU on Linux is measured over a 1 second sample of `/proc/<pid>/stat` (one core = 100%), not `ps`'s CPU time
-over a process's whole life. On macOS it is `ps`'s decaying average. Command lines go through the same
+over a process's whole life. The sample is timed by `/proc/uptime`, read together with the stat files, and each
+process is measured over the span between its own two reads: on a loaded machine a read of the process table
+starts seconds after the 1 second sleep ends and itself takes a second or two, so the sample is often longer
+than a second. On macOS it is `ps`'s decaying average. Command lines go through the same
 redaction as everything else heavyq prints.
 
 **Attribution.** A process belongs to the nearest of its ancestors that is known to a queue:

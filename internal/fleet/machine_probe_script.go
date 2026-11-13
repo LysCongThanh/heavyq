@@ -11,7 +11,16 @@ package fleet
 //	s <owner> <slot> <0|1> <holder pid|->           each <slot dir>/*.lock: held or not, and by whom
 //	p <pid> <ppid> <threads> <%cpu> <rss_kb> <comm> every live process (zombies are left out)
 //	clk <hz>, interval_ns <ns>, c <pid> <ticks>     Linux: CPU ticks each process used over a 1 s sample; this,
-//	                                                not ps (CPU time over the process's whole life), is its %CPU
+//	                                                not ps (CPU time over the process's whole life), is its %CPU.
+//	                                                The sample is timed by /proc/uptime, read by the same cat
+//	                                                just before and after the stat files: its span is that of
+//	                                                the reads, which on a loaded machine is seconds longer than
+//	                                                the sleep (the second cat's fork and exec; timing the sleep
+//	                                                inflated %CPU several times). A read of the whole table can
+//	                                                itself take a second or two there, and not the same time
+//	                                                twice, so each process's ticks are scaled from the span
+//	                                                between its own two reads (placed by its position in each
+//	                                                read) to interval_ns, the span between the reads' midpoints
 //	a<TAB><pid><TAB><args>                          the command line of the N busiest
 //	w <pid>                                         a process whose cwd is in <work_dir>/wt (a heavyq remote job)
 //	done <step> / skip <step> <seconds>             a step ended, or was not started because <budget s> was spent
@@ -72,21 +81,24 @@ out=$(ps -Arco pid=,ppid=,pcpu=,rss=,state=,comm= 2>/dev/null | awk -v n="$N" '$
 { l = "p " $1 " " $2 " 0 " $3 " " $4; for (i = 6; i <= NF; i++) l = l " " $i; P[++k] = l; if (t < n && $5 !~ /^[UDTt]/) { top = top " " $1; t++ } }
 END { print "t" top; for (i = 1; i <= k; i++) print P[i] }')
 else
-out=$( { cat /proc/[0-9]*/stat; echo "-- $EPOCHREALTIME"; sleep 1; echo "-- $EPOCHREALTIME"; cat /proc/[0-9]*/stat; } 2>/dev/null |
-awk -v n="$N" -v pg="$(getconf PAGESIZE 2>/dev/null)" '$1 == "--" { b++; t[b] = $2; next }
+u=/proc/uptime
+out=$( { cat $u /proc/[0-9]*/stat $u; sleep 1; cat $u /proc/[0-9]*/stat $u; } 2>/dev/null |
+awk -v n="$N" -v pg="$(getconf PAGESIZE 2>/dev/null)" 'NF == 2 && $1 ~ /^[0-9]+\.[0-9]+$/ { b++; t[b] = $1; next }
 $1 !~ /^[0-9]+$/ || !index($0, ") ") { next }
-{ s = $0; sub(/^.*\) /, "", s); split(s, f, " "); if (f[1] == "Z" || f[1] == "X") next
-  if (!b) { a[$1] = f[12] + f[13]; next }
+{ s = $0; sub(/^.*\) /, "", s); split(s, f, " "); if (b < 3) i = ++k1; else i = ++k2; if (f[1] == "Z" || f[1] == "X") next
+  if (b < 3) { a[$1] = f[12] + f[13]; x[$1] = i; next }
   c = $0; sub(/^[^(]*\(/, "", c); sub(/\) [^)]*$/, "", c); gsub(/[ \t]+/, " ", c); if (c == "" || c == " ") c = "?"
   P[++k] = "p " $1 " " f[2] " " f[18] " 0 " int(f[22] * (pg > 0 ? pg : 4096) / 1024) " " c
-  if (($1 in a) && f[12] + f[13] > a[$1]) { d[$1] = f[12] + f[13] - a[$1]; st[$1] = f[1] } }
-END { top = "t"
+  if (($1 in a) && f[12] + f[13] > a[$1]) { d[$1] = f[12] + f[13] - a[$1]; st[$1] = f[1]; y[$1] = i } }
+END { iv = b == 4 ? (t[3] + t[4] - t[1] - t[2]) / 2 : 0
+  if (iv > 0) for (p in d) { s = t[3] + (t[4] - t[3]) * y[p] / k2 - t[1] - (t[2] - t[1]) * x[p] / k1; if (s > 0) d[p] = d[p] * iv / s }
+  top = "t"
   for (i = 0; i < n; i++) { m = ""; for (p in d) if (!(p in u) && (m == "" || d[p] > d[m])) m = p
     if (m == "") break; u[m] = 1; if (st[m] !~ /^[DTt]/) top = top " " m }
   print top; print "clk 100"
-  if (t[1] != "" && t[2] != "") printf "interval_ns %.0f\n", (t[2] - t[1]) * 1e9
+  if (iv > 0) printf "interval_ns %.0f\n", iv * 1e9
   for (i = 1; i <= k; i++) print P[i]
-  for (p in d) print "c", p, d[p] }')
+  for (p in d) printf "c %s %.2f\n", p, d[p] }')
 fi
 case "$out" in t*) ;; *) echo "skip procs $SECONDS"; echo end; exit 0 ;; esac
 top=${out%%$'\n'*}; top=${top#t}

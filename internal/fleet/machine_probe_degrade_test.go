@@ -79,8 +79,9 @@ func groupOfComm(groups []Group, comm string) (procs int, cpu float64) {
 }
 
 // Zombies (exited, never reaped) use no CPU and no RAM: they are in no group, no count, no attribution.
-// Stopped tasks still hold their RAM, so they stay in their group, at 0% CPU, and their command lines are
-// never read. Hundreds of each do not make the probe partial or slow: it stays within its budget.
+// Stopped tasks still hold their RAM, so they stay in their group, at 0% CPU (stopped before the probe,
+// they have no tick delta and so are never among the busiest: TestProbeNeverReadsTheCommandLineOfAStoppedTask
+// checks one that is). Hundreds of each do not make the probe partial or slow: it stays within its budget.
 func TestProbeLeavesZombiesOutAndStoppedTasksIn(t *testing.T) {
 	if runtime.GOOS != "linux" {
 		t.Skip("zombies and stopped tasks are read from /proc")
@@ -108,11 +109,6 @@ func TestProbeLeavesZombiesOutAndStoppedTasksIn(t *testing.T) {
 	}
 	if n, cpu := groupOfComm(groups, "hq-stopped"); n != len(stopped) || cpu != 0 {
 		t.Fatalf("stopped tasks: %d in their group at %.1f%% CPU, want %d at 0", n, cpu, len(stopped))
-	}
-	for _, pid := range stopped {
-		if _, ok := p.Args[pid]; ok {
-			t.Fatalf("the command line of stopped pid %d was read", pid)
-		}
 	}
 }
 

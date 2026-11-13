@@ -4,4 +4,6 @@ each one can take half a second), sends the machine's numbers first, gives up on
 timeout is spent, and keeps what arrived when the timeout ends the transport. Such a machine shows its load,
 RAM and slots with `partial: <what is missing> (<why>)` (`"partial"` in JSON). Zombie processes (exited, not
 reaped, often by the thousand in a container without an init) are left out of process groups, counts and
-attribution, in `heavyq fleet` and in the per-lane breakdowns of `heavyq status`.
+attribution, in `heavyq fleet` and in the per-lane breakdowns of `heavyq status`. A process's %CPU is taken over the span of the
+sample's own reads of the process table, not the span of its sleep, so on a loaded machine (where starting a
+read takes seconds) a busy process no longer shows several times the CPU it used.
