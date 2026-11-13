@@ -26,7 +26,7 @@ type Report struct {
 	WindowS     float64   `json:"window_s"` // its length in seconds
 	Machines    []Machine `json:"machines"`
 	Queues      []Queue   `json:"queues"`
-	Notes       []string  `json:"notes"` // what could not be read (a partial history, a missing tickets dir)
+	Notes       []string  `json:"notes"` // what could not be read (a missing or unparsable history, a partial one, a missing tickets dir)
 }
 
 // Machine is one machine of the fleet.

@@ -1,7 +1,9 @@
 package fleet
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -64,8 +66,11 @@ func TestReadHistoryKeepsTheWindowOnly(t *testing.T) {
 	if err != nil || !small.Truncated || len(small.Runs) == 0 || len(small.Runs) >= 500 {
 		t.Fatalf("bounded read: runs=%d truncated=%v err=%v", len(small.Runs), small.Truncated, err)
 	}
-	if missing, err := ReadHistoryTSV(HistorySource{Path: filepath.Join(t.TempDir(), "none.tsv"), Columns: config.ForeignColumns}); err != nil || len(missing.Runs) != 0 {
-		t.Fatalf("a missing history is empty: %+v %v", missing, err)
+	if missing, err := ReadHistoryTSV(HistorySource{Path: filepath.Join(t.TempDir(), "none.tsv"), Columns: config.ForeignColumns}); !errors.Is(err, fs.ErrNotExist) || len(missing.Runs) != 0 {
+		t.Fatalf("a missing history is an error, not a history without runs: %+v %v", missing, err)
+	}
+	if got.Parsed != 4 { // the 3 runs and the older line that ended the read
+		t.Fatalf("parsed=%d, want 4", got.Parsed)
 	}
 }
 

@@ -97,7 +97,8 @@ how many heavy slots it uses there, not how many it has:
   when those are known, since busy locks may include light slots. A configured slot that ran nothing in the
   window is not load: it counts 0;
 - a queue without a history: its configured heavy slots (busy now if more), or busy now when nothing is
-  configured.
+  configured. A foreign `history` that cannot be opened (a typo in its path) or whose lines all fail to parse
+  (wrong `columns`) is no history: it is not taken for "ran nothing", and `notes` says so.
 
 A queue with nothing configured, busy or run on the machine is left out. When no slot is in use at all, the
 run being started is the one: `cores / 1`. Every number is shown, the result first. The text report prints the
@@ -152,7 +153,8 @@ aliases = { "build-1" = "local" }         # a machine name the queue writes -> t
 - **history**: tab-separated, one run per line, in the order runs ended. `columns` names them; a permutation or
   a subset works, but `end_epoch`, `machine` and `exit` are required. It is read **backwards from its end**,
   only as far as the window, and never more than 32 MB: a history that grows for years costs what the window
-  holds. A partial window says so in the report.
+  holds. A partial window says so in the report, and so do lines that did not parse (they are skipped). A
+  history that cannot be opened, or of which no line read parses, is noted and is no history for the worker cap.
 - **tickets**: a directory of files named as above. The first line of a ticket may carry `KEY=VALUE` words;
   `machine=`, `slot=`, `claimed=` (unix seconds) and `cmd=` (the rest of the line) are read, nothing else.
 - **machines_dir**: the files are parsed, never sourced. Only `SLOTS`, `LIGHT_SLOTS` and `KIND` are read;
@@ -206,7 +208,7 @@ fields may be added within it):
 A machine that did not answer has `"reachable": false` and an `"error"`. A machine that answered with its
 numbers but not with everything in time has `"reachable": true` and `"partial"`, for example
 `"no top consumers and attribution (timed out after 30s)"`; its `top` is then empty. `notes` lists what could
-not be read (a missing tickets dir, a partial history).
+not be read (a missing or unparsable history, a partial one, skipped lines, a missing tickets dir).
 
 ## Every 10 minutes, without a daemon
 

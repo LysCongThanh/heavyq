@@ -116,3 +116,79 @@ func TestE2EFleetCapCountsSlotsInUseAndReadsSlotGlobs(t *testing.T) {
 		}
 	}
 }
+
+// A foreign history that cannot be found, or whose lines all fail to parse, is no history: the worker cap
+// counts the queue's configured slots and the report says why. Taking either for "ran nothing" would count 0
+// and suggest more workers than the machine can carry.
+func TestE2EFleetCapFallsBackWhenAForeignHistoryIsUnusable(t *testing.T) {
+	h := newRig(t, "")
+	now := time.Now().Unix()
+	line := fmt.Sprintf("%d\tlocal\tapi\t1\t0\t5\t60\t0\n", now-120)
+	var cfg strings.Builder
+	cfg.WriteString(baseConfig)
+	for _, q := range []struct{ name, history, extra string }{
+		{"typo", "", ""}, // the path names no file
+		{"badcols", line + line, `columns = ["machine", "exit", "end_epoch"]` + "\n"}, // every line fails to parse
+		{"torn", "half a li\n" + line, ""},                                            // one torn line beside a run: still a history
+	} {
+		dir := filepath.Join(h.root, q.name)
+		if err := os.MkdirAll(filepath.Join(dir, "machines.d"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "machines.d", "local.env"), []byte("SLOTS=\"s1 s2\"\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if q.history != "" {
+			if err := os.WriteFile(filepath.Join(dir, "history.tsv"), []byte(q.history), 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}
+		fmt.Fprintf(&cfg, "[[foreign]]\nname = %q\nhistory = %q\nmachines_dir = %q\n%s", q.name,
+			filepath.Join(dir, "history.tsv"), filepath.Join(dir, "machines.d"), q.extra)
+	}
+	h.setConfig(cfg.String())
+	rc, out := h.run("fleet", "--json", "--timeout", "45s")
+	if rc != 0 {
+		t.Fatalf("rc=%d\n%s", rc, out)
+	}
+	var r struct {
+		Machines []struct {
+			Name string
+			Cap  *struct {
+				Queues []struct {
+					Owner, Basis string
+					Counted      int
+					WindowPeak   int `json:"window_peak"`
+				} `json:"queues"`
+			} `json:"worker_cap"`
+		}
+		Notes []string `json:"notes"`
+	}
+	if err := json.Unmarshal([]byte(out[strings.Index(out, "{"):]), &r); err != nil {
+		t.Fatalf("%v\n%s", err, out)
+	}
+	got := map[string]string{}
+	for _, m := range r.Machines {
+		if m.Name == "local" && m.Cap != nil {
+			for _, q := range m.Cap.Queues {
+				got[q.Owner] = fmt.Sprintf("%s %d peak %d", q.Basis, q.Counted, q.WindowPeak)
+			}
+		}
+	}
+	want := map[string]string{"typo": "configured 2 peak 0", "badcols": "configured 2 peak 0", "torn": "used 1 peak 1"}
+	for owner, w := range want {
+		if got[owner] != w {
+			t.Errorf("local %s: %q, want %q\n%s", owner, got[owner], w, out)
+		}
+	}
+	notes := strings.Join(r.Notes, "\n")
+	for _, w := range []string{"typo history: open ", "badcols history: none of the 2 lines read parsed",
+		"torn history: 1 lines did not parse"} {
+		if !strings.Contains(notes, w) {
+			t.Errorf("notes lack %q:\n%s", w, notes)
+		}
+	}
+	if strings.Count(notes, "the worker cap counts its configured slots") != 2 {
+		t.Errorf("the two unusable histories must say the cap falls back:\n%s", notes)
+	}
+}

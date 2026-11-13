@@ -437,7 +437,7 @@
         "type": "string"
       },
       "type": "array",
-      "description": "what could not be read (a partial history, a missing tickets dir)"
+      "description": "what could not be read (a missing or unparsable history, a partial one, a missing tickets dir)"
     }
   },
   "type": "object",
