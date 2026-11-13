@@ -70,6 +70,10 @@ func TestUserConfigSchemaRefusesWhatTheLoaderRefuses(t *testing.T) {
 		"binary relative path":       "[hook]\nbinary = \"bin/heavyq\"\n",
 		"local observe_only":         "[local]\nobserve_only = true\n",
 		"observe-only with slots":    "[[remote]]\nname = \"watch\"\nssh = \"watch\"\nobserve_only = true\nheavy_slots = 2\n",
+		"relative slot glob":         "[[foreign]]\nname = \"q\"\ntickets = \"/q\"\nslot_globs = { local = \"tmp/q-*.lock\" }\n",
+		"slot glob wildcard in dir":  "[[foreign]]\nname = \"q\"\ntickets = \"/q\"\nslot_globs = { local = \"/tmp/*/q-1.lock\" }\n",
+		"slot glob with ?":           "[[foreign]]\nname = \"q\"\ntickets = \"/q\"\nslot_globs = { local = \"/tmp/q-?.lock\" }\n",
+		"slot glob of dot files":     "[[foreign]]\nname = \"q\"\ntickets = \"/q\"\nslot_globs = { local = \"/tmp/.*\" }\n",
 		"observe-only with git_url":  "[[remote]]\nname = \"watch\"\nssh = \"watch\"\nobserve_only = true\ngit_url = \"watch:x\"\n",
 		"local untrusted exit":       "[local]\nallow_untrusted_exit = true\n",
 		"observe-only untrusted":     "[[remote]]\nname = \"watch\"\nssh = \"watch\"\nobserve_only = true\nallow_untrusted_exit = true\n",
@@ -103,6 +107,8 @@ func TestUserConfigSchemaRefusesWhatTheLoaderRefuses(t *testing.T) {
 		"untrusted exit allowed": box + "allow_untrusted_exit = true\n",
 		"need_gh repos":          "[run]\nneed_gh_repos = [\"app\", \"infra.tools\"]\n",
 		"list target for proofs": box + "[[remote]]\nname = \"spare\"\nssh = \"spare\"\n[proof]\nremote = \"box,local,spare\"\n",
+		"slot globs":             "[[foreign]]\nname = \"q\"\ntickets = \"/q\"\nslot_globs = { local = \"/tmp/q-[0-9]*.lock\" }\n",
+		"slot glob under ~/":     "[[foreign]]\nname = \"q\"\ntickets = \"/q\"\nslot_globs = { local = \"~/.q/s[0-9][0-9].lock\" }\n",
 		"examples/config.toml":   readFile(t, "examples/config.toml"),
 	} {
 		if err := loadConfig(t, doc); err != nil {

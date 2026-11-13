@@ -56,7 +56,15 @@ func textMachine(w io.Writer, m Machine) {
 		fmt.Fprintf(w, "  outside every queue: %s RSS\n", fmtGiB(m.OutsideRSS))
 	}
 	if m.Cap != nil {
-		fmt.Fprintf(w, "  cap: %s\n", clip(m.Cap.Why, 110))
+		// The number and the division first, then one line per queue term: the terms grow with the queues and
+		// a clipped line must never lose the worker count.
+		fmt.Fprintf(w, "  cap: %d workers per run = %s\n", m.Cap.Workers, clip(m.Cap.division(), 80))
+		for _, t := range m.Cap.terms() {
+			fmt.Fprintf(w, "    %s\n", clip(t, 110))
+		}
+	}
+	if m.CapUnknown != "" {
+		fmt.Fprintf(w, "  cap: unknown, %s\n", clip(m.CapUnknown, 100))
 	}
 }
 

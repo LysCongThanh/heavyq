@@ -111,6 +111,14 @@
           "type": "object",
           "description": "SlotDirs maps a heavyq machine name to the directory of this queue's slot lock files on that machine\n(absolute, or relative to that machine's home). A slot is busy while its file is flock-held."
         },
+        "slot_globs": {
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^(/|~/)([A-Za-z0-9._-]+/)*([A-Za-z0-9_*-]|\\[0-9\\])([A-Za-z0-9._*-]|\\[0-9\\])*$"
+          },
+          "type": "object",
+          "description": "SlotGlobs maps a heavyq machine name to an absolute (or ~/) glob of this queue's slot lock files on that\nmachine, for slot files that share a directory with others (\"/tmp/q-[0-9]*.lock\"): one \"*\" and any\n\"[0-9]\" classes, in the base name only. A slot is busy while its file is flock-held."
+        },
         "aliases": {
           "additionalProperties": {
             "type": "string"

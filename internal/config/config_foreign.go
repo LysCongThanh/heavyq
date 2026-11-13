@@ -30,6 +30,10 @@ type ForeignConfig struct {
 	// SlotDirs maps a heavyq machine name to the directory of this queue's slot lock files on that machine
 	// (absolute, or relative to that machine's home). A slot is busy while its file is flock-held.
 	SlotDirs map[string]string `toml:"slot_dirs"`
+	// SlotGlobs maps a heavyq machine name to an absolute (or ~/) glob of this queue's slot lock files on that
+	// machine, for slot files that share a directory with others ("/tmp/q-[0-9]*.lock"): one "*" and any
+	// "[0-9]" classes, in the base name only. A slot is busy while its file is flock-held.
+	SlotGlobs map[string]string `toml:"slot_globs"`
 	// Aliases map a machine name the queue writes to the heavyq machine name ("build-1" = "local").
 	Aliases map[string]string `toml:"aliases"`
 }
@@ -104,6 +108,9 @@ func (f *ForeignConfig) normalize(machines []string) error {
 		if !safeRemoteDir(dir) {
 			return fmt.Errorf("slot_dirs: %q for %s is empty or has unsafe characters", dir, m)
 		}
+	}
+	if err := f.checkSlotGlobs(machines); err != nil {
+		return err
 	}
 	for from, to := range f.Aliases {
 		if !SafeName.MatchString(from) || !slices.Contains(machines, to) {

@@ -2,9 +2,7 @@ package fleet
 
 import (
 	"bytes"
-	"errors"
 	"io"
-	"io/fs"
 	"os"
 	"strconv"
 	"strings"
@@ -33,18 +31,17 @@ type HistorySource struct {
 // HistoryRead is the tail of one history.
 type HistoryRead struct {
 	Runs      []Run // oldest first; Queue and Class are left to the caller
+	Parsed    int   // lines that parsed, the one that ended the read included: the columns fit the file
 	Skipped   int   // lines that did not parse (torn writes, comments, a missing exit)
 	Truncated bool  // MaxBytes was reached before the window's start: the window is partial
 }
 
 // ReadHistoryTSV reads the newest lines of a tab-separated history. Lines are in append order, which is the
-// order runs ended in, so the first line older than Since ends the read. A missing file is empty.
+// order runs ended in, so the first line older than Since ends the read. A file that cannot be opened is an
+// error, a missing one too: a typo in its path is not a queue that ran nothing.
 func ReadHistoryTSV(src HistorySource) (HistoryRead, error) {
 	var out HistoryRead
 	f, err := os.Open(src.Path)
-	if errors.Is(err, fs.ErrNotExist) {
-		return out, nil
-	}
 	if err != nil {
 		return out, err
 	}
@@ -101,6 +98,7 @@ func takeLine(line []byte, idx map[string]int, since time.Time, rev *[]Run, out 
 		out.Skipped++
 		return false
 	}
+	out.Parsed++
 	if !since.IsZero() && r.End.Before(since) {
 		return r.End.Before(since.Add(-clockSkew)) // inside the slack: skip the line, keep reading
 	}

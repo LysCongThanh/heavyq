@@ -43,6 +43,7 @@ func heavyqQueueInput(since time.Time, notes *[]string) fleet.QueueInput {
 	if err != nil {
 		*notes = append(*notes, "heavyq ledger: "+err.Error())
 	}
+	q.History = err == nil // a missing ledger is a history without runs
 	q.Truncated = len(recs) >= maxLedgerRecords
 	class := fleet.NewClassifier(heavyqInfraExits)
 	for _, r := range recs {
@@ -79,9 +80,7 @@ func foreignQueueInput(f config.ForeignConfig, since time.Time, notes *[]string)
 	note := func(what string, err error) { *notes = append(*notes, fmt.Sprintf("%s %s: %v", f.Name, what, err)) }
 	if f.History != "" {
 		h, err := fleet.ReadHistoryTSV(fleet.HistorySource{Path: f.History, Columns: f.Columns, Since: since})
-		if err != nil {
-			note("history", err)
-		}
+		q.History = foreignHistoryUsable(h, err, note)
 		class := fleet.NewClassifier(f.InfraExits)
 		for _, r := range h.Runs {
 			r.Queue, r.Machine, r.Class = f.Name, f.MachineName(r.Machine), class.Class(r.Exit)
@@ -119,6 +118,24 @@ func foreignQueueInput(f config.ForeignConfig, since time.Time, notes *[]string)
 	return q
 }
 
+// foreignHistoryUsable says whether a foreign history is data for the worker cap, noting why when it is not.
+// A file that could not be opened (a typo in its path) or whose lines all failed to parse (wrong columns) says
+// nothing about the slots used: the cap falls back to the configured slots, never to "ran nothing".
+func foreignHistoryUsable(h fleet.HistoryRead, err error, note func(string, error)) bool {
+	const fallback = "the worker cap counts its configured slots"
+	switch {
+	case err != nil:
+		note("history", fmt.Errorf("%w: %s", err, fallback))
+		return false
+	case h.Parsed == 0 && h.Skipped > 0:
+		note("history", fmt.Errorf("none of the %d lines read parsed (check columns): %s", h.Skipped, fallback))
+		return false
+	case h.Skipped > 0:
+		note("history", fmt.Errorf("%d lines did not parse and were skipped", h.Skipped))
+	}
+	return true
+}
+
 // probeFleet probes local, the remotes and the observed machines in parallel. A machine that does not
 // answer within timeout is unreachable; it never holds the others.
 func probeFleet(cfg *config.Config, timeout time.Duration) []fleet.MachineInput {
@@ -131,6 +148,9 @@ func probeFleet(cfg *config.Config, timeout time.Duration) []fleet.MachineInput 
 		for _, f := range cfg.Foreign {
 			if d, ok := f.SlotDirs[machine]; ok {
 				out = append(out, fleet.SlotDir{Owner: f.Name, Dir: d})
+			}
+			if g, ok := f.SlotGlobs[machine]; ok {
+				out = append(out, fleet.SlotGlob(f.Name, g))
 			}
 		}
 		return out

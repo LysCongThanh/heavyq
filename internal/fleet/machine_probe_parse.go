@@ -23,9 +23,13 @@ type Probe struct {
 	// InWorkTree marks the processes whose cwd is in <work_dir>/wt: heavyq remote jobs.
 	InWorkTree map[int]bool
 	Slots      []SlotState
+	// SlotsUnread are the owners whose slot files the probe was asked to read but did not (the slot step was
+	// cut or skipped): their busy slots now are unknown, not 0. Set by RunProbe, which knows what it asked.
+	SlotsUnread []string
 	// Partial says what the probe could not measure in time and why ("" when it measured everything).
-	Partial string
-	self    int // the probe script's own pid: it and its children (ps, awk) are not the machine's load
+	Partial   string
+	slotsRead bool // the slot step finished: Slots holds every slot file asked for
+	self      int  // the probe script's own pid: it and its children (ps, awk) are not the machine's load
 	// The Linux CPU sample: clock ticks per second, the sample's length, ticks used per pid.
 	clk        float64
 	intervalNS float64

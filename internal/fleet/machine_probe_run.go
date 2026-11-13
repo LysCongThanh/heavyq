@@ -2,7 +2,9 @@ package fleet
 
 import (
 	"errors"
+	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/LysCongThanh/heavyq/internal/remote"
@@ -11,10 +13,24 @@ import (
 // DefaultTopArgs is how many of the busiest processes get their command line read.
 const DefaultTopArgs = 12
 
-// SlotDir is one queue's slot lock directory on a machine.
+// SlotDir is one queue's slot lock files on a machine: the files of Dir that match Pattern.
 type SlotDir struct {
-	Owner string
-	Dir   string // absolute, "~/"-relative or relative to the machine's home; validated by config
+	Owner   string
+	Dir     string // absolute, "~/"-relative or relative to the machine's home; validated by config
+	Pattern string // base-name glob ("" means "*.lock", every lock file of a slot dir); validated by config
+}
+
+// SlotGlob is the SlotDir of a config slot glob (config.CheckSlotGlob): its directory and its base name.
+func SlotGlob(owner, glob string) SlotDir {
+	i := strings.LastIndex(glob, "/")
+	dir := glob[:i]
+	switch dir {
+	case "":
+		dir = "/"
+	case "~":
+		dir = "~/"
+	}
+	return SlotDir{Owner: owner, Dir: dir, Pattern: glob[i+1:]}
 }
 
 // ProbeRequest is one machine to probe.
@@ -51,15 +67,37 @@ func RunProbe(req ProbeRequest) (Probe, error) {
 	}
 	args := []string{wd, strconv.Itoa(n), strconv.Itoa(probeBudget(req.Timeout))}
 	for _, s := range req.Slots {
-		args = append(args, s.Owner, s.Dir)
+		pattern := s.Pattern
+		if pattern == "" {
+			pattern = "*.lock"
+		}
+		args = append(args, s.Owner, s.Dir, pattern)
 	}
 	out, err := remote.Transport(req.Transport).OutputPartial(req.Timeout, fleetProbeScript, args...)
-	if err == nil {
-		return parseProbe(out, "", req.WorkDir != "")
+	cut := ""
+	if err != nil {
+		cut = err.Error()
 	}
-	p, perr := parseProbe(out, err.Error(), req.WorkDir != "")
-	if perr != nil {
+	p, perr := parseProbe(out, cut, req.WorkDir != "")
+	switch {
+	case perr != nil && err != nil:
 		return Probe{}, err // not even the machine's numbers arrived: unreachable, with the transport's reason
+	case perr != nil:
+		return Probe{}, perr
+	}
+	if !p.slotsRead {
+		p.SlotsUnread = slotOwners(req.Slots)
 	}
 	return p, nil
+}
+
+// slotOwners are the owners of slots, each once, in order.
+func slotOwners(slots []SlotDir) []string {
+	var out []string
+	for _, s := range slots {
+		if !slices.Contains(out, s.Owner) {
+			out = append(out, s.Owner)
+		}
+	}
+	return out
 }

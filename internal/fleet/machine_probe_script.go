@@ -2,13 +2,14 @@ package fleet
 
 // fleetProbeScript measures one machine for `heavyq fleet`, read-only. It runs under bash through the
 // machine's transport (`ssh host`, or `sh -c` for this machine and the tests). Args: <work_dir|-> <N>
-// <budget s> then <owner> <slot dir> pairs. It prints one fact per line after the marker "heavyq-fleet 1":
+// <budget s> then <owner> <slot dir> <pattern> triples. It prints one fact per line after the marker
+// "heavyq-fleet 1":
 //
 //	os, cores, load, mem_total_mb, mem_avail_mb    the machine (macOS: raw sysctl/vm_stat between darwin-begin/-end)
 //	psi_cpu ... / psi_memory ...                    /proc/pressure lines, when the kernel has them
 //	workdir <abs>                                   heavyq's work dir there, resolved
 //	self <pid>                                      the script itself: it and its children are left out
-//	s <owner> <slot> <0|1> <holder pid|->           each <slot dir>/*.lock: held or not, and by whom
+//	s <owner> <slot> <0|1> <holder pid|->           each <slot dir>/<pattern> file: held or not, and by whom
 //	p <pid> <ppid> <threads> <%cpu> <rss_kb> <comm> every live process (zombies are left out)
 //	clk <hz>, interval_ns <ns>, c <pid> <ticks>     Linux: CPU ticks each process used over a 1 s sample; this,
 //	                                                not ps (CPU time over the process's whole life), is its %CPU.
@@ -37,9 +38,13 @@ package fleet
 // minutes on a loaded machine, so it is given up on (the subshell is killed) instead of holding the probe.
 // Once the budget is spent no expensive step starts, so a slow machine still answers, partially.
 //
+// The pattern is "*.lock" for a slot dir, or the base name of a slot glob (config.CheckSlotGlob: plain
+// characters, one "*", "[0-9]" classes; nothing the shell splits). A symbolic link is never a slot.
+//
 // A slot is read without being taken on Linux: /proc/locks says whether the file's inode is locked, and by
-// which pid. macOS has no /proc/locks, so a non-blocking flock(2) is tried and released at once (as the
-// scheduler's own probe does) and the holder is unknown.
+// which pid; all of a slot dir's matching files are read by one stat and one awk, never a fork per slot.
+// macOS has no /proc/locks, so a non-blocking flock(2) is tried and released at once (as the scheduler's
+// own probe does) and the holder is unknown.
 const fleetProbeScript = `W="$1"; N="$2"; B="$3"; shift 3
 LC_ALL=C; export LC_ALL
 case "$W" in -) W="" ;; /*) ;; *) W="$HOME/$W" ;; esac
@@ -61,9 +66,9 @@ echo "cores $(nproc 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null)"
 for r in cpu memory; do [ -r "/proc/pressure/$r" ] && while read -r l; do echo "psi_$r $l"; done 2>/dev/null < "/proc/pressure/$r"; done
 fi
 echo "done base"
-while [ $# -ge 2 ]; do o="$1"; d="$2"; shift 2
+while [ $# -ge 3 ]; do o="$1"; d="$2"; g="$3"; shift 3
 case "$d" in /*) ;; "~/"*) d="$HOME/${d#\~/}" ;; *) d="$HOME/$d" ;; esac
-fs=(); for f in "$d"/*.lock; do [ -f "$f" ] && fs+=("$f"); done
+fs=(); for f in "$d"/$g; do [ -f "$f" ] && [ ! -L "$f" ] && fs+=("$f"); done
 [ ${#fs[@]} -gt 0 ] || continue
 if [ "$os" = Darwin ]; then
 for f in "${fs[@]}"; do n=$(basename "$f" .lock)

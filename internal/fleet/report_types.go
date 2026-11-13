@@ -26,7 +26,7 @@ type Report struct {
 	WindowS     float64   `json:"window_s"` // its length in seconds
 	Machines    []Machine `json:"machines"`
 	Queues      []Queue   `json:"queues"`
-	Notes       []string  `json:"notes"` // what could not be read (a partial history, a missing tickets dir)
+	Notes       []string  `json:"notes"` // what could not be read (a missing or unparsable history, a partial one, a missing tickets dir)
 }
 
 // Machine is one machine of the fleet.
@@ -48,14 +48,16 @@ type Machine struct {
 	Top         []Group    `json:"top"` // busiest process groups, attributed to a queue and lane, or "outside"
 	OutsideRSS  int        `json:"outside_rss_mb"`
 	Cap         *WorkerCap `json:"worker_cap,omitempty"`
-	Window      Stats      `json:"window"` // runs of every queue that ended on this machine in the window
+	CapUnknown  string     `json:"worker_cap_unknown,omitempty"` // why there is no worker cap although a queue uses the machine
+	Window      Stats      `json:"window"`                       // runs of every queue that ended on this machine in the window
 }
 
 // SlotUse is one queue's slots on a machine.
 type SlotUse struct {
-	Owner string `json:"owner"`
-	Busy  int    `json:"busy"`
-	Total int    `json:"total"` // 0 when unknown
+	Owner  string `json:"owner"`
+	Busy   int    `json:"busy"`
+	Total  int    `json:"total"`            // 0 when unknown
+	Unread bool   `json:"unread,omitempty"` // its slot locks were not read (a partial probe): busy is only its running tickets
 }
 
 // Queue is one queue: heavyq's own or a foreign one.
@@ -104,6 +106,7 @@ type QueueInput struct {
 	Tickets    []Ticket // live tickets; Machine already mapped to heavyq names
 	Stale      int
 	Truncated  bool
+	History    bool // the run history was read (it may hold no run): the worker cap counts slots used, not configured
 	// HeavySlots and TotalSlots are this queue's slots per machine (heavy, heavy + light), when known.
 	HeavySlots map[string]int
 	TotalSlots map[string]int

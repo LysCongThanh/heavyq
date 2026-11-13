@@ -53,27 +53,6 @@ func TestOverloadRule(t *testing.T) {
 	}
 }
 
-func TestWorkerCapShowsItsReasoning(t *testing.T) {
-	c, ok := SuggestCap(18, []SlotCount{{Owner: "heavyq", Heavy: 2}, {Owner: "bashq", Heavy: 4}})
-	if !ok || c.Workers != 3 || c.HeavySlots != 6 {
-		t.Fatalf("cap = %+v", c)
-	}
-	for _, w := range []string{"18 cores", "6 heavy slots", "heavyq 2", "bashq 4", "3"} {
-		if !strings.Contains(c.Why, w) {
-			t.Errorf("why %q must mention %q", c.Why, w)
-		}
-	}
-	if c, ok := SuggestCap(4, []SlotCount{{Owner: "bashq", Heavy: 6}}); !ok || c.Workers != 1 {
-		t.Fatalf("never below one worker: %+v", c)
-	}
-	if _, ok := SuggestCap(16, nil); ok {
-		t.Fatal("no heavy slots: nothing to suggest")
-	}
-	if _, ok := SuggestCap(0, []SlotCount{{Owner: "bashq", Heavy: 2}}); ok {
-		t.Fatal("unknown cores: nothing to suggest")
-	}
-}
-
 func TestSummarizeWindow(t *testing.T) {
 	var runs []Run
 	for i := 1; i <= 20; i++ { // waits 1..20 minutes, runs 15 minutes each

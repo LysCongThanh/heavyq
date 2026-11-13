@@ -47,7 +47,7 @@ their RAM, so they stay in their group at 0% CPU; their command lines are never 
 | top | the busiest process groups: command name, processes, threads, %CPU, RSS, and **who they belong to**: a queue and lane, or `outside` |
 | outside every queue | RSS of the processes no queue owns (what exhausts RAM behind the queues' backs) |
 | slots | busy/total slots by owner: `heavyq` and each foreign queue |
-| worker cap | the suggested number of workers per heavy run, with the arithmetic shown |
+| worker cap | the suggested number of workers per heavy run: cores / the heavy slots in use, with the arithmetic shown |
 
 %CPU on Linux is measured over a 1 second sample of `/proc/<pid>/stat` (one core = 100%), not `ps`'s CPU time
 over a process's whole life. The sample is timed by `/proc/uptime`, read together with the stat files, and each
@@ -86,11 +86,46 @@ the OOM killer, `kill -9`), 255 (the ssh connection dropped), or one of the queu
 other red run is **code**. For heavyq's own runs, 77 (remote preparation failed) and cancelled or
 interrupted runs are infra; runs that gave up waiting (75, 76) or were served from the cache are not runs.
 
-**Worker cap.** `cores / heavy slots` (at least 1), counting the heavy slots of **every** queue on the machine:
-heavyq's `heavy_slots` and each foreign queue's `SLOTS` from its machine file. When every heavy run starts a
-test runner with one worker per core, N concurrent runs put N times the cores in runnable threads; capping each
-at `cores / N` keeps a full machine near `load = cores`. Pass it to the runner (`--maxWorkers`, `-p`, `-n`,
-`--jobs`, ...).
+**Worker cap.** `cores / heavy slots in use` (at least 1 worker), summing over **every** queue on the machine
+how many heavy slots it uses there, not how many it has:
+
+- a queue with a history (heavyq's ledger, a foreign `history`): `max(busy now, window peak)`, where *busy now*
+  is its slot locks held now (or its running tickets there when no lock is probed) and *window peak* is the
+  most of its heavy runs that ran at once on that machine in the window (each run spans `end - run_s` to
+  `end`; light runs are left out; a run that starts the second another ends took over its slot). It is never
+  more than the queue's configured heavy slots there (heavyq's `heavy_slots`, a foreign queue's `SLOTS`)
+  when those are known, since busy locks may include light slots. A configured slot that ran nothing in the
+  window is not load: it counts 0;
+- a queue without a history: its configured heavy slots (busy now if more), or busy now when nothing is
+  configured. A foreign `history` that cannot be opened (a typo in its path) or whose lines all fail to parse
+  (wrong `columns`) is no history: it is not taken for "ran nothing", and `notes` says so;
+- a queue whose slot locks are probed on the machine but were not read (the probe was cut or ran out of
+  budget after the machine's numbers, before its slot step ended: the machine is `partial`): busy now is
+  unknown, not 0, so the queue counts its configured heavy slots (basis `configured`, its term reads
+  `heavyq 4 configured, slots not read: the probe was partial`, `note` in `--json`), and its slots show
+  `?/4` (`unread` in `--json`). When nothing is configured for it there either, its share is unknown and
+  there is no cap: the text report prints `cap: unknown, <why>`, the markdown and agent reports say the same,
+  and `--json` has `worker_cap_unknown` instead of `worker_cap`.
+
+A queue with nothing configured, busy or run on the machine is left out. When no slot is in use at all, the
+run being started is the one: `cores / 1`. Every number is shown, the result first. The text report prints the
+count and the division on the machine's `cap:` line and each queue's term on a line of its own, so however many
+queues there are the count is never clipped:
+
+```text
+  cap: 3 workers per run = 12 cores / 4 heavy slots in use
+    heavyq 0 = max(now 0, peak 0) of 3
+    bashq 4 = max(now 1, peak 4) of 4
+```
+
+The markdown report and `worker_cap.why` in `--json` carry the same on one line (`3 workers per run = 12 cores /
+4 heavy slots in use (heavyq 0 = max(now 0, peak 0) of 3; bashq 4 = max(now 1, peak 4) of 4)`), and `--json` has
+each queue's `busy_now`, `window_peak`, `configured`, `counted`, `basis` (`used`, `configured` or
+`busy_now`) and, when its slots were not read, `note` under `worker_cap.queues`.
+
+When every heavy run starts a test runner with one worker per core, N concurrent runs put N times the cores in
+runnable threads; capping each at `cores / N` keeps a full machine near `load = cores`. Pass it to the runner
+(`--maxWorkers`, `-p`, `-n`, `--jobs`, ...).
 
 ## Configuration
 
@@ -118,19 +153,30 @@ tickets = "/var/tmp/bashq"                # live tickets: <prio>-<20-digit unix 
 infra_exits = [97, 124]                   # this queue's own infrastructure exit codes
 machines_dir = "/srv/ops/machines.d"      # <machine>.env files: SLOTS="s1 s2", LIGHT_SLOTS="s3", KIND=...
 slot_dirs = { box3 = ".bashq/slots" }     # per machine: the directory of its slot lock files there
+slot_globs = { local = "/tmp/bashq-[0-9]*.lock" }  # or a glob of its files in a directory shared with others
 aliases = { "build-1" = "local" }         # a machine name the queue writes -> the heavyq machine name
 ```
 
 - **history**: tab-separated, one run per line, in the order runs ended. `columns` names them; a permutation or
   a subset works, but `end_epoch`, `machine` and `exit` are required. It is read **backwards from its end**,
   only as far as the window, and never more than 32 MB: a history that grows for years costs what the window
-  holds. A partial window says so in the report.
+  holds. A partial window says so in the report, and so do lines that did not parse (they are skipped). A
+  history that cannot be opened, or of which no line read parses, is noted and is no history for the worker cap.
 - **tickets**: a directory of files named as above. The first line of a ticket may carry `KEY=VALUE` words;
   `machine=`, `slot=`, `claimed=` (unix seconds) and `cmd=` (the rest of the line) are read, nothing else.
 - **machines_dir**: the files are parsed, never sourced. Only `SLOTS`, `LIGHT_SLOTS` and `KIND` are read;
   `*.env.bak` and other names are ignored.
 - **slot_dirs**: probed on that machine (absolute, `~/`, or relative to its home). Every `*.lock` file there is
   a slot, busy while it is `flock(2)`-held. Give a directory that holds only that queue's slot files.
+- **slot_globs**: for slot locks that are plain files in a directory shared with other programs (`/tmp/<queue>-1.lock`,
+  `/tmp/<queue>-2.lock` beside everyone else's locks): per machine, an absolute or `~/` glob of that queue's
+  files. Probed like `slot_dirs`: every regular file it matches is a slot, named after its base name without
+  `.lock`, busy while it is `flock(2)`-held (Linux reads the holder from `/proc/locks` without taking the
+  lock). The glob is validated when the config loads and refused unless it can only match files of its one
+  directory: wildcards only in the base name, one `*` and any number of `[0-9]` classes and nothing else, the
+  rest `[A-Za-z0-9._-]`, at least one plain character, no leading `.`, and no `..`, `~` or shell
+  characters in the directory. A machine takes `slot_dirs` or `slot_globs`, not both. In either, a symbolic
+  link is never a slot.
 
 At least one of `history` and `tickets` is required.
 
@@ -149,7 +195,9 @@ fields may be added within it):
     "slots": [{"owner": "bashq", "busy": 4, "total": 6}],
     "top": [{"owner": "bashq", "lane": "api", "comm": "node", "procs": 18, "threads": 220, "cpu_pct": 1650, "rss_mb": 9200, "cmd": "node jest ..."}],
     "outside_rss_mb": 4100,
-    "worker_cap": {"workers": 4, "cores": 18, "heavy_slots": 4, "why": "18 cores / 4 heavy slots (bashq 4) = 4 workers per run"},
+    "worker_cap": {"workers": 4, "cores": 18, "heavy_slots": 4,
+                   "queues": [{"owner": "bashq", "busy_now": 4, "window_peak": 3, "configured": 6, "counted": 4, "basis": "used"}],
+                   "why": "4 workers per run = 18 cores / 4 heavy slots in use (bashq 4 = max(now 4, peak 3) of 6)"},
     "window": {"runs": 60, "run_hours": 15, "wait_p50_s": 1800, "wait_p90_s": 3240, "wait_p95_s": 3420, "run_p50_s": 900,
                "per_hour": 2.5, "red": 9, "red_infra": 3, "red_code": 6, "infra_rate": 0.05, "code_rate": 0.1}
   }],
@@ -166,8 +214,10 @@ fields may be added within it):
 
 A machine that did not answer has `"reachable": false` and an `"error"`. A machine that answered with its
 numbers but not with everything in time has `"reachable": true` and `"partial"`, for example
-`"no top consumers and attribution (timed out after 30s)"`; its `top` is then empty. `notes` lists what could
-not be read (a missing tickets dir, a partial history).
+`"no top consumers and attribution (timed out after 30s)"`; its `top` is then empty. Cut before its slot step
+ended (`"no slot states, ..."`), each queue whose slots were not read has `"unread": true` under `slots`, and
+the worker cap counts its configured slots (`"note"`) or is left out for `"worker_cap_unknown"`. `notes` lists what could
+not be read (a missing or unparsable history, a partial one, skipped lines, a missing tickets dir).
 
 ## Every 10 minutes, without a daemon
 

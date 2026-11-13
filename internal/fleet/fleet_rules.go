@@ -6,10 +6,7 @@
 // functions with table tests; the I/O (history tail, ticket dirs, the probe script) is kept beside them.
 package fleet
 
-import (
-	"fmt"
-	"strings"
-)
+import "fmt"
 
 // Exit classes of a finished run.
 const (
@@ -94,38 +91,4 @@ func Overload(s Sample) []string {
 		why = append(why, fmt.Sprintf("memory pressure full %.1f%% >= %.0f%%", s.Pressure.MemFullAvg10, OverloadMemFullAvg10))
 	}
 	return why
-}
-
-// SlotCount is how many heavy slots one queue has on a machine.
-type SlotCount struct {
-	Owner string
-	Heavy int
-}
-
-// WorkerCap is the suggested number of workers (test runner processes or threads) per heavy slot.
-type WorkerCap struct {
-	Workers    int    `json:"workers"`
-	Cores      int    `json:"cores"`
-	HeavySlots int    `json:"heavy_slots"`
-	Why        string `json:"why"`
-}
-
-// SuggestCap divides the cores among every queue's heavy slots on the machine: when each of N concurrent
-// heavy runs starts a runner with one worker per core, the machine carries N times its cores in runnable
-// threads. cores / heavy slots (at least 1) keeps a full machine near load = cores.
-func SuggestCap(cores int, slots []SlotCount) (WorkerCap, bool) {
-	total := 0
-	var parts []string
-	for _, s := range slots {
-		if s.Heavy > 0 {
-			total += s.Heavy
-			parts = append(parts, fmt.Sprintf("%s %d", s.Owner, s.Heavy))
-		}
-	}
-	if cores < 1 || total == 0 {
-		return WorkerCap{}, false
-	}
-	w := max(1, cores/total)
-	return WorkerCap{Workers: w, Cores: cores, HeavySlots: total,
-		Why: fmt.Sprintf("%d cores / %d heavy slots (%s) = %d workers per run", cores, total, strings.Join(parts, " + "), w)}, true
 }

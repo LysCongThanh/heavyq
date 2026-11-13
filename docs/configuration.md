@@ -33,8 +33,9 @@ The remote-only keys (`ssh`, `transport`, `work_dir`, `git_url`, `cache_hook`, `
 | `foreign.history` / `foreign.tickets` | one required | its run history (absolute or `~/`) / its live tickets dir (`<prio>-<20-digit ns>-<pid>-<lane>`, `.run` while running) |
 | `foreign.format` / `foreign.columns` | `"tsv"` / `["end_epoch","machine","lane","prio","light","wait_s","run_s","exit"]` | the history layout; unknown columns are refused, `end_epoch`, `machine`, `exit` are required |
 | `foreign.infra_exits` | `[]` | this queue's exit codes that mean infrastructure, not code (127, 137 and 255 always do) |
-| `foreign.machines_dir` | `""` | `<machine>.env` files (`SLOTS`, `LIGHT_SLOTS`, `KIND`; parsed, never sourced): slot counts for the worker cap |
+| `foreign.machines_dir` | `""` | `<machine>.env` files (`SLOTS`, `LIGHT_SLOTS`, `KIND`; parsed, never sourced): slot totals, and the worker cap's bound (or fallback without a history) |
 | `foreign.slot_dirs` | `{}` | per configured machine: the directory of this queue's slot lock files there, probed read-only |
+| `foreign.slot_globs` | `{}` | per configured machine: an absolute or `~/` glob of this queue's slot lock files in a directory shared with others (`"/tmp/q-[0-9]*.lock"`); one `*` and `[0-9]` classes in the base name only, refused if it could match outside its directory; not with `slot_dirs` for the same machine. See [fleet](fleet.md#configuration) |
 | `foreign.aliases` | `{}` | machine names the queue writes, mapped to configured heavyq machine names (`{ "build-1" = "local" }`) |
 | `run.need_gh_repos` | `[]` | `[run]`: repository directory names whose commands call the GitHub CLI with this machine's login; runs there behave as if `--need-gh` were given (this machine only). See [remote](remote.md#the-github-cli---need-gh) |
 | `pool.name` | required | `[[pool]]`: a named resource handed out with `--needs`; `[a-z][a-z0-9_]{0,31}`. See [pools](pools.md) |

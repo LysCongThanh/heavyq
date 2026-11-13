@@ -17,7 +17,7 @@ func RenderMarkdown(r Report) []byte {
 	b.WriteString("# Fleet report\n\n")
 	fmt.Fprintf(&b, "Generated at: %s · Window: %s (since %s) · Schema %d\n\n", r.GeneratedAt.UTC().Format(time.RFC3339),
 		fmtWindow(r.WindowS), r.Since.UTC().Format(time.RFC3339), r.Schema)
-	fmt.Fprintf(&b, "Overload rule: %s. Worker cap: cores / heavy slots of every queue on the machine.\n\n", overloadRuleText())
+	fmt.Fprintf(&b, "Overload rule: %s. Worker cap: cores / heavy slots in use, per queue max(busy now, most at once in the window) (configured slots without a history, or when its slots were not read).\n\n", overloadRuleText())
 
 	b.WriteString("## Machines\n\n")
 	b.WriteString("| machine | role | cores | load1 | load/cores | free / total RAM | mem pressure full | slots busy/total | worker cap | state |\n")
@@ -35,7 +35,10 @@ func RenderMarkdown(r Report) []byte {
 			state += "; partial: " + m.Partial
 		}
 		if m.Cap != nil {
-			capText = fmt.Sprint(m.Cap.Workers)
+			capText = fmt.Sprintf("%d (%d cores / %d slots in use%s)", m.Cap.Workers, m.Cap.Cores, m.Cap.HeavySlots, m.Cap.unreadNote())
+		}
+		if m.CapUnknown != "" {
+			capText = "unknown: " + m.CapUnknown
 		}
 		fmt.Fprintf(&b, "| %s | %s | %d | %.1f | %.2f | %s / %s | %s | %s | %s | %s |\n", mdCell(m.Name), m.Role, m.Cores, m.Load1,
 			m.LoadPerCore, fmtGiB(m.FreeMB), fmtGiB(m.TotalMB), pressureText(m.Pressure), mdCell(slotsText(m.Slots)), capText, mdCell(state))
@@ -66,12 +69,16 @@ func RenderMarkdown(r Report) []byte {
 }
 
 func mdMachineDetail(b *bytes.Buffer, m Machine) {
-	if !m.Reachable || (len(m.Top) == 0 && m.Cap == nil) {
+	if !m.Reachable || (len(m.Top) == 0 && m.Cap == nil && m.CapUnknown == "") {
 		return
 	}
 	fmt.Fprintf(b, "\n### %s\n\n", mdCell(m.Name))
 	if m.Cap != nil {
-		fmt.Fprintf(b, "Suggested worker cap: **%d** per run (%s).\n\n", m.Cap.Workers, m.Cap.Why)
+		fmt.Fprintf(b, "Suggested worker cap: **%d** workers per run = %s (%s).\n\n", m.Cap.Workers, m.Cap.division(),
+			mdCell(strings.Join(m.Cap.terms(), "; ")))
+	}
+	if m.CapUnknown != "" {
+		fmt.Fprintf(b, "No worker cap: %s.\n\n", mdCell(m.CapUnknown))
 	}
 	if len(m.Top) == 0 {
 		return // not measured (a partial probe): no RSS figure either

@@ -2,6 +2,45 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://raw.githubusercontent.com/LysCongThanh/heavyq/main/schema/fleet.schema.json",
   "definitions": {
+    "CapQueue": {
+      "properties": {
+        "owner": {
+          "type": "string"
+        },
+        "busy_now": {
+          "type": "integer"
+        },
+        "window_peak": {
+          "type": "integer",
+          "description": "0 also when there is no history (see basis)"
+        },
+        "configured": {
+          "type": "integer",
+          "description": "0 when unknown"
+        },
+        "counted": {
+          "type": "integer"
+        },
+        "basis": {
+          "type": "string",
+          "description": "\"used\", \"configured\" or \"busy_now\""
+        },
+        "note": {
+          "type": "string",
+          "description": "why the basis is not the usual one: the slots were not read"
+        }
+      },
+      "type": "object",
+      "required": [
+        "owner",
+        "busy_now",
+        "window_peak",
+        "configured",
+        "counted",
+        "basis"
+      ],
+      "description": "CapQueue is one queue's term of the worker cap, every number shown."
+    },
     "Group": {
       "properties": {
         "owner": {
@@ -144,6 +183,10 @@
         "worker_cap": {
           "$ref": "#/definitions/WorkerCap"
         },
+        "worker_cap_unknown": {
+          "type": "string",
+          "description": "why there is no worker cap although a queue uses the machine"
+        },
         "window": {
           "$ref": "#/definitions/Stats",
           "description": "runs of every queue that ended on this machine in the window"
@@ -267,6 +310,10 @@
         "total": {
           "type": "integer",
           "description": "0 when unknown"
+        },
+        "unread": {
+          "type": "boolean",
+          "description": "its slot locks were not read (a partial probe): busy is only its running tickets"
         }
       },
       "type": "object",
@@ -344,7 +391,14 @@
           "type": "integer"
         },
         "heavy_slots": {
-          "type": "integer"
+          "type": "integer",
+          "description": "the heavy slots counted as in use, every queue together"
+        },
+        "queues": {
+          "items": {
+            "$ref": "#/definitions/CapQueue"
+          },
+          "type": "array"
         },
         "why": {
           "type": "string"
@@ -355,9 +409,10 @@
         "workers",
         "cores",
         "heavy_slots",
+        "queues",
         "why"
       ],
-      "description": "WorkerCap is the suggested number of workers (test runner processes or threads) per heavy slot."
+      "description": "WorkerCap is the suggested number of workers (test runner processes or threads) per heavy run."
     }
   },
   "properties": {
@@ -394,7 +449,7 @@
         "type": "string"
       },
       "type": "array",
-      "description": "what could not be read (a partial history, a missing tickets dir)"
+      "description": "what could not be read (a missing or unparsable history, a partial one, a missing tickets dir)"
     }
   },
   "type": "object",

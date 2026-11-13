@@ -54,7 +54,10 @@ func agentMachine(m Machine) string {
 	}
 	l := fmt.Sprintf("%s: %s, free %s/%s, slots %s", m.Name, state, fmtGiB(m.FreeMB), fmtGiB(m.TotalMB), slotsText(m.Slots))
 	if m.Cap != nil {
-		l += fmt.Sprintf(", cap %d", m.Cap.Workers)
+		l += fmt.Sprintf(", cap %d (%d cores/%d slots in use%s)", m.Cap.Workers, m.Cap.Cores, m.Cap.HeavySlots, m.Cap.unreadNote())
+	}
+	if m.CapUnknown != "" {
+		l += ", cap unknown (" + clip(m.CapUnknown, 100) + ")"
 	}
 	if len(m.Top) > 0 {
 		l += ", top " + groupText(m.Top[0], 24)
