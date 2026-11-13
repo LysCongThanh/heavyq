@@ -2,6 +2,7 @@ package fleet
 
 import (
 	"errors"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -73,12 +74,30 @@ func RunProbe(req ProbeRequest) (Probe, error) {
 		args = append(args, s.Owner, s.Dir, pattern)
 	}
 	out, err := remote.Transport(req.Transport).OutputPartial(req.Timeout, fleetProbeScript, args...)
-	if err == nil {
-		return parseProbe(out, "", req.WorkDir != "")
+	cut := ""
+	if err != nil {
+		cut = err.Error()
 	}
-	p, perr := parseProbe(out, err.Error(), req.WorkDir != "")
-	if perr != nil {
+	p, perr := parseProbe(out, cut, req.WorkDir != "")
+	switch {
+	case perr != nil && err != nil:
 		return Probe{}, err // not even the machine's numbers arrived: unreachable, with the transport's reason
+	case perr != nil:
+		return Probe{}, perr
+	}
+	if !p.slotsRead {
+		p.SlotsUnread = slotOwners(req.Slots)
 	}
 	return p, nil
+}
+
+// slotOwners are the owners of slots, each once, in order.
+func slotOwners(slots []SlotDir) []string {
+	var out []string
+	for _, s := range slots {
+		if !slices.Contains(out, s.Owner) {
+			out = append(out, s.Owner)
+		}
+	}
+	return out
 }

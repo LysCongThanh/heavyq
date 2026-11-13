@@ -14,7 +14,13 @@ type QueueSlots struct {
 	WindowPeak int  // the most heavy runs at once in the window, from the queue's history
 	History    bool // the queue's history was read: WindowPeak is data, even when it is 0
 	Configured int  // heavy slots configured there (0: unknown)
+	// SlotsUnread: its slot locks there were asked for but not read (a partial probe), so BusyNow is only its
+	// running tickets, a lower bound. It then counts its configured slots; with none known there is no cap.
+	SlotsUnread bool
 }
+
+// CapNoteSlotsUnread is a queue term's note when its slot locks were not read.
+const CapNoteSlotsUnread = "slots not read: the probe was partial"
 
 // Cap bases: how a queue's slots in use were counted.
 const (
@@ -30,7 +36,8 @@ type CapQueue struct {
 	WindowPeak int    `json:"window_peak"` // 0 also when there is no history (see basis)
 	Configured int    `json:"configured"`  // 0 when unknown
 	Counted    int    `json:"counted"`
-	Basis      string `json:"basis"` // "used", "configured" or "busy_now"
+	Basis      string `json:"basis"`          // "used", "configured" or "busy_now"
+	Note       string `json:"note,omitempty"` // why the basis is not the usual one: the slots were not read
 }
 
 // WorkerCap is the suggested number of workers (test runner processes or threads) per heavy run.
@@ -45,10 +52,13 @@ type WorkerCap struct {
 // count is a queue's heavy slots in use on the machine. With a history it is the most that were in use at
 // once, now or in the window (a configured slot that ran nothing is not load); never more than the
 // configured heavy slots when those are known, since busy-now locks may include light slots. Without a
-// history only the configured slots say what the queue may do there.
+// history only the configured slots say what the queue may do there, and so when its slot locks were not
+// read: busy now is unknown then, and max(unknown, peak) would count too few.
 func (q QueueSlots) count() CapQueue {
 	c := CapQueue{Owner: q.Owner, BusyNow: q.BusyNow, WindowPeak: q.WindowPeak, Configured: q.Configured}
 	switch {
+	case q.SlotsUnread:
+		c.Basis, c.Counted, c.Note = CapBasisConfigured, max(q.BusyNow, q.Configured), CapNoteSlotsUnread
 	case q.History:
 		c.Basis, c.Counted = CapBasisUsed, max(q.BusyNow, q.WindowPeak)
 		if q.Configured > 0 {
@@ -65,7 +75,11 @@ func (q QueueSlots) count() CapQueue {
 func (c CapQueue) text() string {
 	switch c.Basis {
 	case CapBasisConfigured:
-		return fmt.Sprintf("%s %d configured, no history", c.Owner, c.Counted)
+		why := "no history"
+		if c.Note != "" {
+			why = c.Note
+		}
+		return fmt.Sprintf("%s %d configured, %s", c.Owner, c.Counted, why)
 	case CapBasisBusy:
 		return fmt.Sprintf("%s %d busy now, no history", c.Owner, c.Counted)
 	}
@@ -80,9 +94,13 @@ func (c CapQueue) text() string {
 // runs starts a runner with one worker per core, the machine carries N times its cores in runnable threads,
 // and cores / N (at least 1) keeps it near load = cores. A queue that says nothing about the machine (no
 // slot busy, no run, nothing configured) is left out; with nothing left there is nothing to suggest. When no
-// queue used a heavy slot, the run being started is the one: cores / 1.
+// queue used a heavy slot, the run being started is the one: cores / 1. When a queue's slot locks were not
+// read and its configured slots are unknown, its share is unknown: there is no cap (CapUnknown says why).
 func SuggestCap(cores int, queues []QueueSlots) (WorkerCap, bool) {
 	c := WorkerCap{Cores: cores, Queues: []CapQueue{}}
+	if CapUnknown(queues) != "" {
+		return WorkerCap{}, false
+	}
 	for _, q := range queues {
 		if q.Configured == 0 && q.BusyNow == 0 && q.WindowPeak == 0 {
 			continue // nothing configured, busy or run there: the queue does not use this machine
@@ -98,6 +116,36 @@ func SuggestCap(cores int, queues []QueueSlots) (WorkerCap, bool) {
 	// The result leads, so a reader (or a clipped line) always has the number; the terms grow with the queues.
 	c.Why = fmt.Sprintf("%d workers per run = %s (%s)", c.Workers, c.division(), strings.Join(c.terms(), "; "))
 	return c, true
+}
+
+// CapUnknown says why no cap can be suggested, "" when one can: a queue whose slot locks were not read and
+// whose configured heavy slots are unknown may hold any number of them.
+func CapUnknown(queues []QueueSlots) string {
+	var owners []string
+	for _, q := range queues {
+		if q.SlotsUnread && q.Configured == 0 {
+			owners = append(owners, q.Owner)
+		}
+	}
+	if len(owners) == 0 {
+		return ""
+	}
+	return strings.Join(owners, ", ") + ": slots not read (the probe was partial) and no configured heavy slots known"
+}
+
+// unreadNote names the queues counted at their configured slots because their locks were not read, for the
+// one-line cap texts that leave the terms out ("" when every queue's slots were read).
+func (c WorkerCap) unreadNote() string {
+	var owners []string
+	for _, q := range c.Queues {
+		if q.Note != "" {
+			owners = append(owners, q.Owner)
+		}
+	}
+	if len(owners) == 0 {
+		return ""
+	}
+	return "; configured for " + strings.Join(owners, ", ") + ": slots not read"
 }
 
 // division is the arithmetic without the per-queue terms: "12 cores / 4 heavy slots in use".

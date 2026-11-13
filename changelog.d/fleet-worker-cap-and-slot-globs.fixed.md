@@ -7,4 +7,7 @@ notes it), and shows every number with the result first (text puts each queue's 
 count is never clipped; markdown; `worker_cap.queues` in `--json`). A foreign queue whose
 slot locks are plain files beside other programs' (`/tmp/<queue>-N.lock`) showed `?` for its local slots; the
 new `slot_globs = { <machine> = "/tmp/<queue>-[0-9]*.lock" }` names them, validated so it cannot match outside
-its directory, and probed like `slot_dirs` (a symbolic link is never a slot). See [docs/fleet.md](docs/fleet.md).
+its directory, and probed like `slot_dirs` (a symbolic link is never a slot). A probe cut after the machine's
+numbers but before its slot step ended no longer counts "nothing busy" (`cores / 1`): a queue whose locks were not
+read counts its configured slots and says `slots not read` (its slots show `?`), and with none configured there
+is no cap (`worker_cap_unknown` in `--json`). See [docs/fleet.md](docs/fleet.md).

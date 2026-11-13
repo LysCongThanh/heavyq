@@ -1,6 +1,7 @@
 package fleet
 
 import (
+	"slices"
 	"sort"
 	"time"
 )
@@ -58,12 +59,14 @@ func assembleMachine(in MachineInput, queues []QueueInput, window time.Duration,
 			heavy, total = in.HeavyqSlots, in.HeavyqTotal
 		}
 		u := slotUse(q, in.Name, p.Slots, total)
-		if u.Busy > 0 || u.Total > 0 {
+		u.Unread = slices.Contains(p.SlotsUnread, q.Name)
+		if u.Busy > 0 || u.Total > 0 || u.Unread {
 			m.Slots = append(m.Slots, u)
 		}
 		caps = append(caps, QueueSlots{Owner: q.Name, BusyNow: u.Busy, WindowPeak: PeakConcurrency(heavyRuns(q.Runs, in.Name)),
-			History: q.History, Configured: heavy})
+			History: q.History, Configured: heavy, SlotsUnread: u.Unread})
 	}
+	m.CapUnknown = CapUnknown(caps)
 	if c, ok := SuggestCap(p.Cores, caps); ok {
 		m.Cap = &c
 	}

@@ -45,7 +45,7 @@ func (p *Probe) settle(s stepState, cut string, wantWT bool) error {
 	if !s.done["base"] {
 		return errors.New("the probe answered without the machine's numbers")
 	}
-	if !s.done["slots"] {
+	if p.slotsRead = s.done["slots"]; !p.slotsRead {
 		p.Slots = nil
 	}
 	if !s.done["procs"] {

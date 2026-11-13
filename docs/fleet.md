@@ -98,7 +98,14 @@ how many heavy slots it uses there, not how many it has:
   window is not load: it counts 0;
 - a queue without a history: its configured heavy slots (busy now if more), or busy now when nothing is
   configured. A foreign `history` that cannot be opened (a typo in its path) or whose lines all fail to parse
-  (wrong `columns`) is no history: it is not taken for "ran nothing", and `notes` says so.
+  (wrong `columns`) is no history: it is not taken for "ran nothing", and `notes` says so;
+- a queue whose slot locks are probed on the machine but were not read (the probe was cut or ran out of
+  budget after the machine's numbers, before its slot step ended: the machine is `partial`): busy now is
+  unknown, not 0, so the queue counts its configured heavy slots (basis `configured`, its term reads
+  `heavyq 4 configured, slots not read: the probe was partial`, `note` in `--json`), and its slots show
+  `?/4` (`unread` in `--json`). When nothing is configured for it there either, its share is unknown and
+  there is no cap: the text report prints `cap: unknown, <why>`, the markdown and agent reports say the same,
+  and `--json` has `worker_cap_unknown` instead of `worker_cap`.
 
 A queue with nothing configured, busy or run on the machine is left out. When no slot is in use at all, the
 run being started is the one: `cores / 1`. Every number is shown, the result first. The text report prints the
@@ -113,8 +120,8 @@ queues there are the count is never clipped:
 
 The markdown report and `worker_cap.why` in `--json` carry the same on one line (`3 workers per run = 12 cores /
 4 heavy slots in use (heavyq 0 = max(now 0, peak 0) of 3; bashq 4 = max(now 1, peak 4) of 4)`), and `--json` has
-each queue's `busy_now`, `window_peak`, `configured`, `counted` and `basis` (`used`, `configured` or
-`busy_now`) under `worker_cap.queues`.
+each queue's `busy_now`, `window_peak`, `configured`, `counted`, `basis` (`used`, `configured` or
+`busy_now`) and, when its slots were not read, `note` under `worker_cap.queues`.
 
 When every heavy run starts a test runner with one worker per core, N concurrent runs put N times the cores in
 runnable threads; capping each at `cores / N` keeps a full machine near `load = cores`. Pass it to the runner
@@ -207,7 +214,9 @@ fields may be added within it):
 
 A machine that did not answer has `"reachable": false` and an `"error"`. A machine that answered with its
 numbers but not with everything in time has `"reachable": true` and `"partial"`, for example
-`"no top consumers and attribution (timed out after 30s)"`; its `top` is then empty. `notes` lists what could
+`"no top consumers and attribution (timed out after 30s)"`; its `top` is then empty. Cut before its slot step
+ended (`"no slot states, ..."`), each queue whose slots were not read has `"unread": true` under `slots`, and
+the worker cap counts its configured slots (`"note"`) or is left out for `"worker_cap_unknown"`. `notes` lists what could
 not be read (a missing or unparsable history, a partial one, skipped lines, a missing tickets dir).
 
 ## Every 10 minutes, without a daemon

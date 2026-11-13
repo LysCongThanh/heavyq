@@ -50,7 +50,11 @@ func slotsText(us []SlotUse) string {
 		if u.Total > 0 {
 			total = fmt.Sprint(u.Total)
 		}
-		parts = append(parts, fmt.Sprintf("%s %d/%s", u.Owner, u.Busy, total))
+		busy := fmt.Sprint(u.Busy)
+		if u.Unread {
+			busy = "?" // not read: busy now is unknown, not 0
+		}
+		parts = append(parts, fmt.Sprintf("%s %s/%s", u.Owner, busy, total))
 	}
 	if len(parts) == 0 {
 		return "-"

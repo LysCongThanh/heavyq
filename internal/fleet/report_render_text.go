@@ -63,6 +63,9 @@ func textMachine(w io.Writer, m Machine) {
 			fmt.Fprintf(w, "    %s\n", clip(t, 110))
 		}
 	}
+	if m.CapUnknown != "" {
+		fmt.Fprintf(w, "  cap: unknown, %s\n", clip(m.CapUnknown, 100))
+	}
 }
 
 func textQueue(w io.Writer, q Queue) {

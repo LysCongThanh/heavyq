@@ -24,6 +24,10 @@
         "basis": {
           "type": "string",
           "description": "\"used\", \"configured\" or \"busy_now\""
+        },
+        "note": {
+          "type": "string",
+          "description": "why the basis is not the usual one: the slots were not read"
         }
       },
       "type": "object",
@@ -179,6 +183,10 @@
         "worker_cap": {
           "$ref": "#/definitions/WorkerCap"
         },
+        "worker_cap_unknown": {
+          "type": "string",
+          "description": "why there is no worker cap although a queue uses the machine"
+        },
         "window": {
           "$ref": "#/definitions/Stats",
           "description": "runs of every queue that ended on this machine in the window"
@@ -302,6 +310,10 @@
         "total": {
           "type": "integer",
           "description": "0 when unknown"
+        },
+        "unread": {
+          "type": "boolean",
+          "description": "its slot locks were not read (a partial probe): busy is only its running tickets"
         }
       },
       "type": "object",

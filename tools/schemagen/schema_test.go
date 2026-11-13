@@ -167,6 +167,12 @@ func TestFleetSchemaAcceptsAReport(t *testing.T) {
 			{Name: "gone", Role: fleet.RoleObserveOnly, Err: errors.New("timed out")},
 			{Name: "slow", Role: fleet.RoleObserveOnly, Probe: &fleet.Probe{Cores: 18, Load1: 70, FreeMB: 80000, TotalMB: 96000,
 				Partial: "no top consumers and attribution (timed out after 30s)"}},
+			// Probes cut before their slots: on "cut" heavyq's 4 configured slots are counted, with a note; on
+			// "cut-unknown" nothing is configured, so there is no cap and worker_cap_unknown says why.
+			{Name: "cut", Role: fleet.RoleRemote, HeavyqSlots: 4, HeavyqTotal: 4, Probe: &fleet.Probe{Cores: 16, Load1: 3, FreeMB: 9000, TotalMB: 16000,
+				SlotsUnread: []string{"heavyq"}, Partial: "no slot states, top consumers and attribution (timed out after 30s)"}},
+			{Name: "cut-unknown", Role: fleet.RoleObserveOnly, Probe: &fleet.Probe{Cores: 16, Load1: 3, FreeMB: 9000, TotalMB: 16000,
+				SlotsUnread: []string{"heavyq"}, Partial: "no slot states, top consumers and attribution (timed out after 30s)"}},
 		},
 		Queues: []fleet.QueueInput{{Name: "heavyq", Kind: fleet.KindHeavyq, Runs: []fleet.Run{{Machine: "local", WaitS: 1, RunS: 2, Exit: 255, Class: fleet.ClassInfra}},
 			Tickets: []fleet.Ticket{{Lane: "api", Prio: 3, Since: now.Add(-time.Hour)}}}},
@@ -176,7 +182,17 @@ func TestFleetSchemaAcceptsAReport(t *testing.T) {
 	if err := schema.Validate(doc); err != nil {
 		t.Fatalf("report rejected: %v", err)
 	}
-	slow := doc.(map[string]any)["machines"].([]any)[2].(map[string]any)
+	machines := doc.(map[string]any)["machines"].([]any)
+	cut, unknown := machines[3].(map[string]any), machines[4].(map[string]any)
+	if cut["worker_cap"] == nil || unknown["worker_cap"] != nil || unknown["worker_cap_unknown"] == nil {
+		t.Fatalf("cut probes: %v\n%v", cut, unknown)
+	}
+	unknown["worker_cap_unknown"] = true
+	if err := schema.Validate(doc); err == nil {
+		t.Error("worker_cap_unknown is text: a boolean should be refused")
+	}
+	delete(unknown, "worker_cap_unknown")
+	slow := machines[2].(map[string]any)
 	if slow["partial"] == nil || slow["reachable"] != true {
 		t.Fatalf("a partial machine: %v", slow)
 	}
