@@ -165,6 +165,8 @@ func TestFleetSchemaAcceptsAReport(t *testing.T) {
 			{Name: "local", Role: fleet.RoleLocal, HeavyqSlots: 2, HeavyqTotal: 3, Probe: &fleet.Probe{Cores: 8, Load1: 20, FreeMB: 100, TotalMB: 8000,
 				Procs: []fleet.Proc{{Pid: 2, PPid: 1, CPU: 100, RSSKB: 2048, Comm: "node"}}}},
 			{Name: "gone", Role: fleet.RoleObserveOnly, Err: errors.New("timed out")},
+			{Name: "slow", Role: fleet.RoleObserveOnly, Probe: &fleet.Probe{Cores: 18, Load1: 70, FreeMB: 80000, TotalMB: 96000,
+				Partial: "no top consumers and attribution (timed out after 30s)"}},
 		},
 		Queues: []fleet.QueueInput{{Name: "heavyq", Kind: fleet.KindHeavyq, Runs: []fleet.Run{{Machine: "local", WaitS: 1, RunS: 2, Exit: 255, Class: fleet.ClassInfra}},
 			Tickets: []fleet.Ticket{{Lane: "api", Prio: 3, Since: now.Add(-time.Hour)}}}},
@@ -174,6 +176,15 @@ func TestFleetSchemaAcceptsAReport(t *testing.T) {
 	if err := schema.Validate(doc); err != nil {
 		t.Fatalf("report rejected: %v", err)
 	}
+	slow := doc.(map[string]any)["machines"].([]any)[2].(map[string]any)
+	if slow["partial"] == nil || slow["reachable"] != true {
+		t.Fatalf("a partial machine: %v", slow)
+	}
+	slow["partial"] = 5
+	if err := schema.Validate(doc); err == nil {
+		t.Error("partial is text: a number should be refused")
+	}
+	slow["partial"] = "no command lines of the busiest"
 	delete(doc.(map[string]any), "queues")
 	if err := schema.Validate(doc); err == nil {
 		t.Error("a report without queues should be refused")

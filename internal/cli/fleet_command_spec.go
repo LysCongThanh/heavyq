@@ -11,7 +11,7 @@ func init() {
 		Synopsis: []string{"heavyq [--config FILE] fleet [--since DUR] [--timeout DUR] [--json] [--md FILE] [--agent]"},
 		Flags: []flagSpec{
 			{Long: "since", Value: "DUR", Help: "history window, e.g. 6h or 168h (default 24h)"},
-			{Long: "timeout", Value: "DUR", Help: "per-machine probe timeout; a machine slower than this is unreachable (default 10s)"},
+			{Long: "timeout", Value: "DUR", Help: "per-machine probe timeout; a machine that sends nothing within it is unreachable, one that sends only its numbers is partial (default 10s)"},
 			jsonFlag("machine-readable output (schema/fleet.schema.json)"),
 			{Long: "md", Value: "FILE", Path: "file", Help: "write a markdown report to FILE atomically (tmp + rename); stdout stays quiet"},
 			{Long: "agent", Help: "a compact digest under 4 KB (automatic in agent mode)"},

@@ -39,6 +39,9 @@ func textMachine(w io.Writer, m Machine) {
 	if m.Overload {
 		fmt.Fprintf(w, "  ! %s\n", clip(strings.Join(m.OverloadWhy, "; "), 112))
 	}
+	if m.Partial != "" {
+		fmt.Fprintf(w, "  partial: %s\n", clip(m.Partial, 108))
+	}
 	var top []string
 	for i, g := range m.Top {
 		if i == 3 {

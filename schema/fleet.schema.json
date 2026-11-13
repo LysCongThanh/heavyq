@@ -94,6 +94,10 @@
           "type": "string",
           "description": "why it is unreachable"
         },
+        "partial": {
+          "type": "string",
+          "description": "what the probe could not measure in time, and why; the numbers are there"
+        },
         "cores": {
           "type": "integer"
         },

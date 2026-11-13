@@ -23,7 +23,9 @@ type Probe struct {
 	// InWorkTree marks the processes whose cwd is in <work_dir>/wt: heavyq remote jobs.
 	InWorkTree map[int]bool
 	Slots      []SlotState
-	self       int // the probe script's own pid: it and its children (ps, awk) are not the machine's load
+	// Partial says what the probe could not measure in time and why ("" when it measured everything).
+	Partial string
+	self    int // the probe script's own pid: it and its children (ps, awk) are not the machine's load
 	// The Linux CPU sample: clock ticks per second, the sample's length, ticks used per pid.
 	clk        float64
 	intervalNS float64
@@ -47,10 +49,18 @@ type SlotState struct {
 	Holder int // pid holding the lock (0: free or unknown)
 }
 
-// ParseProbe reads the output of fleetProbeScript. Lines before the marker (login banners) are ignored;
-// output without it is an error.
-func ParseProbe(out string) (Probe, error) {
+// ParseProbe reads the whole output of fleetProbeScript. Lines before the marker (login banners) are
+// ignored; output without it, or without the machine's numbers, is an error.
+func ParseProbe(out string) (Probe, error) { return parseProbe(out, "", false) }
+
+// parseProbe reads what the script printed; cut is why it was stopped before its end ("" when it was not),
+// and then the last line, unless complete, is dropped.
+func parseProbe(out, cut string, wantWT bool) (Probe, error) {
 	p := Probe{Args: map[int]string{}, InWorkTree: map[int]bool{}, ticks: map[int]float64{}}
+	steps := stepState{done: map[string]bool{}, skipped: map[string]string{}}
+	if cut != "" {
+		out = out[:strings.LastIndexByte(out, '\n')+1]
+	}
 	lines := strings.Split(out, "\n")
 	start := -1
 	for i, l := range lines {
@@ -72,9 +82,12 @@ func ParseProbe(out string) (Probe, error) {
 			inDarwin = false
 		case inDarwin:
 			darwin = append(darwin, l)
-		default:
+		case !steps.stepLine(strings.Fields(l)):
 			p.line(l)
 		}
+	}
+	if err := p.settle(steps, cut, wantWT); err != nil {
+		return Probe{}, err
 	}
 	p.Procs = withoutTree(p.Procs, p.self)
 	p.applySample()

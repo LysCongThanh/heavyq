@@ -48,7 +48,7 @@ func (p ProcFS) sampleTwice(interval time.Duration) (a, b map[int]procSample, sp
 	return a, b, interval
 }
 
-// procSnapshot reads every numeric entry under Root.
+// procSnapshot reads every numeric entry under Root, zombies left out.
 func (p ProcFS) procSnapshot() map[int]procSample {
 	out := map[int]procSample{}
 	ents, err := os.ReadDir(p.Root)
@@ -61,8 +61,8 @@ func (p ProcFS) procSnapshot() map[int]procSample {
 			continue
 		}
 		comm, f, err := p.stat(pid)
-		if err != nil {
-			continue
+		if err != nil || exited(f[0]) {
+			continue // gone, or a zombie: no CPU, no memory, nothing to attribute
 		}
 		ppid, _ := strconv.Atoi(f[1])
 		ut, _ := strconv.ParseUint(f[11], 10, 64)  // field 14
