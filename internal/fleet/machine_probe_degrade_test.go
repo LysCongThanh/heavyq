@@ -14,19 +14,30 @@ import (
 	"github.com/LysCongThanh/heavyq/internal/remote"
 )
 
-// namedCommand returns a path that runs target under the command name name (comm is the base name of
-// the path a process was started from), so the test's processes are told apart from everything else.
+// namedCommand returns a script that does what target does ("true": exit at once; "sleep": wait the
+// seconds given as its argument) under the command name name, so the test's processes are told apart
+// from everything else: comm is the base name of the file a process was started from, and for a script
+// that is the script, not its interpreter. A renamed link to the system's binary is not used: a
+// multi-call coreutils (the Rust one some distributions ship) refuses to run under a name that is not
+// its own and exits at once.
 func namedCommand(t *testing.T, target, name string) string {
 	t.Helper()
-	bin, err := exec.LookPath(target)
-	if err != nil {
-		t.Skipf("%s not installed", target)
+	bodies := map[string]string{
+		"true":  "#!/bin/sh\nexit 0\n",
+		"sleep": "#!/bin/bash\nread -r -t \"$1\" _ || :\n", // a builtin: no child; stdin is a pipe startMany keeps open
 	}
-	link := filepath.Join(t.TempDir(), name)
-	if err := os.Symlink(bin, link); err != nil {
+	body, ok := bodies[target]
+	if !ok {
+		t.Fatalf("namedCommand: no script for %q", target)
+	}
+	if _, err := exec.LookPath("bash"); err != nil {
+		t.Skip("bash not installed")
+	}
+	path := filepath.Join(t.TempDir(), name)
+	if err := os.WriteFile(path, []byte(body), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	return link
+	return path
 }
 
 // procState is the state letter of pid in /proc/<pid>/stat ("" when it is gone).
@@ -46,9 +57,15 @@ func procState(pid int) string {
 // reaped, since nothing waits for them before the cleanup; T: stopped).
 func startMany(t *testing.T, n int, want string, path string, args ...string) []int {
 	t.Helper()
+	r, w, err := os.Pipe() // the sleepers' stdin: nothing is ever written, so their read waits
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = r.Close(); _ = w.Close() })
 	var pids []int
 	for range n {
 		c := exec.Command(path, args...)
+		c.Stdin = r
 		if err := c.Start(); err != nil {
 			t.Fatal(err)
 		}
